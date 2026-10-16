@@ -10,6 +10,9 @@ public class PackageContentTests
     [Theory]
     [InlineData("Xapi.Core")]
     [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Lrs")]
+    [InlineData("Xapi.Lrs.Sqlite")]
+    [InlineData("Xapi.Lrs.PostgreSql")]
     public void Package_contains_readme_and_notices(string packageId)
     {
         var entries = EntryNames(packageId);
@@ -25,6 +28,9 @@ public class PackageContentTests
     [InlineData("Xapi.Core", "net10.0")]
     [InlineData("Xapi.Client", "netstandard2.0")]
     [InlineData("Xapi.Client", "net10.0")]
+    [InlineData("Xapi.Lrs", "net10.0")]
+    [InlineData("Xapi.Lrs.Sqlite", "net10.0")]
+    [InlineData("Xapi.Lrs.PostgreSql", "net10.0")]
     public void Package_contains_assembly_and_xml_docs_for_target(string packageId, string targetFramework)
     {
         var entries = EntryNames(packageId);
@@ -38,6 +44,9 @@ public class PackageContentTests
     [InlineData("Xapi.Core", "net10.0")]
     [InlineData("Xapi.Client", "netstandard2.0")]
     [InlineData("Xapi.Client", "net10.0")]
+    [InlineData("Xapi.Lrs", "net10.0")]
+    [InlineData("Xapi.Lrs.Sqlite", "net10.0")]
+    [InlineData("Xapi.Lrs.PostgreSql", "net10.0")]
     public void Packed_assembly_is_strong_name_signed(string packageId, string targetFramework)
     {
         using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
@@ -61,6 +70,9 @@ public class PackageContentTests
     [Theory]
     [InlineData("Xapi.Core")]
     [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Lrs")]
+    [InlineData("Xapi.Lrs.Sqlite")]
+    [InlineData("Xapi.Lrs.PostgreSql")]
     public void Nuspec_declares_license_readme_and_repository(string packageId)
     {
         using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
@@ -110,6 +122,26 @@ public class PackageContentTests
         {
             Assert.DoesNotContain(declared.Keys, id => id.StartsWith("Microsoft.Extensions.", StringComparison.Ordinal));
         }
+    }
+
+    [Theory]
+    [InlineData("Xapi.Lrs")]
+    [InlineData("Xapi.Lrs.Sqlite")]
+    [InlineData("Xapi.Lrs.PostgreSql")]
+    public void Lrs_packages_target_only_net10(string packageId)
+    {
+        var entries = EntryNames(packageId);
+
+        Assert.Equal(["net10.0"], entries.Where(e => e.StartsWith("lib/", StringComparison.Ordinal)).Select(e => e.Split('/')[1]).Distinct());
+    }
+
+    [Fact]
+    public void Lrs_package_declares_the_asp_net_core_framework_reference()
+    {
+        using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath("Xapi.Lrs"));
+        using var stream = archive.GetEntry("Xapi.Lrs.nuspec")!.Open();
+        var frameworkReferences = XDocument.Load(stream).Descendants().Where(e => e.Name.LocalName == "frameworkReference");
+        Assert.Contains(frameworkReferences, e => e.Attribute("name")?.Value == "Microsoft.AspNetCore.App");
     }
 
     private static string[] EntryNames(string packageId)

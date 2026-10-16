@@ -488,3 +488,6 @@ $RECYCLE.BIN/
 
 # Public API snapshot mismatches (tests/Xapi.PublicApi.Tests)
 *.received.txt
+
+# SQLite databases created by samples/LrsHost
+lrs.db*

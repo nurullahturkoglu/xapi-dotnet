@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectType>Test</ProjectType>
+    <!-- Set here, not in eng/Test.targets: .NET Framework picks the .exe extension before that file is imported -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- The tests reach into the experimental storage seams (XapiLrsDatabaseProvider, XapiLrsDbContext) -->
+    <NoWarn>$(NoWarn);XAPI0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Lrs/Xapi.Lrs.csproj" />
+    <ProjectReference Include="../../samples/LrsHost/LrsHost.csproj" />
+  </ItemGroup>
+
+</Project>
