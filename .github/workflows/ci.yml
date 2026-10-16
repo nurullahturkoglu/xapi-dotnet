@@ -50,7 +50,14 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             args+=(--coverage --coverage-output-format cobertura)
           fi
+          if [ "$RUNNER_OS" = Windows ]; then
+            # dotnet test reports the net481 target as not runnable here, so run that test app directly
+            args+=(--framework net10.0)
+          fi
           dotnet test "${args[@]}"
+          if [ "$RUNNER_OS" = Windows ]; then
+            tests/Xapi.Core.Tests/bin/Release/net481/Xapi.Core.Tests.exe --results-directory "$GITHUB_WORKSPACE/artifacts/test-results"
+          fi
 
       - name: Upload coverage
         if: runner.os == 'Linux'
@@ -149,4 +156,7 @@ jobs:
       - name: Package tests
         env:
           XAPI_PACKAGE_VERSION: ${{ needs.pack.outputs.version }}
-        run: dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion="$XAPI_PACKAGE_VERSION"
+        run: |
+          dotnet build tests/Xapi.PackageTests -c Release -p:XapiPackageVersion="$XAPI_PACKAGE_VERSION"
+          dotnet test --project tests/Xapi.PackageTests -c Release --no-build --framework net10.0 -p:XapiPackageVersion="$XAPI_PACKAGE_VERSION"
+          tests/Xapi.PackageTests/bin/Release/net481/Xapi.PackageTests.exe
