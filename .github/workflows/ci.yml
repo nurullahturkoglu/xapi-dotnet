@@ -150,3 +150,25 @@ jobs:
         env:
           XAPI_PACKAGE_VERSION: ${{ needs.pack.outputs.version }}
         run: dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion="$XAPI_PACKAGE_VERSION"
+
+  client-integration:
+    # Linux only: the tests start lrsql (a linux/amd64 image) through Testcontainers, and the macOS and Windows
+    # runners cannot run Linux containers. The project is left out of the solution-wide `dotnet test` above unless
+    # XapiIntegrationTests=true (see tests/Xapi.Client.IntegrationTests), so this job is the one place it runs.
+    name: Client integration tests (lrsql)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: >-
+          dotnet test --project tests/Xapi.Client.IntegrationTests -c Release -p:XapiIntegrationTests=true
+          --results-directory "$GITHUB_WORKSPACE/artifacts/test-results"

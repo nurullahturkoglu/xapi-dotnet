@@ -9,6 +9,15 @@
     <NoWarn>$(NoWarn);CA1707;CS1591</NoWarn>
   </PropertyGroup>
 
+  <!--
+    XapiExcludeFromTestRun=true keeps a test project out of `dotnet test` (see Xapi.Client.IntegrationTests). It still
+    builds, and runs with `dotnet run`. dotnet test picks Microsoft.Testing.Platform projects by these two properties.
+  -->
+  <PropertyGroup Condition="'$(XapiExcludeFromTestRun)' == 'true'">
+    <IsTestProject>false</IsTestProject>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="xunit.v3.mtp-v2" />
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
