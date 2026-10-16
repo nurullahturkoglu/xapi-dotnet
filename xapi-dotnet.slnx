@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/ConsoleClient/ConsoleClient.csproj" />
+    <Project Path="samples/LrsHost/LrsHost.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Xapi.Client/Xapi.Client.csproj" />
@@ -8,9 +9,6 @@
     <Project Path="src/Xapi.Lrs/Xapi.Lrs.csproj" />
     <Project Path="src/Xapi.Lrs.PostgreSql/Xapi.Lrs.PostgreSql.csproj" />
     <Project Path="src/Xapi.Lrs.Sqlite/Xapi.Lrs.Sqlite.csproj" />
-  </Folder>
-  <Folder Name="/samples/">
-    <Project Path="samples/LrsHost/LrsHost.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Xapi.Client.IntegrationTests/Xapi.Client.IntegrationTests.csproj" />
