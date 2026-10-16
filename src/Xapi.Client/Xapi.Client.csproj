@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectType>Library</ProjectType>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>Xapi.Client</RootNamespace>
+    <Description>Experience API (xAPI 2.0, IEEE 9274.1.1, and 1.0.3) client for .NET: Statements with attachments, State and profile documents with ETag preconditions, Agents, Activities and About over HttpClient, with version negotiation. Works on .NET Framework, Unity and modern .NET.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Xapi.Core/Xapi.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <!-- IAsyncEnumerable<T> and ValueTask<T> -->
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+  </ItemGroup>
+
+  <!-- The DI extension exists on net10.0 only, so Unity and .NET Framework users do not get Microsoft.Extensions.* (ADR-008) -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
+    <Compile Remove="DependencyInjection/**" />
+  </ItemGroup>
+
+</Project>

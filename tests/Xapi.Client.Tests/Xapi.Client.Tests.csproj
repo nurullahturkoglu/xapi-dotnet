@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectType>Test</ProjectType>
+    <!-- Set here, not in eng/Test.targets: .NET Framework picks the .exe extension before that file is imported -->
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <!-- net481 exercises the netstandard2.0 build on a .NET Framework runtime -->
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net10.0;net481</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
+  </ItemGroup>
+
+  <!-- The DI extension only exists in the net10.0 build -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
+    <Compile Remove="DependencyInjection/**" />
+  </ItemGroup>
+
+  <!-- On .NET Framework, HttpClient lives in an assembly that is not referenced or imported by default -->
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <Reference Include="System.Net.Http" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
+
+</Project>
