@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Also the Native AOT smoke test: CI publishes this project and fails on any trim or AOT warning. -->
+
+  <PropertyGroup>
+    <ProjectType>Sample</ProjectType>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
+  </ItemGroup>
+
+</Project>
