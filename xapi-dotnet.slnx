@@ -4,6 +4,7 @@
     <Project Path="samples/LrsHost/LrsHost.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Xapi.Client.Outbox/Xapi.Client.Outbox.csproj" />
     <Project Path="src/Xapi.Client/Xapi.Client.csproj" />
     <Project Path="src/Xapi.Core/Xapi.Core.csproj" />
     <Project Path="src/Xapi.Lrs/Xapi.Lrs.csproj" />
@@ -12,6 +13,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Xapi.Client.IntegrationTests/Xapi.Client.IntegrationTests.csproj" />
+    <Project Path="tests/Xapi.Client.Outbox.Tests/Xapi.Client.Outbox.Tests.csproj" />
     <Project Path="tests/Xapi.Client.Tests/Xapi.Client.Tests.csproj" />
     <Project Path="tests/Xapi.Core.Tests/Xapi.Core.Tests.csproj" />
     <Project Path="tests/Xapi.Lrs.Tests/Xapi.Lrs.Tests.csproj" />
