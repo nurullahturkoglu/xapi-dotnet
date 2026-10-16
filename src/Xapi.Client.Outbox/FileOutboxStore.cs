@@ -324,7 +324,8 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     private FileStream OpenJournal() =>
-        // FileShare.Read lets people inspect the journal; the lock file keeps other writers out
+        // FileShare.Read lets people inspect the journal (on Windows the reader must allow writing too); the lock
+        // file keeps other writers out
         new(_journalPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
 
     private void Commit(JournalRecord record)

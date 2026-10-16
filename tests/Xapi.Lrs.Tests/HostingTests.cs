@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -39,11 +40,30 @@ public class HostingTests(LrsHosts hosts)
     [Fact]
     public async Task Startup_explains_that_the_database_is_not_migrated()
     {
-        var app = await hosts.CreateAsync(TestDatabase.Sqlite, services => services.AddXapiLrs(o => o.MigrateOnStartup = false), start: false);
+        // Built directly: WebApplicationFactory sometimes disposes a host that fails to start before rethrowing,
+        // and the test then sees ObjectDisposedException instead of the startup error
+        var database = Path.Combine(Path.GetTempPath(), $"xapi-unmigrated-{Guid.NewGuid():N}.db");
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services
+            .AddXapiLrs(o =>
+            {
+                o.MigrateOnStartup = false;
+                o.Credentials.Add(new XapiCredential("key", "secret", [XapiScope.All]));
+            })
+            .UseSqlite(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
+        await using var app = builder.Build();
 
-        var exception = Assert.Throws<InvalidOperationException>(app.Start);
+        try
+        {
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => app.StartAsync(TestContext.Current.CancellationToken));
 
-        Assert.Contains("MigrateOnStartup", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("MigrateOnStartup", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(database);
+        }
     }
 
     [Fact]

@@ -59,10 +59,13 @@ public sealed class FileOutboxStoreTests : IDisposable
             await store.AddAsync(new OutboxEntry(statement, Harness.Start), Ct);
         }
 
-        using var reopened = new FileOutboxStore(_directory.Path);
+        using (var reopened = new FileOutboxStore(_directory.Path))
+        {
+            var read = Assert.Single(await reopened.GetPendingAsync(1, Ct)).Statement;
+            Assert.Equal(XapiJson.SerializeStatement(statement, XapiVersion.V2_0_0), XapiJson.SerializeStatement(read, XapiVersion.V2_0_0));
+        }
 
-        var read = Assert.Single(await reopened.GetPendingAsync(1, Ct)).Statement;
-        Assert.Equal(XapiJson.SerializeStatement(statement, XapiVersion.V2_0_0), XapiJson.SerializeStatement(read, XapiVersion.V2_0_0));
+        // Read after the store is closed: on Windows the open journal only admits readers that allow writing
         Assert.Single(File.ReadAllLines(_directory.Journal));
     }
 
