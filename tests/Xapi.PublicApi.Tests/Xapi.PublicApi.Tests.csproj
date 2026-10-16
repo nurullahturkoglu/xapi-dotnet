@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
     <ProjectReference Include="../../src/Xapi.Core/Xapi.Core.csproj" />
   </ItemGroup>
 

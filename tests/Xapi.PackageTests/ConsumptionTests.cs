@@ -6,6 +6,7 @@ public class ConsumptionTests
 {
     [Theory]
     [InlineData("Xapi.Core")]
+    [InlineData("Xapi.Client")]
     public void Referenced_assembly_comes_from_the_package_under_test(string assemblyName)
     {
         var assembly = Assembly.Load(assemblyName);

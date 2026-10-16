@@ -19,6 +19,7 @@
 
   <ItemGroup Condition="'$(XapiPackageVersion)' != ''">
     <PackageReference Include="Xapi.Core" VersionOverride="$(XapiPackageVersion)" />
+    <PackageReference Include="Xapi.Client" VersionOverride="$(XapiPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>
