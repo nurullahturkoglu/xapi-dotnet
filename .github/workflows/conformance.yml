@@ -1,0 +1,172 @@
+name: conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: conformance-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  cts:
+    name: CTS xAPI ${{ matrix.xapi }} (${{ matrix.target }}, ${{ matrix.db }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        xapi: ['1.0.3', '2.0.0']
+        # Until our LRS exists (M4) the job tests the pipeline itself against lrsql.
+        # M4: target: [lrsql, xapi-dotnet] and db: [sqlite, postgres], then add
+        #   exclude:
+        #     - { target: lrsql, db: postgres }
+        # and fill in the "Start xapi-dotnet" step below.
+        target: [lrsql]
+        db: [sqlite]
+    env:
+      XAPI: ${{ matrix.xapi }}
+      TARGET: ${{ matrix.target }}
+      DB: ${{ matrix.db }}
+      LRS_URL: http://127.0.0.1:8080/xapi
+      LRS_KEY: cts_key
+      LRS_SECRET: cts_secret
+      CTS_DIR: .cts/suite
+      OUT: cts-results
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Load pinned inputs
+        run: grep -E '^[A-Z_]+=' eng/conformance/cts.env >> "$GITHUB_ENV"
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.CTS_NODE_MAJOR }}.x
+
+      - name: Fetch CTS at pinned commit
+        run: |
+          git init -q "$CTS_DIR"
+          git -C "$CTS_DIR" fetch -q --depth 1 "$CTS_REPO" "$CTS_SHA"
+          git -C "$CTS_DIR" checkout -q FETCH_HEAD
+          cp eng/conformance/package.json eng/conformance/package-lock.json "$CTS_DIR/"
+          for patch in eng/conformance/patches/*.patch; do
+            [[ -e $patch ]] || continue
+            echo "applying $patch"
+            git -C "$CTS_DIR" apply "$GITHUB_WORKSPACE/$patch"
+          done
+          mkdir -p "$OUT"
+
+      - id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cts/suite/node_modules
+            .cts/suite/local/*/node_modules
+          key: cts-${{ runner.os }}-${{ runner.arch }}-node${{ env.CTS_NODE_MAJOR }}-${{ env.CTS_SHA }}-${{ hashFiles('eng/conformance/package-lock.json') }}
+
+      - name: Install CTS dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: ${{ env.CTS_DIR }}
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Start PostgreSQL
+        if: matrix.db == 'postgres'
+        run: |
+          docker network create cts
+          docker run -d --name postgres --network cts -p 5432:5432 \
+            -e POSTGRES_USER=lrsql -e POSTGRES_PASSWORD=lrsql -e POSTGRES_DB=lrsql \
+            "$POSTGRES_IMAGE"
+          for _ in $(seq 60); do
+            docker exec postgres pg_isready -q -U lrsql -d lrsql && exit 0
+            sleep 1
+          done
+          echo "::error::PostgreSQL did not start"
+          exit 1
+
+      - name: Start lrsql
+        if: matrix.target == 'lrsql'
+        run: |
+          args=(
+            -e "LRSQL_API_KEY_DEFAULT=$LRS_KEY"
+            -e "LRSQL_API_SECRET_DEFAULT=$LRS_SECRET"
+            -e LRSQL_ADMIN_USER_DEFAULT=cts_admin
+            -e LRSQL_ADMIN_PASS_DEFAULT=cts_admin_pass
+          )
+          cmd=()
+          if [[ $DB == postgres ]]; then
+            args+=(--network cts -e LRSQL_DB_HOST=postgres -e LRSQL_DB_PORT=5432 -e LRSQL_DB_NAME=lrsql
+              -e LRSQL_DB_USER=lrsql -e LRSQL_DB_PASSWORD=lrsql)
+            cmd=(/lrsql/bin/run_postgres.sh)
+          fi
+          docker run -d --name lrs -p 8080:8080 "${args[@]}" "$LRSQL_IMAGE" "${cmd[@]}"
+
+      - name: Start xapi-dotnet
+        if: matrix.target == 'xapi-dotnet'
+        run: |
+          echo "::error::samples/LrsHost is not written yet (M4); start it here on $LRS_URL with $LRS_KEY/$LRS_SECRET and DB=$DB"
+          exit 1
+
+      - name: Wait for the LRS
+        run: |
+          for _ in $(seq 90); do
+            if curl -sf "$LRS_URL/about"; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "::error::no answer from $LRS_URL/about"
+          exit 1
+
+      - name: Run xAPI ${{ matrix.xapi }} battery
+        working-directory: ${{ env.CTS_DIR }}
+        run: |
+          rm -rf logs
+          set +e
+          node bin/console_runner.js -e "$LRS_URL" -a -u "$LRS_KEY" -p "$LRS_SECRET" -x "$XAPI" 2>&1 \
+            | tee "$GITHUB_WORKSPACE/$OUT/console.txt"
+          echo "suite exit code ${PIPESTATUS[0]} (not used for gating)"
+          set -e
+          logs=(logs/*.log)
+          cp "${logs[0]}" "$GITHUB_WORKSPACE/$OUT/cts-log.json"
+
+      - name: Gate
+        run: >-
+          dotnet run eng/conformance/CtsGate.cs --
+          "$OUT/cts-log.json"
+          --floor-file eng/conformance/floor.json --target "$TARGET" --db "$DB" --xapi "$XAPI"
+          --allowlist "eng/conformance/known-failures-$XAPI.txt"
+          --junit "$OUT/junit.xml" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect container logs
+        if: always()
+        run: |
+          mkdir -p "$OUT"
+          for name in lrs postgres; do
+            if docker container inspect "$name" > /dev/null 2>&1; then
+              docker logs "$name" > "$OUT/$name.log" 2>&1
+            fi
+          done
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: cts-${{ matrix.target }}-${{ matrix.db }}-${{ matrix.xapi }}
+          path: ${{ env.OUT }}/
+          retention-days: 14
+          if-no-files-found: warn

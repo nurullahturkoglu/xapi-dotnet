@@ -1,0 +1,8 @@
+# Known failures of the xAPI 2.0.0 battery that the gate tolerates.
+#
+# Only defects in the test suite itself belong here, never bugs in our LRS.
+# One entry per line: the full title path as the gate prints it after "FAIL"
+# ("Group > Suite > test title"), then " # " and the upstream issue or PR link, e.g.
+#   Group > Suite > test title # https://github.com/adlnet/lrs-conformance-test-suite/issues/281
+# Matching is exact (outer whitespace of each title is trimmed). The gate warns about
+# entries that no longer fail; remove them in the same PR.
