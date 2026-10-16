@@ -29,6 +29,7 @@ public static class XapiLrsEndpointRouteBuilderExtensions
             throw new InvalidOperationException("Call services.AddXapiLrs() before MapXapiLrs().");
         }
 
+        endpoints.ServiceProvider.GetRequiredService<XapiLrsPaths>().Add(prefix);
         var group = endpoints.MapGroup(prefix);
         group.AddEndpointFilter<XapiRequestFilter>();
 

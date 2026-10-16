@@ -51,6 +51,21 @@ public sealed class XapiLrsOptions
     public long MaxDocumentBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
+    /// The most statements one page of a statement query returns, and the page size when the request asks for
+    /// <c>limit=0</c> or gives no limit. Larger limits are lowered to it. Defaults to 100.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
+    public int MaxStatementsPerPage
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            field = value;
+        }
+    } = 100;
+
+    /// <summary>
     /// Whether the database migrations are applied when the host starts. Off by default, so production
     /// deployments can migrate as a separate step.
     /// </summary>

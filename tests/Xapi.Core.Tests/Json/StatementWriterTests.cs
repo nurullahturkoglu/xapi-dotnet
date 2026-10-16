@@ -26,7 +26,7 @@ public class StatementWriterTests
             Compact("""
                 {"actor":{"objectType":"Agent","mbox":"mailto:learner@example.com"},
                  "verb":{"id":"http://adlnet.gov/expapi/verbs/completed"},
-                 "object":{"objectType":"Activity","id":"http://example.com/q1"},
+                 "object":{"id":"http://example.com/q1"},
                  "context":{"instructor":{"objectType":"Group","mbox":"mailto:teachers@example.com"},
                             "team":{"objectType":"Group","member":[{"objectType":"Agent","mbox":"mailto:m@example.com"}]},
                             "contextActivities":{"parent":[{"id":"http://example.com/p"}]}}}

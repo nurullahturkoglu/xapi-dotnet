@@ -24,4 +24,23 @@ public interface IStatementStore
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The statement, or <see langword="null"/> when no statement has that id.</returns>
     Task<StoredStatement?> GetAsync(Guid statementId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads one page of the statements that match a query, ordered by storage key (stored time). Pages are
+    /// keyed on the storage key, so statements stored while a client pages through the results neither repeat
+    /// nor shift earlier pages.
+    /// </summary>
+    /// <param name="filter">The query.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The page, possibly empty.</returns>
+    Task<StatementPage> QueryAsync(StatementFilter filter, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads the LRS's canonical form of Activities: the definitions merged from the statements that mentioned
+    /// them (see <see cref="StoreAsync"/>), as returned by the <c>canonical</c> statement format.
+    /// </summary>
+    /// <param name="activityIds">The Activity ids.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The known Activities by id; unknown ids are left out.</returns>
+    Task<IReadOnlyDictionary<Iri, Activity>> GetActivitiesAsync(IReadOnlyCollection<Iri> activityIds, CancellationToken cancellationToken = default);
 }
