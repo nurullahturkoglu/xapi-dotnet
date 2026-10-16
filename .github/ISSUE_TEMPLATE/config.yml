@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/nurullahturkoglu/xapi-dotnet/discussions
+    about: Ask how to use the packages or discuss an idea before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/nurullahturkoglu/xapi-dotnet/security/advisories/new
+    about: Report security problems privately, not as an issue.

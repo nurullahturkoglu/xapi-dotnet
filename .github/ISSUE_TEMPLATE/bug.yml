@@ -1,0 +1,72 @@
+name: Bug report
+description: A package does not behave as documented or as the xAPI standard requires.
+labels: [bug]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      multiple: true
+      options:
+        - Xapi.Core
+        - Xapi.Client
+        - Xapi.Client.Outbox
+        - Xapi.Lrs
+        - Xapi.Lrs.Sqlite
+        - Xapi.Lrs.PostgreSql
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: 0.1.0-preview.1
+    validations:
+      required: true
+  - type: dropdown
+    id: xapi-version
+    attributes:
+      label: xAPI version
+      options:
+        - 2.0.0
+        - 1.0.3
+        - Both
+        - Not version specific
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and OS
+      description: The target framework you run on and the operating system. For Unity, the Unity version and scripting backend.
+      placeholder: .NET 10 on Ubuntu 24.04 / .NET Framework 4.8.1 on Windows 11 / Unity 6000.0 IL2CPP Android
+    validations:
+      required: true
+  - type: input
+    id: lrs
+    attributes:
+      label: LRS
+      description: For client and outbox problems, the LRS you talk to and its version.
+      placeholder: SQL LRS 0.9.9, SCORM Cloud, Xapi.Lrs with SQLite
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code and input (for example the statement JSON) that shows the problem. Remove credentials and personal data.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: If the standard requires it, cite the section of IEEE 9274.1.1 or the 1.0.3 specification.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Exception type and message, validation error codes, or the HTTP status and body returned.
+    validations:
+      required: true

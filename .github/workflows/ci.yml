@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-latest also runs the net481 test targets
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # MinVer needs the tags and history to compute the version
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build xapi-dotnet.slnx -c Release
+
+      - name: Test
+        run: |
+          args=(--solution xapi-dotnet.slnx -c Release --no-build --results-directory "$GITHUB_WORKSPACE/artifacts/test-results")
+          if [ "$RUNNER_OS" = Linux ]; then
+            args+=(--coverage --coverage-output-format cobertura)
+          fi
+          dotnet test "${args[@]}"
+
+      - name: Upload coverage
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: artifacts/test-results/**/*.cobertura.xml
+          if-no-files-found: warn
+
+      - name: Upload received API snapshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: received-snapshots-${{ matrix.os }}
+          path: tests/**/*.received.txt
+          if-no-files-found: ignore
+
+  pack:
+    name: Pack and test packages
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # ContinuousIntegrationBuild is switched on by Directory.Build.props when GITHUB_ACTIONS is set.
+      # Pack also runs package validation for every packable project.
+      - name: Pack
+        run: dotnet pack xapi-dotnet.slnx -c Release -o artifacts/packages
+
+      - name: Read package version
+        id: version
+        run: |
+          shopt -s nullglob
+          files=(artifacts/packages/Xapi.Core.[0-9]*.nupkg)
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "::error::Expected one Xapi.Core nupkg, found ${#files[@]}"
+            exit 1
+          fi
+          version=$(basename "${files[0]}" .nupkg)
+          version=${version#Xapi.Core.}
+          echo "Package version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Public API tests
+        run: dotnet test --project tests/Xapi.PublicApi.Tests -c Release
+
+      - name: Package tests
+        env:
+          XAPI_PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+        run: dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion="$XAPI_PACKAGE_VERSION"
+
+      - name: Upload received API snapshots
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: received-snapshots-pack
+          path: tests/**/*.received.txt
+          if-no-files-found: ignore
+
+      - name: Upload packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages
+          path: artifacts/packages/*.nupkg
+          if-no-files-found: error
+
+  package-test-windows:
+    name: Test packages on Windows (net10.0, net481)
+    needs: pack
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: artifacts/packages
+
+      - name: Package tests
+        env:
+          XAPI_PACKAGE_VERSION: ${{ needs.pack.outputs.version }}
+        run: dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion="$XAPI_PACKAGE_VERSION"

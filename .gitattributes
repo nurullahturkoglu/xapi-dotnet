@@ -1,0 +1,17 @@
+# Normalise line endings in the repository and in working trees, on every OS
+* text=auto eol=lf
+
+*.cs diff=csharp
+*.csproj text eol=lf
+*.slnx text eol=lf
+
+# Public API snapshots: always LF so they compare the same on Windows.
+# *.received.txt files are produced by failing tests and are not committed.
+*.approved.txt text eol=lf
+*.received.txt text eol=lf
+
+# Binary files
+*.snk binary
+*.png binary
+*.ico binary
+*.nupkg binary

@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest new behaviour or an API change.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Scenario
+      description: What are you building, and what does the library make hard or impossible today?
+    validations:
+      required: true
+  - type: input
+    id: spec
+    attributes:
+      label: Standard reference
+      description: The section of IEEE 9274.1.1 or the 1.0.3 specification this relates to, if any.
+      placeholder: IEEE 9274.1.1, 4.1.6.2
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The API or behaviour you have in mind, if any. A short code sample helps.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds
+      description: What you do today instead.
