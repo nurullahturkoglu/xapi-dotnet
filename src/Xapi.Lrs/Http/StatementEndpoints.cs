@@ -63,7 +63,7 @@ internal static class StatementEndpoints
             return BadRequest($"The statement id {id} does not match the statementId parameter {statementId}.");
         }
 
-        if (CheckAttachments([statement], body, out var attachments) is { } attachmentError)
+        if (CheckAttachments([statement], body, request.Version, out var attachments) is { } attachmentError)
         {
             return attachmentError;
         }
@@ -102,7 +102,7 @@ internal static class StatementEndpoints
                 parsed.Errors);
         }
 
-        if (CheckAttachments(parsed.Value, body, out var attachments) is { } attachmentError)
+        if (CheckAttachments(parsed.Value, body, request.Version, out var attachments) is { } attachmentError)
         {
             return attachmentError;
         }
@@ -113,9 +113,24 @@ internal static class StatementEndpoints
             : XapiResults.Json(WriteIds(ids));
     }
 
-    // IEEE 9274.1.1, 4.1.3: attachment data is matched to Attachment objects by SHA-2
-    private static IResult? CheckAttachments(IReadOnlyList<Statement> statements, StatementBody body, out List<IReadOnlyList<AttachmentContent>> attachments) =>
-        StatementAttachments.Match(statements, body.Parts, out attachments) is { } mismatch ? BadRequest(mismatch) : null;
+    // IEEE 9274.1.1, 4.1.3 (attachment data matched to Attachment objects by SHA-2) and 4.2.6 (signatures)
+    private static IResult? CheckAttachments(IReadOnlyList<Statement> statements, StatementBody body, XapiVersion version, out List<IReadOnlyList<AttachmentContent>> attachments)
+    {
+        if (StatementAttachments.Match(statements, body.Parts, out attachments) is { } mismatch)
+        {
+            return BadRequest(mismatch);
+        }
+
+        foreach (var statement in statements)
+        {
+            if (StatementSignatures.Validate(statement, body.Parts, version) is { } signatureError)
+            {
+                return BadRequest(signatureError);
+            }
+        }
+
+        return null;
+    }
 
     public static async Task<IResult> GetAsync(HttpContext http, IStatementStore store, IOptions<XapiLrsOptions> options)
     {

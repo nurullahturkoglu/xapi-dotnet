@@ -8,6 +8,7 @@ The guides below are planned and will be written as the packages they describe a
 | `client.md` | `XapiClient`: resources, version negotiation, documents and ETags, attachments, resilience |
 | [`outbox.md`](outbox.md) | `StatementOutbox`: stores, error classification, dead letters, hosting |
 | `lrs.md` | Embedding the LRS: `AddXapiLrs`, `MapXapiLrs`, storage providers, authentication, telemetry |
+| [`signatures.md`](signatures.md) | Signing statements with `StatementSigner` and what the LRS checks |
 | `versions.md` | Differences between xAPI 1.0.3 and 2.0.0 and how the packages handle them |
 | `migrating-from-tincan.md` | Mapping TinCan.NET types and calls to this library |
 | `conformance.md` | Conformance suite results and the known suite issues |

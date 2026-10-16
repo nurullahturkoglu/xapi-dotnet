@@ -67,6 +67,12 @@ namespace Xapi.Client
         System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Guid>> SaveStatementsAsync(System.Collections.Generic.IReadOnlyList<Xapi.Statement> statements, System.Collections.Generic.IReadOnlyList<Xapi.Client.AttachmentPayload>? attachments = null, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<System.Guid> VoidStatementAsync(System.Guid statementId, Xapi.Actor actor, System.Threading.CancellationToken cancellationToken = default);
     }
+    public sealed record SignedStatement : System.IEquatable<Xapi.Client.SignedStatement>
+    {
+        public SignedStatement(Xapi.Statement Statement, Xapi.Client.AttachmentPayload Signature) { }
+        public Xapi.Client.AttachmentPayload Signature { get; init; }
+        public Xapi.Statement Statement { get; init; }
+    }
     public sealed record StateKey : Xapi.Client.DocumentKey, System.IEquatable<Xapi.Client.StateKey>
     {
         public StateKey(Xapi.Iri ActivityId, Xapi.Agent Agent, string StateId, System.Guid? Registration = default) { }
@@ -98,6 +104,11 @@ namespace Xapi.Client
         public System.DateTimeOffset? ConsistentThrough { get; init; }
         public System.Uri? More { get; init; }
         public Xapi.XapiList<Xapi.Statement> Statements { get; init; }
+    }
+    public static class StatementSigner
+    {
+        public static Xapi.Iri SignatureUsageType { get; }
+        public static Xapi.Client.SignedStatement Sign(Xapi.Statement statement, System.Security.Cryptography.RSA privateKey, Xapi.XapiVersion version, System.Security.Cryptography.HashAlgorithmName hashAlgorithm = default, System.Collections.Generic.IReadOnlyList<System.Security.Cryptography.X509Certificates.X509Certificate2>? certificateChain = null) { }
     }
     public sealed class XapiClient : Xapi.Client.IXapiClient
     {
