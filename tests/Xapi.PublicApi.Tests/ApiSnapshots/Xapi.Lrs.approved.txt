@@ -71,8 +71,34 @@ namespace Xapi.Lrs.Storage
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
     public interface IStatementStore
     {
+        System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<Xapi.Iri, Xapi.Activity>> GetActivitiesAsync(System.Collections.Generic.IReadOnlyCollection<Xapi.Iri> activityIds, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredStatement?> GetAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Lrs.Storage.StatementPage> QueryAsync(Xapi.Lrs.Storage.StatementFilter filter, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StatementStoreResult> StoreAsync(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StatementRecord> statements, bool updateDefinitions, System.Threading.CancellationToken cancellationToken = default);
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed record StatementFilter : System.IEquatable<Xapi.Lrs.Storage.StatementFilter>
+    {
+        public StatementFilter() { }
+        public Xapi.Iri? Activity { get; init; }
+        public System.Guid? After { get; init; }
+        public Xapi.Actor? Agent { get; init; }
+        public bool Ascending { get; init; }
+        public string? AuthorityKey { get; init; }
+        public int Limit { get; init; }
+        public System.Guid? Registration { get; init; }
+        public bool RelatedActivities { get; init; }
+        public bool RelatedAgents { get; init; }
+        public System.DateTimeOffset? Since { get; init; }
+        public System.DateTimeOffset? Until { get; init; }
+        public Xapi.Iri? Verb { get; init; }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class StatementPage
+    {
+        public StatementPage(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StoredStatement> statements, System.Guid? continuation) { }
+        public System.Guid? Continuation { get; }
+        public System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StoredStatement> Statements { get; }
     }
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
     public sealed class StatementRecord
@@ -172,6 +198,7 @@ namespace Xapi.Lrs
         public Xapi.Lrs.XapiCredentialList Credentials { get; }
         public bool EnableVersion1_0_3 { get; set; }
         public long MaxDocumentBytes { get; set; }
+        public int MaxStatementsPerPage { get; set; }
         public bool MigrateOnStartup { get; set; }
         public string ScopeClaimType { get; set; }
     }

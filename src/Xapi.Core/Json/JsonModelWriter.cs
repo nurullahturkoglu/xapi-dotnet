@@ -188,7 +188,9 @@ internal sealed class JsonModelWriter(Utf8JsonWriter writer, XapiVersion version
         switch (value)
         {
             case Activity activity:
-                WriteActivity(activity, writeObjectType: true);
+                // objectType defaults to Activity, so ids leaves it out (the conformance suite's XAPI-00171
+                // expects the id alone)
+                WriteActivity(activity, writeObjectType: !IdsOnly);
                 break;
             case Actor actor:
                 WriteActor(actor);

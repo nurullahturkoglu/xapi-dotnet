@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Xapi.Json;
@@ -55,6 +56,153 @@ internal sealed partial class EfStatementStore(
                 ? null
                 : new StoredStatement(row.StatementId, row.Stored, row.Version, row.IsVoided, row.AuthorityKey, row.Payload);
         }
+    }
+
+    public async Task<StatementPage> QueryAsync(StatementFilter filter, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        ArgumentOutOfRangeException.ThrowIfLessThan(filter.Limit, 1);
+
+        var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (context.ConfigureAwait(false))
+        {
+            // IEEE 9274.1.1, 4.1.6.1 "Voided Statements": never returned by a query
+            var query = context.Statements.AsNoTracking().Where(s => !s.IsVoided);
+            if (filter.AuthorityKey is { } authority)
+            {
+                query = query.Where(s => s.AuthorityKey == authority);
+            }
+
+            // Time and paging bounds apply to the returned statement, not to the statements it targets
+            if (filter.Since is { } since)
+            {
+                var first = StatementKeys.FirstAfter(since);
+                query = query.Where(s => s.Pk.CompareTo(first) >= 0);
+            }
+
+            if (filter.Until is { } until)
+            {
+                var end = StatementKeys.FirstAfter(until);
+                query = query.Where(s => s.Pk.CompareTo(end) < 0);
+            }
+
+            if (filter.After is { } after)
+            {
+                query = filter.Ascending
+                    ? query.Where(s => s.Pk.CompareTo(after) > 0)
+                    : query.Where(s => s.Pk.CompareTo(after) < 0);
+            }
+
+            if (Matches(context, filter) is { } match)
+            {
+                // 4.1.6.1 "Filter Conditions for StatementRefs": a statement also matches when a statement it
+                // targets matches, recursively (xapi_statement_ref holds every id reached), and voided targets
+                // count (4.1.6.1 "Voided Statements": statements targeting a voided statement are returned)
+                var matching = context.Statements.Where(match);
+                Expression<Func<StatementEntity, bool>> targetsMatch = s =>
+                    context.StatementRefs.Any(r => r.AncestorPk == s.Pk && matching.Any(t => t.StatementId == r.DescendantId));
+                query = query.Where(Or(match, targetsMatch));
+            }
+
+            query = filter.Ascending ? query.OrderBy(s => s.Pk) : query.OrderByDescending(s => s.Pk);
+            var rows = await query
+                .Take(filter.Limit + 1)
+                .Select(s => new { s.Pk, s.StatementId, s.Stored, s.Version, s.IsVoided, s.AuthorityKey, s.Payload })
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var more = rows.Count > filter.Limit;
+            if (more)
+            {
+                rows.RemoveAt(rows.Count - 1);
+            }
+
+            var statements = rows.ConvertAll(r => new StoredStatement(r.StatementId, r.Stored, r.Version, r.IsVoided, r.AuthorityKey, r.Payload));
+            return new StatementPage(statements, more ? rows[^1].Pk : null);
+        }
+    }
+
+    public async Task<IReadOnlyDictionary<Iri, Activity>> GetActivitiesAsync(IReadOnlyCollection<Iri> activityIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(activityIds);
+        if (activityIds.Count == 0)
+        {
+            return new Dictionary<Iri, Activity>();
+        }
+
+        var iris = activityIds.Select(i => i.Value).Distinct(StringComparer.Ordinal).ToList();
+        var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (context.ConfigureAwait(false))
+        {
+            var rows = await context.Activities.AsNoTracking()
+                .Where(a => iris.Contains(a.Iri))
+                .Select(a => a.Payload)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return rows.Select(ReadActivity).ToDictionary(a => a.Id);
+        }
+    }
+
+    // The content filters, as a condition on one statement row, or null when the query has none
+    private static Expression<Func<StatementEntity, bool>>? Matches(XapiLrsDbContext context, StatementFilter filter)
+    {
+        var conditions = new List<Expression<Func<StatementEntity, bool>>>();
+        if (filter.Verb is { } verb)
+        {
+            var iri = verb.Value;
+            conditions.Add(t => t.VerbIri == iri);
+        }
+
+        if (filter.Registration is { } registration)
+        {
+            conditions.Add(t => t.Registration == registration);
+        }
+
+        if (filter.Activity is { } activity)
+        {
+            var iri = activity.Value;
+            conditions.Add(filter.RelatedActivities
+                ? t => context.StatementActivities.Any(a => a.StatementPk == t.Pk && a.ActivityIri == iri)
+                : t => context.StatementActivities.Any(a => a.StatementPk == t.Pk && a.ActivityIri == iri && a.Usage == ActivityUsage.Object));
+        }
+
+        if (filter.Agent is { } agent)
+        {
+            // Group members have rows under the Group's usage (StatementIndex), so a member matches its Group
+            var ifi = agent switch
+            {
+                Agent a => IfiKeys.For(a.Ifi),
+                Group { Ifi: { } groupIfi } => IfiKeys.For(groupIfi),
+                _ => throw new ArgumentException("The agent filter must be an Agent or an identified Group.", nameof(filter)),
+            };
+            conditions.Add(filter.RelatedAgents
+                ? t => context.StatementActors.Any(a => a.StatementPk == t.Pk && a.ActorIfi == ifi)
+                : t => context.StatementActors.Any(a => a.StatementPk == t.Pk && a.ActorIfi == ifi &&
+                                                       (a.Usage == ActorUsage.Actor || a.Usage == ActorUsage.Object)));
+        }
+
+        return conditions.Count == 0 ? null : conditions.Aggregate((left, right) => Combine(left, right, Expression.AndAlso));
+    }
+
+    private static Expression<Func<StatementEntity, bool>> Or(Expression<Func<StatementEntity, bool>> left, Expression<Func<StatementEntity, bool>> right) =>
+        Combine(left, right, Expression.OrElse);
+
+    private static Expression<Func<StatementEntity, bool>> Combine(
+        Expression<Func<StatementEntity, bool>> left,
+        Expression<Func<StatementEntity, bool>> right,
+        Func<Expression, Expression, BinaryExpression> combine)
+    {
+        // A new parameter: the same condition also appears as its own lambda inside the combined one (the
+        // StatementRef subquery), and EF Core rejects one parameter object declared by two lambdas
+        var parameter = Expression.Parameter(typeof(StatementEntity), "s");
+        var leftBody = new ParameterReplacer(left.Parameters[0], parameter).Visit(left.Body);
+        var rightBody = new ParameterReplacer(right.Parameters[0], parameter).Visit(right.Body);
+        return Expression.Lambda<Func<StatementEntity, bool>>(combine(leftBody, rightBody), parameter);
+    }
+
+    private sealed class ParameterReplacer(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) => node == from ? to : base.VisitParameter(node);
     }
 
     private async Task<StatementStoreResult> TryStoreAsync(IReadOnlyList<StatementRecord> statements, bool updateDefinitions, CancellationToken cancellationToken)

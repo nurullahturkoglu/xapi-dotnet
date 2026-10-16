@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
     <ProjectReference Include="../../src/Xapi.Lrs/Xapi.Lrs.csproj" />
     <!-- In-process cross-checks of the document resources with the client -->
     <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
