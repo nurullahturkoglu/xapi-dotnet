@@ -159,7 +159,7 @@ public class AttachmentTests(LrsHosts hosts)
 
     public static TheoryData<string> Malformed() =>
     [
-        "missing part", "extra part", "wrong hash", "hash of other data", "no hash header", "base64 encoding",
+        "missing part", "extra part", "wrong hash", "data that does not have its hash", "no hash header", "base64 encoding",
         "first part not json", "statements in two parts", "no boundary in body", "no closing delimiter",
         "sha-1 length hash", "json without file url",
     ];
@@ -178,7 +178,7 @@ public class AttachmentTests(LrsHosts hosts)
             "missing part" => await client.PostRawAsync(Body(statement, [])),
             "extra part" => await client.PostRawAsync(Body(statement, [part, other])),
             "wrong hash" => await client.PostRawAsync(Body(statement, [part with { Hash = other.Sha2 }])),
-            "hash of other data" => await client.PostRawAsync(Body(statement, [part with { Data = other.Data }])),
+            "data that does not have its hash" => await client.PostRawAsync(Body(statement, [part with { Data = other.Data, Hash = part.Sha2 }])),
             "no hash header" => await client.PostRawAsync(Encoding.UTF8.GetBytes(
                 $"--{Boundary}\r\nContent-Type: application/json\r\n\r\n{statement}\r\n--{Boundary}\r\nContent-Type: text/plain\r\n\r\nx\r\n--{Boundary}--\r\n")),
             "base64 encoding" => await client.PostRawAsync(Body(statement, [part with { TransferEncoding = "base64" }])),
