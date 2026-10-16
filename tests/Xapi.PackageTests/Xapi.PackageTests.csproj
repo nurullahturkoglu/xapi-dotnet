@@ -22,6 +22,13 @@
     <PackageReference Include="Xapi.Client" VersionOverride="$(XapiPackageVersion)" />
   </ItemGroup>
 
+  <!-- The LRS packages target net10.0 only -->
+  <ItemGroup Condition="'$(XapiPackageVersion)' != '' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
+    <PackageReference Include="Xapi.Lrs" VersionOverride="$(XapiPackageVersion)" />
+    <PackageReference Include="Xapi.Lrs.Sqlite" VersionOverride="$(XapiPackageVersion)" />
+    <PackageReference Include="Xapi.Lrs.PostgreSql" VersionOverride="$(XapiPackageVersion)" />
+  </ItemGroup>
+
   <ItemGroup>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>XapiPackageVersion</_Parameter1>

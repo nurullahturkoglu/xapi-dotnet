@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectType>Library</ProjectType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Xapi.Lrs.PostgreSql</RootNamespace>
+    <!-- EF Core is not trim or AOT compatible -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <!-- XAPI0001: a provider package implements the experimental storage seams of Xapi.Lrs, and its generated migrations reference XapiLrsDbContext -->
+    <NoWarn>$(NoWarn);XAPI0001</NoWarn>
+    <Description>PostgreSQL storage for the Xapi.Lrs Learning Record Store: UsePostgreSql(connectionString) and migrations.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Xapi.Lrs/Xapi.Lrs.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <!-- eng/ef-migrations.sh sets XapiEfDesign so dotnet-ef can use this project as its startup project -->
+  <PropertyGroup Condition="'$(XapiEfDesign)' == 'true'">
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(XapiEfDesign)' == 'true'">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

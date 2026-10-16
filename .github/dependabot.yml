@@ -20,3 +20,10 @@ updates:
       github-actions:
         patterns: ["*"]
 
+  # global.json pins the SDK feature band so local builds and CI run the same analyzers
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

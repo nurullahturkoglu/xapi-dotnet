@@ -1,0 +1,7 @@
+namespace Microsoft.Extensions.DependencyInjection
+{
+    public static class XapiLrsPostgreSqlBuilderExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UsePostgreSql(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder, string connectionString) { }
+    }
+}

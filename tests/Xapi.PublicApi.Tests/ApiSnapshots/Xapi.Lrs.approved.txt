@@ -1,0 +1,126 @@
+namespace Microsoft.AspNetCore.Builder
+{
+    public static class XapiLrsEndpointRouteBuilderExtensions
+    {
+        public static Microsoft.AspNetCore.Routing.RouteGroupBuilder MapXapiLrs(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string prefix = "/xapi") { }
+    }
+}
+namespace Microsoft.Extensions.DependencyInjection
+{
+    public interface IXapiLrsBuilder
+    {
+        Microsoft.Extensions.DependencyInjection.IServiceCollection Services { get; }
+    }
+    public static class XapiLrsServiceCollectionExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder AddXapiLrs(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Xapi.Lrs.XapiLrsOptions>? configure = null) { }
+    }
+}
+namespace Xapi.Lrs.Storage
+{
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public interface IStatementStore
+    {
+        System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredStatement?> GetAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Lrs.Storage.StatementStoreResult> StoreAsync(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StatementRecord> statements, bool updateDefinitions, System.Threading.CancellationToken cancellationToken = default);
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class StatementRecord
+    {
+        public StatementRecord(System.Guid key, Xapi.Statement statement, string json, string authorityKey) { }
+        public string AuthorityKey { get; }
+        public System.Guid Id { get; }
+        public string Json { get; }
+        public System.Guid Key { get; }
+        public Xapi.Statement Statement { get; }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class StatementStoreResult
+    {
+        public System.Guid? ConflictingStatementId { get; }
+        [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, "ConflictingStatementId")]
+        [get: System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, "ConflictingStatementId")]
+        public bool IsConflict { get; }
+        public static Xapi.Lrs.Storage.StatementStoreResult Stored { get; }
+        public static Xapi.Lrs.Storage.StatementStoreResult Conflict(System.Guid statementId) { }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class StoredStatement
+    {
+        public StoredStatement(System.Guid id, System.DateTimeOffset stored, string version, bool isVoided, string? authorityKey, string json) { }
+        public string? AuthorityKey { get; }
+        public System.Guid Id { get; }
+        public bool IsVoided { get; }
+        public string Json { get; }
+        public System.DateTimeOffset Stored { get; }
+        public string Version { get; }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public static class XapiLrsBuilderStorageExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UseDatabaseProvider(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder, Xapi.Lrs.Storage.XapiLrsDatabaseProvider provider) { }
+        public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UseStatementStore<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)]  TStore>(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder)
+            where TStore :  class, Xapi.Lrs.Storage.IStatementStore { }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public abstract class XapiLrsDatabaseProvider
+    {
+        protected XapiLrsDatabaseProvider() { }
+        public abstract string Name { get; }
+        public abstract System.Threading.Tasks.Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginWriteTransactionAsync(Microsoft.EntityFrameworkCore.DbContext context, System.Threading.CancellationToken cancellationToken);
+        public abstract void Configure(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder optionsBuilder);
+        public abstract bool IsTransientWriteFailure(System.Exception exception);
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class XapiLrsDbContext : Microsoft.EntityFrameworkCore.DbContext
+    {
+        public const string MigrationsHistoryTable = "__xapi_migrations";
+        public XapiLrsDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<Xapi.Lrs.Storage.XapiLrsDbContext> options) { }
+        protected override void OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder modelBuilder) { }
+    }
+}
+namespace Xapi.Lrs
+{
+    public sealed class XapiCredential
+    {
+        public XapiCredential(string key, string secret, System.Collections.Generic.IEnumerable<Xapi.Lrs.XapiScope> scopes) { }
+        public Xapi.Agent? Authority { get; init; }
+        public string Key { get; }
+        public System.Collections.Generic.IReadOnlyList<Xapi.Lrs.XapiScope> Scopes { get; }
+    }
+    public sealed class XapiCredentialList : System.Collections.Generic.IEnumerable<Xapi.Lrs.XapiCredential>, System.Collections.Generic.IReadOnlyCollection<Xapi.Lrs.XapiCredential>, System.Collections.Generic.IReadOnlyList<Xapi.Lrs.XapiCredential>, System.Collections.IEnumerable
+    {
+        public XapiCredentialList() { }
+        public int Count { get; }
+        public Xapi.Lrs.XapiCredential this[int index] { get; }
+        public void Add(Xapi.Lrs.XapiCredential credential) { }
+        public Xapi.Lrs.XapiCredential Add(string key, string secret, params Xapi.Lrs.XapiScope[] scopes) { }
+        public System.Collections.Generic.IEnumerator<Xapi.Lrs.XapiCredential> GetEnumerator() { }
+    }
+    public static class XapiLrsAuthenticationDefaults
+    {
+        public const string AuthenticationScheme = "XapiBasic";
+    }
+    public sealed class XapiLrsOptions
+    {
+        public XapiLrsOptions() { }
+        public string? AuthenticationScheme { get; set; }
+        public System.Func<System.Security.Claims.ClaimsPrincipal, Xapi.Agent>? AuthorityFactory { get; set; }
+        public Xapi.Iri AuthorityHomePage { get; set; }
+        public Xapi.Lrs.XapiCredentialList Credentials { get; }
+        public bool EnableVersion1_0_3 { get; set; }
+        public bool MigrateOnStartup { get; set; }
+        public string ScopeClaimType { get; set; }
+    }
+    public enum XapiScope
+    {
+        StatementsWrite = 1,
+        StatementsReadMine = 2,
+        StatementsRead = 3,
+        State = 4,
+        Define = 5,
+        Profile = 6,
+        AllRead = 7,
+        All = 8,
+    }
+}

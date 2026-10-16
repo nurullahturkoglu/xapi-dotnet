@@ -9,8 +9,8 @@ public issues. Everyone taking part is expected to follow the [Code of Conduct](
 
 ## Prerequisites
 
-- .NET 10 SDK. `global.json` pins the feature band (10.0.100 or a later 10.0.x).
-- Docker, for the conformance suite and, later, the integration tests (PostgreSQL, lrsql).
+- .NET 10 SDK 10.0.4xx (10.0.402 or a later patch). `global.json` pins the feature band so local builds run the same analyzers as CI.
+- Docker, for the conformance suite and the PostgreSQL tests.
 - Node.js 22, for the conformance suite.
 - Git with full history. Package versions come from git tags (MinVer), so a shallow clone builds as `0.0.0-preview.0`.
 
@@ -31,6 +31,11 @@ dotnet test --project tests/Xapi.Core.Tests
 dotnet test --project tests/Xapi.Core.Tests --filter-class "*StatementTests"
 dotnet test --solution xapi-dotnet.slnx -c Release --coverage --coverage-output-format cobertura
 ```
+
+`tests/Xapi.Lrs.Tests` hosts `samples/LrsHost` in memory and runs the storage tests against SQLite and
+against PostgreSQL in a Testcontainers container. The PostgreSQL rows run on Linux, where CI has Docker, and
+are skipped elsewhere. Set `XAPI_POSTGRES_TESTS=1` to run them on any machine with Docker, or `0` to skip
+them.
 
 Warnings are errors, in local builds as well as CI. Code style comes from `.editorconfig` and is checked
 during the build.
@@ -55,13 +60,24 @@ The ADL LRS Conformance Test Suite runs in CI on every pull request. To run the 
 
 ```bash
 eng/conformance/run-local.sh --target lrsql --xapi 2.0.0                  # reference run against lrsql
-eng/conformance/run-local.sh --target local --db sqlite --xapi 2.0.0      # our LRS, once it exists
+eng/conformance/run-local.sh --target local --db sqlite --xapi 2.0.0      # our LRS, started first
 ```
+
+For `--target local`, start the sample LRS first with `dotnet run --project samples/LrsHost`. It listens on
+`http://localhost:8080/xapi` with the credentials the script expects and stores data in `lrs.db` in the
+working directory. For PostgreSQL, pass `--Lrs:Database=postgres --Lrs:ConnectionString=<connection
+string>` after `--`, and use `--db postgres` so the run is gated with the PostgreSQL floor.
 
 `eng/conformance/run-local.sh --help` lists the options. The suite is pinned to a commit in
 `eng/conformance/cts.env`, and the gate fails if the number of passing tests drops below
 `eng/conformance/floor.json`. The floor only goes up. A known failure may be added to
 `eng/conformance/known-failures-<version>.txt` only with a link to an upstream suite issue.
+
+## Database migrations
+
+The EF Core model is in `src/Xapi.Lrs/Storage`; each provider package carries its own migrations. After
+changing the model, add a migration to both with `eng/ef-migrations.sh add <Name>` (it uses the `dotnet-ef`
+version pinned in `.config/dotnet-tools.json`), and remove the last one with `eng/ef-migrations.sh remove`.
 
 ## Public API snapshots
 
@@ -81,7 +97,7 @@ first run fails and writes the received file, which you review and rename to `.a
 ## Package tests
 
 `tests/Xapi.PackageTests` consumes the packed nupkgs from `artifacts/packages` instead of referencing the
-projects. It checks what ends up in the package (README, notices, both target frameworks, XML docs, strong
+projects. It checks what ends up in the package (README, notices, target frameworks, XML docs, strong
 name). It is not part of the solution, because it can only restore after packing:
 
 ```bash
