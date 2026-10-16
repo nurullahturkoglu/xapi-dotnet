@@ -1,0 +1,31 @@
+<Project>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)xapi-dotnet.snk</AssemblyOriginatorKeyFile>
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+    <PackageReference Include="PolySharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../NOTICE" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(XapiPublicKey)' != ''">
+    <InternalsVisibleTo Include="$(AssemblyName).Tests" Key="$(XapiPublicKey)" />
+  </ItemGroup>
+
+  <Target Name="XapiRequireDescription" BeforeTargets="GenerateNuspec" Condition="'$(Description)' == ''">
+    <Error Text="$(MSBuildProjectName) must set a Description before it can be packed." />
+  </Target>
+
+</Project>

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Xapi.Core/Xapi.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Xapi.Core.Tests/Xapi.Core.Tests.csproj" />
+    <Project Path="tests/Xapi.PublicApi.Tests/Xapi.PublicApi.Tests.csproj" />
+  </Folder>
+</Solution>

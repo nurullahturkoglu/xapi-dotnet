@@ -1,0 +1,20 @@
+xapi-dotnet
+Copyright 2026 Nurullah Türkoğlu and contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes excerpts from the IEEE xAPI Base Standard documentation
+(https://opensource.ieee.org/xapi/xapi-base-standard-documentation),
+Copyright 2022 xAPI Authors, licensed under the Apache License, Version 2.0.
+Test data in this repository (not shipped in the packages) is derived from
+the ADL LRS Conformance Test Suite
+(https://github.com/adlnet/lrs-conformance-test-suite), licensed under the
+MIT License. See THIRD-PARTY-NOTICES.md for details.
+
+xAPI (Experience API) is a specification created by the Advanced Distributed
+Learning (ADL) Initiative and published as IEEE 9274.1.1-2023. "Tin Can API"
+is a former name of the specification. This project is an independent
+implementation and is not affiliated with, endorsed by, or certified by ADL,
+the U.S. Department of Defense, IEEE, or Rustici Software. IEEE is a
+registered trademark of The Institute of Electrical and Electronics
+Engineers, Inc.

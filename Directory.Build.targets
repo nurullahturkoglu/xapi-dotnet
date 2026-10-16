@@ -1,0 +1,6 @@
+<Project>
+
+  <!-- Each project sets <ProjectType> (Library, Test, Sample, Benchmark) and gets the matching settings from eng/. -->
+  <Import Project="$(MSBuildThisFileDirectory)eng/$(ProjectType).targets" Condition="'$(ProjectType)' != ''" />
+
+</Project>

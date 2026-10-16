@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tests the packed nupkgs, not the projects, so it is not part of xapi-dotnet.slnx.
+    CONTRIBUTING.md ("Package tests") has the commands. The nuget.config next to this file maps Xapi.* to artifacts/packages.
+  -->
+
+  <PropertyGroup>
+    <ProjectType>Test</ProjectType>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <!-- net481 consumes the netstandard2.0 build of the packages -->
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net10.0;net481</TargetFrameworks>
+    <XapiPackageFeed>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '..', '..', 'artifacts', 'packages'))</XapiPackageFeed>
+    <!-- A private package cache, so re-packing the same version locally is not hidden by ~/.nuget/packages -->
+    <RestorePackagesPath>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '..', '..', 'artifacts', 'package-tests', 'packages'))</RestorePackagesPath>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(XapiPackageVersion)' != ''">
+    <PackageReference Include="Xapi.Core" VersionOverride="$(XapiPackageVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>XapiPackageVersion</_Parameter1>
+      <_Parameter2>$(XapiPackageVersion)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>XapiPackageFeed</_Parameter1>
+      <_Parameter2>$(XapiPackageFeed)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- Reading nupkg contents and PE headers needs only the .NET build; net481 checks consumption -->
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETCoreApp'">
+    <Compile Remove="PackageContentTests.cs" />
+  </ItemGroup>
+
+  <Target Name="XapiRequirePackageVersion" BeforeTargets="CollectPackageReferences" Condition="'$(XapiPackageVersion)' == ''">
+    <Error Text="Xapi.PackageTests tests packed nupkgs. Pack first (dotnet pack xapi-dotnet.slnx -c Release -o artifacts/packages), then pass the package version: -p:XapiPackageVersion=&lt;version&gt;." />
+  </Target>
+
+</Project>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <!--
+    Records get covariant return types only where the runtime supports them (net5.0+). On net10.0 the
+    abstract record Actor declares a new-slot "Actor <Clone>$()"; on netstandard2.0 it overrides the base
+    "StatementObject <Clone>$()" slot instead. The member is compiler-generated and unspeakable, and
+    with-expressions bind correctly on both targets, so the public surface is otherwise identical.
+  -->
+  <Suppression>
+    <DiagnosticId>CP0005</DiagnosticId>
+    <Target>M:Xapi.Actor.{Clone}$</Target>
+    <Left>lib/netstandard2.0/Xapi.Core.dll</Left>
+    <Right>lib/net10.0/Xapi.Core.dll</Right>
+  </Suppression>
+</Suppressions>

@@ -1,0 +1,469 @@
+namespace Xapi
+{
+    public sealed record About : System.IEquatable<Xapi.About>
+    {
+        public About(Xapi.XapiList<string> version) { }
+        public Xapi.Extensions? Extensions { get; init; }
+        public Xapi.XapiList<string> Version { get; init; }
+    }
+    public sealed record Account : Xapi.InverseFunctionalIdentifier, System.IEquatable<Xapi.Account>
+    {
+        public Account(Xapi.Iri homePage, string name) { }
+        public Xapi.Iri HomePage { get; init; }
+        public string Name { get; init; }
+    }
+    public sealed record Activity : Xapi.StatementObject, System.IEquatable<Xapi.Activity>
+    {
+        public Activity(Xapi.Iri id) { }
+        public Xapi.ActivityDefinition? Definition { get; init; }
+        public Xapi.Iri Id { get; init; }
+    }
+    public sealed record ActivityDefinition : System.IEquatable<Xapi.ActivityDefinition>
+    {
+        public ActivityDefinition() { }
+        public Xapi.XapiList<Xapi.InteractionComponent>? Choices { get; init; }
+        public Xapi.XapiList<string>? CorrectResponsesPattern { get; init; }
+        public Xapi.LanguageMap? Description { get; init; }
+        public Xapi.Extensions? Extensions { get; init; }
+        public Xapi.InteractionType? InteractionType { get; init; }
+        public Xapi.Iri? MoreInfo { get; init; }
+        public Xapi.LanguageMap? Name { get; init; }
+        public Xapi.XapiList<Xapi.InteractionComponent>? Scale { get; init; }
+        public Xapi.XapiList<Xapi.InteractionComponent>? Source { get; init; }
+        public Xapi.XapiList<Xapi.InteractionComponent>? Steps { get; init; }
+        public Xapi.XapiList<Xapi.InteractionComponent>? Target { get; init; }
+        public Xapi.Iri? Type { get; init; }
+    }
+    public abstract record Actor : Xapi.StatementObject, System.IEquatable<Xapi.Actor>
+    {
+        public string? Name { get; init; }
+    }
+    public sealed record Agent : Xapi.Actor, System.IEquatable<Xapi.Agent>
+    {
+        public Agent(Xapi.InverseFunctionalIdentifier ifi) { }
+        public Xapi.InverseFunctionalIdentifier Ifi { get; init; }
+        public static Xapi.Agent FromAccount(System.Uri homePage, string name, string? displayName = null) { }
+        public static Xapi.Agent FromAccount(Xapi.Iri homePage, string name, string? displayName = null) { }
+        public static Xapi.Agent FromMbox(string email, string? name = null) { }
+    }
+    public sealed record Attachment : System.IEquatable<Xapi.Attachment>
+    {
+        public Attachment(Xapi.Iri usageType, Xapi.LanguageMap display, string contentType, long length, string sha2) { }
+        public string ContentType { get; init; }
+        public Xapi.LanguageMap? Description { get; init; }
+        public Xapi.LanguageMap Display { get; init; }
+        public Xapi.Iri? FileUrl { get; init; }
+        public long Length { get; init; }
+        public string Sha2 { get; init; }
+        public Xapi.Iri UsageType { get; init; }
+    }
+    public sealed record Context : System.IEquatable<Xapi.Context>
+    {
+        public Context() { }
+        public Xapi.ContextActivities? ContextActivities { get; init; }
+        public Xapi.XapiList<Xapi.ContextAgent> ContextAgents { get; init; }
+        public Xapi.XapiList<Xapi.ContextGroup> ContextGroups { get; init; }
+        public Xapi.Extensions? Extensions { get; init; }
+        public Xapi.Actor? Instructor { get; init; }
+        public string? Language { get; init; }
+        public string? Platform { get; init; }
+        public System.Guid? Registration { get; init; }
+        public string? Revision { get; init; }
+        public Xapi.StatementRef? Statement { get; init; }
+        public Xapi.Group? Team { get; init; }
+    }
+    public sealed record ContextActivities : System.IEquatable<Xapi.ContextActivities>
+    {
+        public ContextActivities() { }
+        public Xapi.XapiList<Xapi.Activity> Category { get; init; }
+        public Xapi.XapiList<Xapi.Activity> Grouping { get; init; }
+        public Xapi.XapiList<Xapi.Activity> Other { get; init; }
+        public Xapi.XapiList<Xapi.Activity> Parent { get; init; }
+    }
+    public sealed record ContextAgent : System.IEquatable<Xapi.ContextAgent>
+    {
+        public ContextAgent(Xapi.Agent agent) { }
+        public Xapi.Agent Agent { get; init; }
+        public Xapi.XapiList<Xapi.Iri> RelevantTypes { get; init; }
+    }
+    public sealed record ContextGroup : System.IEquatable<Xapi.ContextGroup>
+    {
+        public ContextGroup(Xapi.Group group) { }
+        public Xapi.Group Group { get; init; }
+        public Xapi.XapiList<Xapi.Iri> RelevantTypes { get; init; }
+    }
+    public sealed class Extensions : System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<Xapi.Iri, System.Text.Json.JsonElement>>, System.Collections.Generic.IReadOnlyCollection<System.Collections.Generic.KeyValuePair<Xapi.Iri, System.Text.Json.JsonElement>>, System.Collections.Generic.IReadOnlyDictionary<Xapi.Iri, System.Text.Json.JsonElement>, System.Collections.IEnumerable, System.IEquatable<Xapi.Extensions>
+    {
+        public Extensions(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<Xapi.Iri, System.Text.Json.JsonElement>> entries) { }
+        public int Count { get; }
+        public System.Text.Json.JsonElement this[Xapi.Iri key] { get; }
+        public System.Collections.Generic.IEnumerable<Xapi.Iri> Keys { get; }
+        public System.Collections.Generic.IEnumerable<System.Text.Json.JsonElement> Values { get; }
+        public static Xapi.Extensions Empty { get; }
+        public bool ContainsKey(Xapi.Iri key) { }
+        public bool Equals(Xapi.Extensions? other) { }
+        public override bool Equals(object? obj) { }
+        public System.Collections.Generic.IEnumerator<System.Collections.Generic.KeyValuePair<Xapi.Iri, System.Text.Json.JsonElement>> GetEnumerator() { }
+        public override int GetHashCode() { }
+        public override string ToString() { }
+        public bool TryGetValue(Xapi.Iri key, [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out System.Text.Json.JsonElement value) { }
+        public Xapi.Extensions With(Xapi.Iri key, System.Text.Json.JsonElement value) { }
+        public static Xapi.Extensions Create(Xapi.Iri key, System.Text.Json.JsonElement value) { }
+        public static bool operator !=(Xapi.Extensions? left, Xapi.Extensions? right) { }
+        public static bool operator ==(Xapi.Extensions? left, Xapi.Extensions? right) { }
+    }
+    public sealed record Group : Xapi.Actor, System.IEquatable<Xapi.Group>
+    {
+        public Group(Xapi.InverseFunctionalIdentifier ifi) { }
+        public Group(Xapi.XapiList<Xapi.Agent> members) { }
+        public Xapi.InverseFunctionalIdentifier? Ifi { get; init; }
+        public bool IsAnonymous { get; }
+        public Xapi.XapiList<Xapi.Agent> Members { get; init; }
+    }
+    public sealed record InteractionComponent : System.IEquatable<Xapi.InteractionComponent>
+    {
+        public InteractionComponent(string id) { }
+        public Xapi.LanguageMap? Description { get; init; }
+        public string Id { get; init; }
+    }
+    public enum InteractionType
+    {
+        TrueFalse = 0,
+        Choice = 1,
+        FillIn = 2,
+        LongFillIn = 3,
+        Matching = 4,
+        Performance = 5,
+        Sequencing = 6,
+        Likert = 7,
+        Numeric = 8,
+        Other = 9,
+    }
+    public abstract record InverseFunctionalIdentifier : System.IEquatable<Xapi.InverseFunctionalIdentifier> { }
+    public readonly struct Iri : System.IEquatable<Xapi.Iri>
+    {
+        public Iri(string value) { }
+        public bool IsEmpty { get; }
+        public string Value { get; }
+        public override string ToString() { }
+        public System.Uri ToUri() { }
+        public static Xapi.Iri FromUri(System.Uri uri) { }
+        public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? value, out Xapi.Iri iri) { }
+    }
+    public sealed class LanguageMap : System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string, string>>, System.Collections.Generic.IReadOnlyCollection<System.Collections.Generic.KeyValuePair<string, string>>, System.Collections.Generic.IReadOnlyDictionary<string, string>, System.Collections.IEnumerable, System.IEquatable<Xapi.LanguageMap>
+    {
+        public LanguageMap(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string, string>> entries) { }
+        public int Count { get; }
+        public string this[string key] { get; }
+        public System.Collections.Generic.IEnumerable<string> Keys { get; }
+        public System.Collections.Generic.IEnumerable<string> Values { get; }
+        public static Xapi.LanguageMap Empty { get; }
+        public bool ContainsKey(string key) { }
+        public bool Equals(Xapi.LanguageMap? other) { }
+        public override bool Equals(object? obj) { }
+        public System.Collections.Generic.IEnumerator<System.Collections.Generic.KeyValuePair<string, string>> GetEnumerator() { }
+        public override int GetHashCode() { }
+        public override string ToString() { }
+        public bool TryGetValue(string key, [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out string value) { }
+        public Xapi.LanguageMap With(string languageTag, string value) { }
+        public static Xapi.LanguageMap Create(string languageTag, string value) { }
+        public static bool IsValidLanguageTag([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? languageTag) { }
+        public static bool operator !=(Xapi.LanguageMap? left, Xapi.LanguageMap? right) { }
+        public static bool operator ==(Xapi.LanguageMap? left, Xapi.LanguageMap? right) { }
+    }
+    public sealed record Mbox : Xapi.InverseFunctionalIdentifier, System.IEquatable<Xapi.Mbox>
+    {
+        public Mbox(string value) { }
+        public string Value { get; init; }
+        public static Xapi.Mbox FromEmail(string email) { }
+    }
+    public sealed record MboxSha1Sum : Xapi.InverseFunctionalIdentifier, System.IEquatable<Xapi.MboxSha1Sum>
+    {
+        public MboxSha1Sum(string value) { }
+        public string Value { get; init; }
+    }
+    public sealed record OpenId : Xapi.InverseFunctionalIdentifier, System.IEquatable<Xapi.OpenId>
+    {
+        public OpenId(Xapi.Iri value) { }
+        public Xapi.Iri Value { get; init; }
+    }
+    public sealed record Person : System.IEquatable<Xapi.Person>
+    {
+        public Person() { }
+        public Xapi.XapiList<Xapi.Account> Accounts { get; init; }
+        public Xapi.XapiList<Xapi.MboxSha1Sum> MboxSha1Sums { get; init; }
+        public Xapi.XapiList<Xapi.Mbox> Mboxes { get; init; }
+        public Xapi.XapiList<string> Names { get; init; }
+        public Xapi.XapiList<Xapi.OpenId> OpenIds { get; init; }
+    }
+    public sealed record Result : System.IEquatable<Xapi.Result>
+    {
+        public Result() { }
+        public bool? Completion { get; init; }
+        public Xapi.XapiDuration? Duration { get; init; }
+        public Xapi.Extensions? Extensions { get; init; }
+        public string? Response { get; init; }
+        public Xapi.Score? Score { get; init; }
+        public bool? Success { get; init; }
+    }
+    public sealed record Score : System.IEquatable<Xapi.Score>
+    {
+        public Score() { }
+        public double? Max { get; init; }
+        public double? Min { get; init; }
+        public double? Raw { get; init; }
+        public double? Scaled { get; init; }
+    }
+    public sealed record Statement : System.IEquatable<Xapi.Statement>
+    {
+        public Statement(Xapi.Actor actor, Xapi.Verb verb, Xapi.StatementObject @object) { }
+        public Xapi.Actor Actor { get; init; }
+        public Xapi.XapiList<Xapi.Attachment> Attachments { get; init; }
+        public Xapi.Actor? Authority { get; init; }
+        public Xapi.Context? Context { get; init; }
+        public System.Guid? Id { get; init; }
+        public Xapi.StatementObject Object { get; init; }
+        public Xapi.Result? Result { get; init; }
+        public System.DateTimeOffset? Stored { get; init; }
+        public System.DateTimeOffset? Timestamp { get; init; }
+        public Xapi.Verb Verb { get; init; }
+        public string? Version { get; init; }
+    }
+    public abstract record StatementObject : System.IEquatable<Xapi.StatementObject> { }
+    public sealed record StatementRef : Xapi.StatementObject, System.IEquatable<Xapi.StatementRef>
+    {
+        public StatementRef(System.Guid id) { }
+        public System.Guid Id { get; init; }
+    }
+    public sealed record SubStatement : Xapi.StatementObject, System.IEquatable<Xapi.SubStatement>
+    {
+        public SubStatement(Xapi.Actor actor, Xapi.Verb verb, Xapi.StatementObject @object) { }
+        public Xapi.Actor Actor { get; init; }
+        public Xapi.XapiList<Xapi.Attachment> Attachments { get; init; }
+        public Xapi.Context? Context { get; init; }
+        public Xapi.StatementObject Object { get; init; }
+        public Xapi.Result? Result { get; init; }
+        public System.DateTimeOffset? Timestamp { get; init; }
+        public Xapi.Verb Verb { get; init; }
+    }
+    public sealed class UuidV7Generator
+    {
+        public UuidV7Generator() { }
+        public UuidV7Generator(System.Func<System.DateTimeOffset> clock) { }
+        public static Xapi.UuidV7Generator Shared { get; }
+        public System.Guid NewGuid() { }
+        public static System.DateTimeOffset GetTimestamp(System.Guid uuid) { }
+    }
+    public sealed record Verb : System.IEquatable<Xapi.Verb>
+    {
+        public Verb(Xapi.Iri id) { }
+        public Xapi.LanguageMap? Display { get; init; }
+        public Xapi.Iri Id { get; init; }
+    }
+    public static class Verbs
+    {
+        public static Xapi.Verb Answered { get; }
+        public static Xapi.Verb Attempted { get; }
+        public static Xapi.Verb Completed { get; }
+        public static Xapi.Verb Experienced { get; }
+        public static Xapi.Verb Failed { get; }
+        public static Xapi.Verb Initialized { get; }
+        public static Xapi.Verb Passed { get; }
+        public static Xapi.Verb Terminated { get; }
+        public static Xapi.Verb Voided { get; }
+        public static Xapi.Iri VoidedId { get; }
+    }
+    public readonly struct XapiDuration : System.IEquatable<Xapi.XapiDuration>
+    {
+        public decimal Days { get; }
+        public decimal Hours { get; }
+        public decimal Minutes { get; }
+        public decimal Months { get; }
+        public decimal Seconds { get; }
+        public decimal Weeks { get; }
+        public decimal Years { get; }
+        public bool Equals(Xapi.XapiDuration other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public override string ToString() { }
+        public System.TimeSpan ToTimeSpan() { }
+        public static Xapi.XapiDuration FromTimeSpan(System.TimeSpan value) { }
+        public static Xapi.XapiDuration Parse(string iso8601) { }
+        public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? value, out Xapi.XapiDuration duration) { }
+        public static bool operator !=(Xapi.XapiDuration left, Xapi.XapiDuration right) { }
+        public static bool operator ==(Xapi.XapiDuration left, Xapi.XapiDuration right) { }
+    }
+    public sealed record XapiError : System.IEquatable<Xapi.XapiError>
+    {
+        public XapiError(string Code, string Path, string Message) { }
+        public string Code { get; init; }
+        public string Message { get; init; }
+        public string Path { get; init; }
+        public override string ToString() { }
+    }
+    public static class XapiErrorCodes
+    {
+        public const string AttachmentLength = "attachment.length.negative";
+        public const string AuthorityGroup = "authority.group";
+        public const string BatchDuplicateId = "batch.id.duplicate";
+        public const string ContextPlatform = "context.platform.object";
+        public const string ContextRevision = "context.revision.object";
+        public const string ContextVersion = "context.version";
+        public const string Duration = "format.duration";
+        public const string GroupMemberMissing = "group.member.missing";
+        public const string GroupMemberNotAgent = "group.member.not-agent";
+        public const string IfiMissing = "actor.ifi.missing";
+        public const string IfiMultiple = "actor.ifi.multiple";
+        public const string InteractionComponentDuplicate = "interaction.component.duplicate";
+        public const string InteractionComponentsNotAllowed = "interaction.components.not-allowed";
+        public const string InteractionType = "format.interaction-type";
+        public const string InteractionTypeMissing = "interaction.type.missing";
+        public const string Iri = "format.iri";
+        public const string JsonNull = "json.null";
+        public const string JsonSyntax = "json.syntax";
+        public const string JsonType = "json.type";
+        public const string LanguageTag = "format.language-tag";
+        public const string Mbox = "format.mbox";
+        public const string MediaType = "format.media-type";
+        public const string ObjectType = "format.object-type";
+        public const string PropertyCase = "json.property.case";
+        public const string PropertyDuplicate = "json.property.duplicate";
+        public const string PropertyRequired = "json.property.required";
+        public const string PropertyUnknown = "json.property.unknown";
+        public const string PropertyVersion = "json.property.version";
+        public const string RelevantTypesEmpty = "context.relevant-types.empty";
+        public const string ScoreMinMax = "score.min-max";
+        public const string ScoreNotFinite = "score.not-finite";
+        public const string ScoreRaw = "score.raw.range";
+        public const string ScoreScaled = "score.scaled.range";
+        public const string Sha1 = "format.sha1";
+        public const string Sha2 = "format.sha2";
+        public const string SubStatementNested = "substatement.nested";
+        public const string Timestamp = "format.timestamp";
+        public const string Uuid = "format.uuid";
+        public const string Version = "format.version";
+        public const string VoidingObject = "statement.voiding.object";
+    }
+    public static class XapiList
+    {
+        public static Xapi.XapiList<T> Create<T>(System.ReadOnlySpan<T> items) { }
+        public static Xapi.XapiList<T> Create<T>(params T[] items) { }
+        public static Xapi.XapiList<T> CreateRange<T>(System.Collections.Generic.IEnumerable<T> items) { }
+    }
+    [System.Runtime.CompilerServices.CollectionBuilder(typeof(Xapi.XapiList), "Create")]
+    public sealed class XapiList<T> : System.Collections.Generic.IEnumerable<T>, System.Collections.Generic.IReadOnlyCollection<T>, System.Collections.Generic.IReadOnlyList<T>, System.Collections.IEnumerable, System.IEquatable<Xapi.XapiList<T>>
+    {
+        public int Count { get; }
+        public bool IsEmpty { get; }
+        public T this[int index] { get; }
+        public static Xapi.XapiList<T> Empty { get; }
+        public Xapi.XapiList<T> Add(T item) { }
+        public bool Equals(Xapi.XapiList<T>? other) { }
+        public override bool Equals(object? obj) { }
+        public Xapi.XapiList<T>.Enumerator GetEnumerator() { }
+        public override int GetHashCode() { }
+        public override string ToString() { }
+        public static bool operator !=(Xapi.XapiList<T>? left, Xapi.XapiList<T>? right) { }
+        public static bool operator ==(Xapi.XapiList<T>? left, Xapi.XapiList<T>? right) { }
+        public struct Enumerator
+        {
+            public T Current { get; }
+            public bool MoveNext() { }
+        }
+    }
+    public static class XapiTimestamp
+    {
+        public static string Format(System.DateTimeOffset value) { }
+        public static System.DateTimeOffset Parse(string value, Xapi.XapiVersion version) { }
+        public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? value, Xapi.XapiVersion version, out System.DateTimeOffset timestamp) { }
+    }
+    public sealed class XapiValidationException : System.Exception
+    {
+        public XapiValidationException() { }
+        public XapiValidationException(System.Collections.Generic.IReadOnlyList<Xapi.XapiError> errors) { }
+        public XapiValidationException(string message) { }
+        public XapiValidationException(string message, System.Exception innerException) { }
+        public System.Collections.Generic.IReadOnlyList<Xapi.XapiError> Errors { get; }
+    }
+    public readonly struct XapiVersion : System.IEquatable<Xapi.XapiVersion>
+    {
+        public string HeaderValue { get; }
+        public bool IsV2 { get; }
+        public static Xapi.XapiVersion V1_0_3 { get; }
+        public static Xapi.XapiVersion V2_0_0 { get; }
+        public bool Equals(Xapi.XapiVersion other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        public override string ToString() { }
+        public static bool TryParseHeader(string? value, out Xapi.XapiVersion version) { }
+        public static bool operator !=(Xapi.XapiVersion left, Xapi.XapiVersion right) { }
+        public static bool operator ==(Xapi.XapiVersion left, Xapi.XapiVersion right) { }
+    }
+}
+namespace Xapi.Json
+{
+    public enum StatementFormat
+    {
+        Exact = 0,
+        Ids = 1,
+        Canonical = 2,
+    }
+    public static class XapiJson
+    {
+        public static Xapi.Json.XapiParseResult<Xapi.About> ParseAbout(System.ReadOnlySpan<byte> utf8Json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.About> ParseAbout(string json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Activity> ParseActivity(System.ReadOnlySpan<byte> utf8Json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Activity> ParseActivity(string json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Actor> ParseActor(System.ReadOnlySpan<byte> utf8Json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Actor> ParseActor(string json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Person> ParsePerson(System.ReadOnlySpan<byte> utf8Json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Person> ParsePerson(string json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Statement> ParseStatement(System.ReadOnlySpan<byte> utf8Json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Statement> ParseStatement(System.Text.Json.JsonElement json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.Statement> ParseStatement(string json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.XapiList<Xapi.Statement>> ParseStatements(System.ReadOnlySpan<byte> utf8Json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.XapiList<Xapi.Statement>> ParseStatements(System.Text.Json.JsonElement json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static Xapi.Json.XapiParseResult<Xapi.XapiList<Xapi.Statement>> ParseStatements(string json, Xapi.XapiVersion version, Xapi.Json.XapiReadMode mode = 0) { }
+        public static string SerializeAbout(Xapi.About about, Xapi.XapiVersion version) { }
+        public static string SerializeActivity(Xapi.Activity activity, Xapi.XapiVersion version, Xapi.Json.StatementFormat format = 0, System.Collections.Generic.IReadOnlyList<string>? acceptLanguages = null) { }
+        public static string SerializeActor(Xapi.Actor actor, Xapi.XapiVersion version) { }
+        public static string SerializePerson(Xapi.Person person, Xapi.XapiVersion version) { }
+        public static string SerializeStatement(Xapi.Statement statement, Xapi.XapiVersion version, Xapi.Json.StatementFormat format = 0, System.Collections.Generic.IReadOnlyList<string>? acceptLanguages = null) { }
+        public static string SerializeStatements(System.Collections.Generic.IEnumerable<Xapi.Statement> statements, Xapi.XapiVersion version, Xapi.Json.StatementFormat format = 0, System.Collections.Generic.IReadOnlyList<string>? acceptLanguages = null) { }
+        public static void WriteAbout(System.Text.Json.Utf8JsonWriter writer, Xapi.About about, Xapi.XapiVersion version) { }
+        public static void WriteActivity(System.Text.Json.Utf8JsonWriter writer, Xapi.Activity activity, Xapi.XapiVersion version, Xapi.Json.StatementFormat format = 0, System.Collections.Generic.IReadOnlyList<string>? acceptLanguages = null) { }
+        public static void WriteActor(System.Text.Json.Utf8JsonWriter writer, Xapi.Actor actor, Xapi.XapiVersion version) { }
+        public static void WritePerson(System.Text.Json.Utf8JsonWriter writer, Xapi.Person person, Xapi.XapiVersion version) { }
+        public static void WriteStatement(System.Text.Json.Utf8JsonWriter writer, Xapi.Statement statement, Xapi.XapiVersion version, Xapi.Json.StatementFormat format = 0, System.Collections.Generic.IReadOnlyList<string>? acceptLanguages = null) { }
+        public static void WriteStatements(System.Text.Json.Utf8JsonWriter writer, System.Collections.Generic.IEnumerable<Xapi.Statement> statements, Xapi.XapiVersion version, Xapi.Json.StatementFormat format = 0, System.Collections.Generic.IReadOnlyList<string>? acceptLanguages = null) { }
+    }
+    public sealed class XapiParseResult<T>
+    {
+        public System.Collections.Generic.IReadOnlyList<Xapi.XapiError> Errors { get; }
+        [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, "Value")]
+        [get: System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, "Value")]
+        public bool IsSuccess { get; }
+        public T Value { get; }
+        public T GetValueOrThrow() { }
+    }
+    public enum XapiReadMode
+    {
+        Strict = 0,
+        Lenient = 1,
+    }
+}
+namespace Xapi.Validation
+{
+    public static class StatementEquivalence
+    {
+        public static bool AreEquivalent(Xapi.Statement a, Xapi.Statement b) { }
+    }
+    public static class StatementValidator
+    {
+        public static System.Collections.Generic.IReadOnlyList<Xapi.XapiError> Validate(Xapi.Statement statement, Xapi.XapiVersion version) { }
+        public static System.Collections.Generic.IReadOnlyList<Xapi.XapiError> ValidateActivity(Xapi.Activity activity, Xapi.XapiVersion version) { }
+        public static System.Collections.Generic.IReadOnlyList<Xapi.XapiError> ValidateActor(Xapi.Actor actor, Xapi.XapiVersion version) { }
+        public static System.Collections.Generic.IReadOnlyList<Xapi.XapiError> ValidateBatch(System.Collections.Generic.IReadOnlyList<Xapi.Statement> statements, Xapi.XapiVersion version) { }
+        public static System.Collections.Generic.IReadOnlyList<Xapi.XapiError> ValidatePerson(Xapi.Person person, Xapi.XapiVersion version) { }
+    }
+}
