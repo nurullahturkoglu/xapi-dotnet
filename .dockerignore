@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/node_modules/
+.git/
+.github/
+.claude/
+.cts/
+artifacts/
+tests/
+benchmarks/
+docs/
+**/*.db
+**/*.db-*

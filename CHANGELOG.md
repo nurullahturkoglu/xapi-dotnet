@@ -21,6 +21,6 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: signed statements are checked as IEEE 9274.1.1, 4.2.6 requires: an RS256, RS384 or RS512 JWS whose payload is equivalent to the statement (durations to 0.01 second), verified with the `x5c` certificate when there is one. Malformed signatures get 400. See [docs/signatures.md](docs/signatures.md).
 - `Xapi.Client`: `StatementSigner` signs a statement with an RSA key and an optional certificate chain, and returns the statement with its signature attachment and the JWS to send with `SaveStatementAsync`.
 - `Xapi.Lrs.Sqlite` and `Xapi.Lrs.PostgreSql`: EF Core storage with migrations (`UseSqlite`, `UsePostgreSql`, `MigrateOnStartup`). The storage extension points (`IStatementStore`, `IDocumentStore`) are marked experimental (`XAPI0001`).
-- `samples/LrsHost`: a standalone LRS on SQLite or PostgreSQL, used as the target of the conformance runs. CI runs both batteries against it on both databases.
+- `samples/LrsHost`: a standalone LRS on SQLite or PostgreSQL, used as the target of the conformance runs. CI runs both batteries against it on both databases. `samples/LrsHost/Dockerfile` builds it into a non-root image that stores SQLite data in `/data` and will not start without credentials; CI builds and checks the image but does not publish it.
 
 [Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/commits/main

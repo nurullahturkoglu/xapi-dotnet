@@ -8,6 +8,14 @@
 using Xapi;
 using Xapi.Lrs;
 
+// As PID 1 in a container the process ignores the SIGABRT that ends an unhandled exception and spins instead of
+// exiting, so report the exception and exit explicitly
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    Console.Error.WriteLine($"Unhandled exception. {e.ExceptionObject}");
+    Environment.Exit(1);
+};
+
 var builder = WebApplication.CreateBuilder(args);
 var settings = builder.Configuration.GetSection("Lrs");
 
