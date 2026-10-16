@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <ProjectType>Test</ProjectType>
+    <!-- Set here, not in eng/Test.targets: .NET Framework picks the .exe extension before that file is imported -->
+    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 

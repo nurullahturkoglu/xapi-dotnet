@@ -3,7 +3,6 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <OutputType>Exe</OutputType>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)xapi-dotnet.snk</AssemblyOriginatorKeyFile>
     <!-- Test method names use underscores: Parse_rejects_unknown_property -->
