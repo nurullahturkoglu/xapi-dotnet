@@ -56,4 +56,13 @@ public interface IStatementStore
     /// (IEEE 9274.1.1, 4.1.6.3).
     /// </returns>
     Task<Person> GetPersonAsync(Agent agent, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads the attachment data stored with statements (<see cref="StatementRecord.Attachments"/>), for the
+    /// <c>attachments=true</c> response format.
+    /// </summary>
+    /// <param name="statementIds">The statement ids.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The distinct attachment data of those statements, in no particular order.</returns>
+    Task<IReadOnlyList<AttachmentContent>> GetAttachmentsAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken = default);
 }

@@ -26,7 +26,7 @@ internal static class StatementEndpoints
 
     private static readonly JsonWriterOptions WriterOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    public static async Task<IResult> PutAsync(HttpContext http, StatementWriter writer)
+    public static async Task<IResult> PutAsync(HttpContext http, StatementWriter writer, IOptions<XapiLrsOptions> options)
     {
         var request = XapiRequestFeature.Get(http);
         var query = http.Request.Query;
@@ -45,13 +45,13 @@ internal static class StatementEndpoints
             return BadRequest($"statementId '{idValue}' is not a UUID.");
         }
 
-        if (CheckContentType(http.Request) is { } contentError)
+        var (body, bodyError) = await StatementBodyReader.ReadAsync(http.Request, options.Value.MaxAttachmentBytes, http.RequestAborted).ConfigureAwait(false);
+        if (body is null)
         {
-            return contentError;
+            return bodyError!;
         }
 
-        var body = await RequestReading.ReadBodyAsync(http.Request, http.RequestAborted).ConfigureAwait(false);
-        var parsed = XapiJson.ParseStatement(body, request.Version);
+        var parsed = XapiJson.ParseStatement(body.Json, request.Version);
         if (!parsed.IsSuccess)
         {
             return XapiResults.Problem(StatusCodes.Status400BadRequest, "The statement is not valid.", parsed.Errors);
@@ -63,13 +63,18 @@ internal static class StatementEndpoints
             return BadRequest($"The statement id {id} does not match the statementId parameter {statementId}.");
         }
 
-        var (result, _) = await writer.WriteAsync([statement with { Id = statementId }], request.Version, request.Caller, http.RequestAborted).ConfigureAwait(false);
+        if (CheckAttachments([statement], body, out var attachments) is { } attachmentError)
+        {
+            return attachmentError;
+        }
+
+        var (result, _) = await writer.WriteAsync([statement with { Id = statementId }], attachments, request.Version, request.Caller, http.RequestAborted).ConfigureAwait(false);
         return result.IsConflict
             ? Conflict(result.ConflictingStatementId.Value)
             : XapiResults.Status(StatusCodes.Status204NoContent);
     }
 
-    public static async Task<IResult> PostAsync(HttpContext http, StatementWriter writer)
+    public static async Task<IResult> PostAsync(HttpContext http, StatementWriter writer, IOptions<XapiLrsOptions> options)
     {
         var request = XapiRequestFeature.Get(http);
         if (http.Request.Query.Count > 0)
@@ -81,13 +86,13 @@ internal static class StatementEndpoints
                 : RequestReading.CheckParameters(http.Request.Query, []) ?? "No parameters are allowed.");
         }
 
-        if (CheckContentType(http.Request) is { } contentError)
+        var (body, bodyError) = await StatementBodyReader.ReadAsync(http.Request, options.Value.MaxAttachmentBytes, http.RequestAborted).ConfigureAwait(false);
+        if (body is null)
         {
-            return contentError;
+            return bodyError!;
         }
 
-        var body = await RequestReading.ReadBodyAsync(http.Request, http.RequestAborted).ConfigureAwait(false);
-        var parsed = XapiJson.ParseStatements(body, request.Version);
+        var parsed = XapiJson.ParseStatements(body.Json, request.Version);
         if (!parsed.IsSuccess)
         {
             var duplicate = parsed.Errors.Any(e => e.Code == XapiErrorCodes.BatchDuplicateId);
@@ -97,11 +102,20 @@ internal static class StatementEndpoints
                 parsed.Errors);
         }
 
-        var (result, ids) = await writer.WriteAsync(parsed.Value, request.Version, request.Caller, http.RequestAborted).ConfigureAwait(false);
+        if (CheckAttachments(parsed.Value, body, out var attachments) is { } attachmentError)
+        {
+            return attachmentError;
+        }
+
+        var (result, ids) = await writer.WriteAsync(parsed.Value, attachments, request.Version, request.Caller, http.RequestAborted).ConfigureAwait(false);
         return result.IsConflict
             ? Conflict(result.ConflictingStatementId.Value)
             : XapiResults.Json(WriteIds(ids));
     }
+
+    // IEEE 9274.1.1, 4.1.3: attachment data is matched to Attachment objects by SHA-2
+    private static IResult? CheckAttachments(IReadOnlyList<Statement> statements, StatementBody body, out List<IReadOnlyList<AttachmentContent>> attachments) =>
+        StatementAttachments.Match(statements, body.Parts, out attachments) is { } mismatch ? BadRequest(mismatch) : null;
 
     public static async Task<IResult> GetAsync(HttpContext http, IStatementStore store, IOptions<XapiLrsOptions> options)
     {
@@ -168,7 +182,7 @@ internal static class StatementEndpoints
         }
 
         var rendered = await StatementRendering.RenderAsync([stored], format, AcceptLanguages(http.Request), store, http.RequestAborted).ConfigureAwait(false);
-        return JsonOrMultipart(rendered[0], attachments, stored.Stored);
+        return await JsonOrMultipartAsync(store, rendered[0], [stored], attachments, stored.Stored, http.RequestAborted).ConfigureAwait(false);
     }
 
     private static async Task<IResult> QueryAsync(HttpContext http, IStatementStore store, XapiLrsOptions options, Dictionary<string, string> parameters)
@@ -195,21 +209,27 @@ internal static class StatementEndpoints
 
         // 4.1.6.1 GET: Last-Modified is the most recent stored time of the returned statements
         DateTimeOffset? lastModified = page.Statements.Count == 0 ? null : page.Statements.Max(s => s.Stored);
-        return JsonOrMultipart(WriteStatementResult(statements, more), query.Attachments, lastModified);
+        return await JsonOrMultipartAsync(store, WriteStatementResult(statements, more), page.Statements, query.Attachments, lastModified, http.RequestAborted).ConfigureAwait(false);
     }
 
-    private static IResult JsonOrMultipart(string json, bool attachments, DateTimeOffset? lastModified)
+    // 4.1.6.1 GET "attachments": true asks for the multipart format with the data of every attachment the LRS
+    // holds for the returned statements; false for application/json without attachment data
+    private static async Task<IResult> JsonOrMultipartAsync(
+        IStatementStore store,
+        string json,
+        IReadOnlyList<StoredStatement> statements,
+        bool attachments,
+        DateTimeOffset? lastModified,
+        CancellationToken cancellationToken)
     {
         if (!attachments)
         {
             return XapiResults.Json(json, lastModified);
         }
 
-        // attachments=true asks for the multipart format. Attachment data is not stored yet (multipart requests are
-        // rejected), so the JSON is the only part.
-        var boundary = "xapi-" + Guid.NewGuid().ToString("N");
-        var multipart = $"--{boundary}\r\nContent-Type: application/json\r\n\r\n{json}\r\n--{boundary}--\r\n";
-        return XapiResults.Body($"multipart/mixed; boundary={boundary}", Encoding.UTF8.GetBytes(multipart), lastModified);
+        var data = await store.GetAttachmentsAsync([.. statements.Select(s => s.Id)], cancellationToken).ConfigureAwait(false);
+        var (contentType, body) = MultipartResponse.Write(json, data);
+        return XapiResults.Body(contentType, body, lastModified);
     }
 
     private static string WriteStatementResult(List<string> statements, string more)
@@ -230,18 +250,6 @@ internal static class StatementEndpoints
         }
 
         return Encoding.UTF8.GetString(buffer.WrittenSpan);
-    }
-
-    private static IResult? CheckContentType(HttpRequest request)
-    {
-        if (RequestReading.IsMediaType(request, "application/json"))
-        {
-            return null;
-        }
-
-        return RequestReading.IsMediaType(request, "multipart/mixed")
-            ? BadRequest("multipart/mixed statement requests (attachments sent with the statement) are not supported yet; send application/json with fileUrl attachments.")
-            : BadRequest("Statements must be sent as application/json.");
     }
 
     private static bool MayRead(XapiCaller caller, StoredStatement statement) =>
