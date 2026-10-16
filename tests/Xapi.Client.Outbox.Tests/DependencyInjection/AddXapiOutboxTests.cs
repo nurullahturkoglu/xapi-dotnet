@@ -32,8 +32,9 @@ public sealed class AddXapiOutboxTests : IDisposable
 
             await hosted.StartAsync(Ct);
             var id = await outbox.EnqueueAsync(Statement(1), Ct);
-            await Eventually(() => lrs.StoredIds.Contains(id), "the hosted service delivers the Statement");
+            await Eventually(async () => (await outbox.GetStatusAsync(Ct)).PendingCount == 0, "the hosted service delivers the Statement");
             await hosted.StopAsync(Ct);
+            Assert.Contains(id, lrs.StoredIds);
         }
 
         // Disposing the provider released the store's directory lock
