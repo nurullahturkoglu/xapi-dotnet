@@ -226,20 +226,6 @@ public class StatementWriteTests(LrsHosts hosts)
         await AssertBadRequest(await client.PostStatementsAsync(new JsonArray(Statement(id), new JsonObject())));
     }
 
-    [Fact]
-    public async Task Multipart_statement_requests_are_rejected_with_400()
-    {
-        var app = await hosts.SharedAsync(TestDatabase.Sqlite);
-        var id = Guid.NewGuid();
-        using var content = new MultipartContent("mixed");
-        content.Add(Body(Statement(id)));
-
-        using var response = await app.Client().PostAsync("/xapi/statements", content, TestContext.Current.CancellationToken);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("multipart/mixed", (await ReadObjectAsync(response))["detail"]!.GetValue<string>(), StringComparison.Ordinal);
-    }
-
     [Theory]
     [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
     public async Task Concurrent_puts_of_the_same_statement_store_it_once(TestDatabase database)

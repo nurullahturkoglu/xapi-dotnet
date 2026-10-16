@@ -177,6 +177,29 @@ internal sealed partial class EfStatementStore(
         return name is null ? person : person with { Names = [name] };
     }
 
+    public async Task<IReadOnlyList<AttachmentContent>> GetAttachmentsAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(statementIds);
+        if (statementIds.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = statementIds.Distinct().ToList();
+        var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (context.ConfigureAwait(false))
+        {
+            var sha2s = context.StatementAttachments
+                .Where(a => context.Statements.Any(s => s.Pk == a.StatementPk && ids.Contains(s.StatementId)))
+                .Select(a => a.Sha2);
+            var rows = await context.AttachmentContents.AsNoTracking()
+                .Where(c => sha2s.Contains(c.Sha2))
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return rows.ConvertAll(r => new AttachmentContent(r.Sha2, r.ContentType, r.Content));
+        }
+    }
+
     // The content filters, as a condition on one statement row, or null when the query has none
     private static Expression<Func<StatementEntity, bool>>? Matches(XapiLrsDbContext context, StatementFilter filter)
     {
@@ -274,6 +297,7 @@ internal sealed partial class EfStatementStore(
                 if (inserted.Count > 0)
                 {
                     AddStatements(context, inserted);
+                    await AddAttachmentsAsync(context, inserted, cancellationToken).ConfigureAwait(false);
                     await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                     await AddStatementRefsAsync(context, inserted, cancellationToken).ConfigureAwait(false);
                     await ApplyVoidingAsync(context, inserted, cancellationToken).ConfigureAwait(false);
@@ -326,6 +350,44 @@ internal sealed partial class EfStatementStore(
             foreach (var (usage, iri) in index.ActivityLinks)
             {
                 context.StatementActivities.Add(new StatementActivityEntity { StatementPk = record.Key, Usage = usage, ActivityIri = iri });
+            }
+        }
+    }
+
+    // Attachment data is stored once per SHA-2 (ADR-0011), whether it arrived in this batch or an earlier one
+    private static async Task AddAttachmentsAsync(XapiLrsDbContext context, List<(StatementRecord Record, StatementIndex Index)> inserted, CancellationToken cancellationToken)
+    {
+        var contents = inserted
+            .SelectMany(i => i.Record.Attachments)
+            .DistinctBy(a => a.Sha2, StringComparer.Ordinal)
+            .ToList();
+        if (contents.Count == 0)
+        {
+            return;
+        }
+
+        var sha2s = contents.ConvertAll(c => c.Sha2);
+        var known = await context.AttachmentContents
+            .Where(c => sha2s.Contains(c.Sha2))
+            .Select(c => c.Sha2)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var content in contents.Where(c => !known.Contains(c.Sha2, StringComparer.Ordinal)))
+        {
+            context.AttachmentContents.Add(new AttachmentContentEntity
+            {
+                Sha2 = content.Sha2,
+                ContentType = content.ContentType,
+                Length = content.Content.Length,
+                Content = content.Content.ToArray(),
+            });
+        }
+
+        foreach (var (record, _) in inserted)
+        {
+            foreach (var sha2 in record.Attachments.Select(a => a.Sha2).Distinct(StringComparer.Ordinal))
+            {
+                context.StatementAttachments.Add(new StatementAttachmentEntity { StatementPk = record.Key, Sha2 = sha2 });
             }
         }
     }

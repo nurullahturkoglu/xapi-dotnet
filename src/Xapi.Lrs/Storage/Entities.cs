@@ -79,6 +79,26 @@ internal sealed class ActivityEntity
     public string Payload { get; set; } = "";
 }
 
+// Attachment data, content-addressed: one row per SHA-2 however many statements carry it
+internal sealed class AttachmentContentEntity
+{
+    // Lower-case hex
+    public string Sha2 { get; set; } = "";
+
+    public string ContentType { get; set; } = "";
+
+    public long Length { get; set; }
+
+    public byte[] Content { get; set; } = [];
+}
+
+internal sealed class StatementAttachmentEntity
+{
+    public Guid StatementPk { get; set; }
+
+    public string Sha2 { get; set; } = "";
+}
+
 internal sealed class CredentialEntity
 {
     public string Key { get; set; } = "";

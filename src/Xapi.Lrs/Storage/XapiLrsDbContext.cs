@@ -33,6 +33,10 @@ public sealed class XapiLrsDbContext : DbContext
 
     internal DbSet<ActivityEntity> Activities => Set<ActivityEntity>();
 
+    internal DbSet<AttachmentContentEntity> AttachmentContents => Set<AttachmentContentEntity>();
+
+    internal DbSet<StatementAttachmentEntity> StatementAttachments => Set<StatementAttachmentEntity>();
+
     internal DbSet<CredentialEntity> Credentials => Set<CredentialEntity>();
 
     internal DbSet<StateDocumentEntity> StateDocuments => Set<StateDocumentEntity>();
@@ -119,6 +123,29 @@ public sealed class XapiLrsDbContext : DbContext
             e.HasKey(a => a.Iri).HasName("pk_xapi_activity");
             e.Property(a => a.Iri).HasColumnName("iri");
             e.Property(a => a.Payload).HasColumnName("payload");
+        });
+
+        modelBuilder.Entity<AttachmentContentEntity>(e =>
+        {
+            e.ToTable("xapi_attachment_content");
+            e.HasKey(a => a.Sha2).HasName("pk_xapi_attachment_content");
+            e.Property(a => a.Sha2).HasColumnName("sha2");
+            e.Property(a => a.ContentType).HasColumnName("content_type");
+            e.Property(a => a.Length).HasColumnName("length");
+            e.Property(a => a.Content).HasColumnName("content");
+        });
+
+        modelBuilder.Entity<StatementAttachmentEntity>(e =>
+        {
+            e.ToTable("xapi_statement_attachment");
+            e.HasKey(a => new { a.StatementPk, a.Sha2 }).HasName("pk_xapi_statement_attachment");
+            e.Property(a => a.StatementPk).HasColumnName("statement_pk");
+            e.Property(a => a.Sha2).HasColumnName("sha2");
+            e.HasIndex(a => a.Sha2).HasDatabaseName("ix_xapi_statement_attachment_sha2");
+            e.HasOne<StatementEntity>().WithMany().HasForeignKey(a => a.StatementPk).OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_xapi_statement_attachment_statement");
+            e.HasOne<AttachmentContentEntity>().WithMany().HasForeignKey(a => a.Sha2).OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_xapi_statement_attachment_content");
         });
 
         modelBuilder.Entity<CredentialEntity>(e =>

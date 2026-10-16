@@ -51,4 +51,14 @@ public sealed class StatementRecord
     /// <c>statements/read/mine</c> scope.
     /// </summary>
     public string AuthorityKey { get; }
+
+    /// <summary>
+    /// The attachment data received with the statement, for the Attachment objects that have it. Data shared by
+    /// several statements of a batch is the same instance in each record and is stored once.
+    /// </summary>
+    public IReadOnlyList<AttachmentContent> Attachments
+    {
+        get;
+        init => field = value ?? throw new ArgumentNullException(nameof(value));
+    } = [];
 }

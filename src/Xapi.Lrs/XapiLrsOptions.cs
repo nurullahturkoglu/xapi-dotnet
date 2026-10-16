@@ -51,6 +51,22 @@ public sealed class XapiLrsOptions
     public long MaxDocumentBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
+    /// The most attachment data accepted in one <c>multipart/mixed</c> statement request, in bytes, counting
+    /// every attachment part; larger requests get 413 (IEEE 9274.1.1, 4.1.5). Defaults to 50 MiB. The server's
+    /// own request body limit (30 MB by default in Kestrel) applies as well.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+    public long MaxAttachmentBytes
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            field = value;
+        }
+    } = 50 * 1024 * 1024;
+
+    /// <summary>
     /// The most statements one page of a statement query returns, and the page size when the request asks for
     /// <c>limit=0</c> or gives no limit. Larger limits are lowered to it. Defaults to 100.
     /// </summary>

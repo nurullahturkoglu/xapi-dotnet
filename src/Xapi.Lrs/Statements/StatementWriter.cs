@@ -10,20 +10,26 @@ internal sealed class StatementWriter(IStatementStore store, StatementWriteTrack
 {
     private readonly UuidV7Generator _keys = UuidV7Generator.Shared;
 
-    public async Task<(StatementStoreResult Result, List<Guid> Ids)> WriteAsync(IReadOnlyList<Statement> statements, XapiVersion version, XapiCaller caller, CancellationToken cancellationToken)
+    // attachments: per statement, the attachment data received with it; null when none was
+    public async Task<(StatementStoreResult Result, List<Guid> Ids)> WriteAsync(
+        IReadOnlyList<Statement> statements,
+        IReadOnlyList<IReadOnlyList<AttachmentContent>>? attachments,
+        XapiVersion version,
+        XapiCaller caller,
+        CancellationToken cancellationToken)
     {
         using var inFlight = tracker.Begin();
         var records = new List<StatementRecord>(statements.Count);
-        foreach (var statement in statements)
+        for (var i = 0; i < statements.Count; i++)
         {
-            records.Add(Prepare(statement, version, caller));
+            records.Add(Prepare(statements[i], attachments?[i] ?? [], version, caller));
         }
 
         var result = await store.StoreAsync(records, Scopes.CanDefine(caller.Scopes), cancellationToken).ConfigureAwait(false);
         return (result, records.ConvertAll(r => r.Id));
     }
 
-    private StatementRecord Prepare(Statement statement, XapiVersion version, XapiCaller caller)
+    private StatementRecord Prepare(Statement statement, IReadOnlyList<AttachmentContent> attachments, XapiVersion version, XapiCaller caller)
     {
         // ADR-020: the key's time part is the stored time, so ordering by key is ordering by stored
         var key = _keys.NewGuid();
@@ -40,6 +46,6 @@ internal sealed class StatementWriter(IStatementStore store, StatementWriteTrack
         };
 
         var json = XapiJson.SerializeStatement(prepared, version);
-        return new StatementRecord(key, prepared, json, caller.AuthorityKey);
+        return new StatementRecord(key, prepared, json, caller.AuthorityKey) { Attachments = attachments };
     }
 }

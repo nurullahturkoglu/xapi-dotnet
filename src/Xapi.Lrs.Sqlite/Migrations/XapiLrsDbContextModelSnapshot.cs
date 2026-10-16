@@ -127,6 +127,32 @@ namespace Xapi.Lrs.Sqlite.Migrations
                     b.ToTable("xapi_agent_profile", (string)null);
                 });
 
+            modelBuilder.Entity("Xapi.Lrs.Storage.AttachmentContentEntity", b =>
+                {
+                    b.Property<string>("Sha2")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sha2");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("BLOB")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("content_type");
+
+                    b.Property<long>("Length")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("length");
+
+                    b.HasKey("Sha2")
+                        .HasName("pk_xapi_attachment_content");
+
+                    b.ToTable("xapi_attachment_content", (string)null);
+                });
+
             modelBuilder.Entity("Xapi.Lrs.Storage.CredentialEntity", b =>
                 {
                     b.Property<string>("Key")
@@ -248,6 +274,25 @@ namespace Xapi.Lrs.Sqlite.Migrations
                     b.ToTable("xapi_statement_actor", (string)null);
                 });
 
+            modelBuilder.Entity("Xapi.Lrs.Storage.StatementAttachmentEntity", b =>
+                {
+                    b.Property<Guid>("StatementPk")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("statement_pk");
+
+                    b.Property<string>("Sha2")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sha2");
+
+                    b.HasKey("StatementPk", "Sha2")
+                        .HasName("pk_xapi_statement_attachment");
+
+                    b.HasIndex("Sha2")
+                        .HasDatabaseName("ix_xapi_statement_attachment_sha2");
+
+                    b.ToTable("xapi_statement_attachment", (string)null);
+                });
+
             modelBuilder.Entity("Xapi.Lrs.Storage.StatementEntity", b =>
                 {
                     b.Property<Guid>("Pk")
@@ -353,6 +398,23 @@ namespace Xapi.Lrs.Sqlite.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_xapi_statement_actor_statement");
+                });
+
+            modelBuilder.Entity("Xapi.Lrs.Storage.StatementAttachmentEntity", b =>
+                {
+                    b.HasOne("Xapi.Lrs.Storage.AttachmentContentEntity", null)
+                        .WithMany()
+                        .HasForeignKey("Sha2")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_xapi_statement_attachment_content");
+
+                    b.HasOne("Xapi.Lrs.Storage.StatementEntity", null)
+                        .WithMany()
+                        .HasForeignKey("StatementPk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_xapi_statement_attachment_statement");
                 });
 
             modelBuilder.Entity("Xapi.Lrs.Storage.StatementRefEntity", b =>
