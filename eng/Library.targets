@@ -5,7 +5,8 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)xapi-dotnet.snk</AssemblyOriginatorKeyFile>
     <EnablePackageValidation>true</EnablePackageValidation>
-    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
+    <!-- A project that cannot be trimmed (Xapi.Lrs: EF Core) sets IsAotCompatible to false itself -->
+    <IsAotCompatible Condition="'$(IsAotCompatible)' == '' and $([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

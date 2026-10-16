@@ -66,3 +66,7 @@ dotnet_diagnostic.CA1861.severity = none
 [samples/**.cs]
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1515.severity = none
+
+# EF Core migrations are written by dotnet-ef (eng/ef-migrations.sh) and are not edited by hand
+[src/**/Migrations/*.cs]
+generated_code = true

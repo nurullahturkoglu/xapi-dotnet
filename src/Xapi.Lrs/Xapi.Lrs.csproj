@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectType>Library</ProjectType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Xapi.Lrs</RootNamespace>
+    <!-- EF Core and the ASP.NET Core endpoint plumbing it sits on are not trim or AOT compatible -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <!--
+      CA1707: XapiLrsOptions.EnableVersion1_0_3 spells the version like XapiVersion.V1_0_3 in Xapi.Core.
+      XAPI0001: this assembly defines and implements the experimental storage seams it uses.
+    -->
+    <NoWarn>$(NoWarn);CA1707;XAPI0001</NoWarn>
+    <Description>An embeddable xAPI Learning Record Store (xAPI 2.0, IEEE 9274.1.1, and 1.0.3) for ASP.NET Core: minimal API endpoints, version negotiation, Basic or delegated authentication, and EF Core storage. Add Xapi.Lrs.Sqlite or Xapi.Lrs.PostgreSql for a database.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Xapi.Core/Xapi.Core.csproj" />
+  </ItemGroup>
+
+</Project>
