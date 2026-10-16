@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Runs XapiClient against a real LRS (lrsql in Docker, through Testcontainers). The project is built with the
+    solution on every OS, but it is not a test project unless XapiIntegrationTests=true, so the solution-wide
+    `dotnet test` (also the 3-OS CI job; macOS and Windows runners cannot run Linux containers) leaves it out.
+    The client-integration job in .github/workflows/ci.yml runs it on Linux with -p:XapiIntegrationTests=true;
+    CONTRIBUTING.md has the local command.
+  -->
+
+  <PropertyGroup>
+    <ProjectType>Test</ProjectType>
+    <!-- Set here, not in eng/Test.targets: .NET Framework picks the .exe extension before that file is imported -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <XapiExcludeFromTestRun Condition="'$(XapiIntegrationTests)' != 'true'">true</XapiExcludeFromTestRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Testcontainers" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The lrsql image is pinned once, in the conformance inputs -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>CtsEnvFile</_Parameter1>
+      <_Parameter2>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '..', '..', 'eng', 'conformance', 'cts.env'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

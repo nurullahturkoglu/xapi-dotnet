@@ -1,0 +1,176 @@
+namespace Microsoft.Extensions.DependencyInjection
+{
+    public interface IXapiClientBuilder
+    {
+        Microsoft.Extensions.DependencyInjection.IHttpClientBuilder HttpClient { get; }
+        Microsoft.Extensions.DependencyInjection.IServiceCollection Services { get; }
+    }
+    public static class XapiClientServiceCollectionExtensions
+    {
+        public const string HttpClientName = "Xapi.Client";
+        public static Microsoft.Extensions.DependencyInjection.IXapiClientBuilder AddXapiClient(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Xapi.Client.XapiClientOptions> configure) { }
+    }
+}
+namespace Xapi.Client
+{
+    public sealed record ActivityProfileKey : Xapi.Client.DocumentKey, System.IEquatable<Xapi.Client.ActivityProfileKey>
+    {
+        public ActivityProfileKey(Xapi.Iri ActivityId, string ProfileId) { }
+        public Xapi.Iri ActivityId { get; init; }
+        public string ProfileId { get; init; }
+    }
+    public sealed record AgentProfileKey : Xapi.Client.DocumentKey, System.IEquatable<Xapi.Client.AgentProfileKey>
+    {
+        public AgentProfileKey(Xapi.Agent Agent, string ProfileId) { }
+        public Xapi.Agent Agent { get; init; }
+        public string ProfileId { get; init; }
+    }
+    public sealed record AttachmentPayload : System.IEquatable<Xapi.Client.AttachmentPayload>
+    {
+        public AttachmentPayload(string Sha2, string ContentType, System.ReadOnlyMemory<byte> Content) { }
+        public System.ReadOnlyMemory<byte> Content { get; init; }
+        public string ContentType { get; init; }
+        public string Sha2 { get; init; }
+        public bool Equals(Xapi.Client.AttachmentPayload? other) { }
+        public override int GetHashCode() { }
+        public Xapi.Attachment ToAttachment(Xapi.Iri usageType, Xapi.LanguageMap display) { }
+        public static Xapi.Client.AttachmentPayload Create(System.ReadOnlyMemory<byte> content, string contentType) { }
+    }
+    public abstract record DocumentKey : System.IEquatable<Xapi.Client.DocumentKey> { }
+    public sealed record DocumentPrecondition : System.IEquatable<Xapi.Client.DocumentPrecondition>
+    {
+        public string HeaderName { get; }
+        public string HeaderValue { get; }
+        public static Xapi.Client.DocumentPrecondition IfNoneMatchAny { get; }
+        public static Xapi.Client.DocumentPrecondition IfMatch(string etag) { }
+    }
+    public interface IXapiClient
+    {
+        System.Threading.Tasks.Task DeleteDocumentAsync(Xapi.Client.DocumentKey key, Xapi.Client.DocumentPrecondition? precondition = null, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task DeleteStatesAsync(Xapi.Iri activityId, Xapi.Agent agent, System.Guid? registration = default, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.About> GetAboutAsync(System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Activity?> GetActivityAsync(Xapi.Iri activityId, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>> GetActivityProfileIdsAsync(Xapi.Iri activityId, System.DateTimeOffset? since = default, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>> GetAgentProfileIdsAsync(Xapi.Agent agent, System.DateTimeOffset? since = default, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Client.XapiDocument?> GetDocumentAsync(Xapi.Client.DocumentKey key, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Client.StatementResult> GetMoreStatementsAsync(System.Uri more, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Person> GetPersonAsync(Xapi.Agent agent, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>> GetStateIdsAsync(Xapi.Iri activityId, Xapi.Agent agent, System.Guid? registration = default, System.DateTimeOffset? since = default, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Statement?> GetStatementAsync(System.Guid id, Xapi.Json.StatementFormat format = 0, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.XapiVersion> GetVersionAsync(System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Statement?> GetVoidedStatementAsync(System.Guid id, Xapi.Json.StatementFormat format = 0, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task MergeDocumentAsync(Xapi.Client.DocumentKey key, System.Text.Json.JsonElement json, Xapi.Client.DocumentPrecondition? precondition = null, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task PutDocumentAsync(Xapi.Client.DocumentKey key, Xapi.Client.XapiDocument document, Xapi.Client.DocumentPrecondition? precondition = null, System.Threading.CancellationToken cancellationToken = default);
+        System.Collections.Generic.IAsyncEnumerable<Xapi.Statement> QueryAllStatementsAsync(Xapi.Client.StatementQuery query, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Client.StatementResult> QueryStatementsAsync(Xapi.Client.StatementQuery query, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Guid> SaveStatementAsync(Xapi.Statement statement, System.Collections.Generic.IReadOnlyList<Xapi.Client.AttachmentPayload>? attachments = null, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Guid>> SaveStatementsAsync(System.Collections.Generic.IReadOnlyList<Xapi.Statement> statements, System.Collections.Generic.IReadOnlyList<Xapi.Client.AttachmentPayload>? attachments = null, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Guid> VoidStatementAsync(System.Guid statementId, Xapi.Actor actor, System.Threading.CancellationToken cancellationToken = default);
+    }
+    public sealed record StateKey : Xapi.Client.DocumentKey, System.IEquatable<Xapi.Client.StateKey>
+    {
+        public StateKey(Xapi.Iri ActivityId, Xapi.Agent Agent, string StateId, System.Guid? Registration = default) { }
+        public Xapi.Iri ActivityId { get; init; }
+        public Xapi.Agent Agent { get; init; }
+        public System.Guid? Registration { get; init; }
+        public string StateId { get; init; }
+    }
+    public sealed record StatementQuery : System.IEquatable<Xapi.Client.StatementQuery>
+    {
+        public StatementQuery() { }
+        public Xapi.Iri? Activity { get; init; }
+        public Xapi.Actor? Agent { get; init; }
+        public bool Ascending { get; init; }
+        public bool Attachments { get; init; }
+        public Xapi.Json.StatementFormat Format { get; init; }
+        public int? Limit { get; init; }
+        public System.Guid? Registration { get; init; }
+        public bool RelatedActivities { get; init; }
+        public bool RelatedAgents { get; init; }
+        public System.DateTimeOffset? Since { get; init; }
+        public System.DateTimeOffset? Until { get; init; }
+        public Xapi.Iri? Verb { get; init; }
+    }
+    public sealed record StatementResult : System.IEquatable<Xapi.Client.StatementResult>
+    {
+        public StatementResult(Xapi.XapiList<Xapi.Statement> Statements, System.Uri? More) { }
+        public Xapi.XapiList<Xapi.Client.AttachmentPayload> Attachments { get; init; }
+        public System.DateTimeOffset? ConsistentThrough { get; init; }
+        public System.Uri? More { get; init; }
+        public Xapi.XapiList<Xapi.Statement> Statements { get; init; }
+    }
+    public sealed class XapiClient : Xapi.Client.IXapiClient
+    {
+        public XapiClient(System.Net.Http.HttpClient httpClient, Xapi.Client.XapiClientOptions options) { }
+        public System.Threading.Tasks.Task DeleteDocumentAsync(Xapi.Client.DocumentKey key, Xapi.Client.DocumentPrecondition? precondition = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task DeleteStatesAsync(Xapi.Iri activityId, Xapi.Agent agent, System.Guid? registration = default, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.About> GetAboutAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Activity?> GetActivityAsync(Xapi.Iri activityId, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>> GetActivityProfileIdsAsync(Xapi.Iri activityId, System.DateTimeOffset? since = default, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>> GetAgentProfileIdsAsync(Xapi.Agent agent, System.DateTimeOffset? since = default, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Client.XapiDocument?> GetDocumentAsync(Xapi.Client.DocumentKey key, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Client.StatementResult> GetMoreStatementsAsync(System.Uri more, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Person> GetPersonAsync(Xapi.Agent agent, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>> GetStateIdsAsync(Xapi.Iri activityId, Xapi.Agent agent, System.Guid? registration = default, System.DateTimeOffset? since = default, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Statement?> GetStatementAsync(System.Guid id, Xapi.Json.StatementFormat format = 0, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.XapiVersion> GetVersionAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Statement?> GetVoidedStatementAsync(System.Guid id, Xapi.Json.StatementFormat format = 0, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task MergeDocumentAsync(Xapi.Client.DocumentKey key, System.Text.Json.JsonElement json, Xapi.Client.DocumentPrecondition? precondition = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task PutDocumentAsync(Xapi.Client.DocumentKey key, Xapi.Client.XapiDocument document, Xapi.Client.DocumentPrecondition? precondition = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Collections.Generic.IAsyncEnumerable<Xapi.Statement> QueryAllStatementsAsync(Xapi.Client.StatementQuery query, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Client.StatementResult> QueryStatementsAsync(Xapi.Client.StatementQuery query, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<System.Guid> SaveStatementAsync(Xapi.Statement statement, System.Collections.Generic.IReadOnlyList<Xapi.Client.AttachmentPayload>? attachments = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Guid>> SaveStatementsAsync(System.Collections.Generic.IReadOnlyList<Xapi.Statement> statements, System.Collections.Generic.IReadOnlyList<Xapi.Client.AttachmentPayload>? attachments = null, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<System.Guid> VoidStatementAsync(System.Guid statementId, Xapi.Actor actor, System.Threading.CancellationToken cancellationToken = default) { }
+    }
+    public sealed class XapiClientOptions
+    {
+        public XapiClientOptions() { }
+        public Xapi.Client.XapiCredentials? Credentials { get; set; }
+        public System.Uri? Endpoint { get; set; }
+        public bool ValidateBeforeSend { get; set; }
+        public Xapi.XapiVersion? Version { get; set; }
+    }
+    public sealed class XapiConflictException : Xapi.Client.XapiHttpException
+    {
+        public XapiConflictException() { }
+        public XapiConflictException(string message) { }
+        public XapiConflictException(string message, System.Exception innerException) { }
+        public XapiConflictException(string? responseBody, string message) { }
+    }
+    public sealed class XapiCredentials
+    {
+        public static Xapi.Client.XapiCredentials Basic(string key, string secret) { }
+        public static Xapi.Client.XapiCredentials Bearer(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<string>> tokenProvider) { }
+    }
+    public sealed record XapiDocument : System.IEquatable<Xapi.Client.XapiDocument>
+    {
+        public XapiDocument(System.ReadOnlyMemory<byte> Content, string ContentType) { }
+        public System.ReadOnlyMemory<byte> Content { get; init; }
+        public string ContentType { get; init; }
+        public string? ETag { get; init; }
+        public System.DateTimeOffset? LastModified { get; init; }
+        public bool Equals(Xapi.Client.XapiDocument? other) { }
+        public override int GetHashCode() { }
+        public System.Text.Json.JsonElement ToJson() { }
+        public static Xapi.Client.XapiDocument FromJson(System.Text.Json.JsonElement json) { }
+    }
+    public class XapiHttpException : System.Exception
+    {
+        public XapiHttpException() { }
+        public XapiHttpException(string message) { }
+        public XapiHttpException(string message, System.Exception innerException) { }
+        public XapiHttpException(System.Net.HttpStatusCode statusCode, string? responseBody, string message, System.TimeSpan? retryAfter = default, System.Exception? innerException = null) { }
+        public bool IsTransient { get; }
+        public string? ResponseBody { get; }
+        public System.TimeSpan? RetryAfter { get; }
+        public System.Net.HttpStatusCode StatusCode { get; }
+    }
+    public sealed class XapiPreconditionFailedException : Xapi.Client.XapiHttpException
+    {
+        public XapiPreconditionFailedException() { }
+        public XapiPreconditionFailedException(string message) { }
+        public XapiPreconditionFailedException(string message, System.Exception innerException) { }
+        public XapiPreconditionFailedException(string? responseBody, string message) { }
+    }
+}

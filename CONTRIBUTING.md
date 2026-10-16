@@ -35,6 +35,20 @@ dotnet test --solution xapi-dotnet.slnx -c Release --coverage --coverage-output-
 Warnings are errors, in local builds as well as CI. Code style comes from `.editorconfig` and is checked
 during the build.
 
+## Client integration tests
+
+`tests/Xapi.Client.IntegrationTests` runs `XapiClient` against lrsql in Docker (the image pinned in
+`eng/conformance/cts.env`), for xAPI 1.0.3 and 2.0.0. It builds with the solution but is not run by the
+plain `dotnet test` above, because the macOS and Windows CI runners cannot run Linux containers. CI runs
+it on Linux in the `client-integration` job. Locally, with Docker running:
+
+```bash
+dotnet test --project tests/Xapi.Client.IntegrationTests -c Release -p:XapiIntegrationTests=true
+```
+
+Without `-p:XapiIntegrationTests=true` that command fails instead of passing with nothing run. The lrsql
+image is linux/amd64 only, so on Apple silicon it runs under emulation and takes a little longer to start.
+
 ## Conformance suite
 
 The ADL LRS Conformance Test Suite runs in CI on every pull request. To run the same battery locally:

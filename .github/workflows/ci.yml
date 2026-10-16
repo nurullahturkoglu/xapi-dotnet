@@ -150,3 +150,80 @@ jobs:
         env:
           XAPI_PACKAGE_VERSION: ${{ needs.pack.outputs.version }}
         run: dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion="$XAPI_PACKAGE_VERSION"
+
+  client-integration:
+    # Linux only: the tests start lrsql (a linux/amd64 image) through Testcontainers, and the macOS and Windows
+    # runners cannot run Linux containers. The project is left out of the solution-wide `dotnet test` above unless
+    # XapiIntegrationTests=true (see tests/Xapi.Client.IntegrationTests), so this job is the one place it runs.
+    name: Client integration tests (lrsql)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: >-
+          dotnet test --project tests/Xapi.Client.IntegrationTests -c Release -p:XapiIntegrationTests=true
+          --results-directory "$GITHUB_WORKSPACE/artifacts/test-results"
+
+  aot-smoke:
+    name: Native AOT smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LRS_URL: http://127.0.0.1:8080/xapi
+      LRS_KEY: aot_key
+      LRS_SECRET: aot_secret
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Load pinned inputs
+        run: grep -E '^[A-Z_]+=' eng/conformance/cts.env >> "$GITHUB_ENV"
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Install Native AOT prerequisites
+        run: dpkg -s clang zlib1g-dev > /dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y clang zlib1g-dev)
+
+      # The trim and AOT analyzers only see what the sample reaches, so this catches what IsAotCompatible on the
+      # libraries cannot: a warning from ILLink or ILC in a real native build.
+      - name: Publish
+        run: |
+          set -o pipefail
+          dotnet publish samples/ConsoleClient -c Release -o artifacts/aot 2>&1 | tee publish.log
+          if grep -E '\bwarning [A-Z]+[0-9]+' publish.log; then
+            echo "::error::Native AOT publish produced warnings"
+            exit 1
+          fi
+
+      - name: Start lrsql
+        run: |
+          docker run -d --name lrs -p 8080:8080 \
+            -e "LRSQL_API_KEY_DEFAULT=$LRS_KEY" -e "LRSQL_API_SECRET_DEFAULT=$LRS_SECRET" \
+            -e LRSQL_ADMIN_USER_DEFAULT=aot_admin -e LRSQL_ADMIN_PASS_DEFAULT=aot_admin_pass \
+            "$LRSQL_IMAGE"
+          for _ in $(seq 90); do
+            if curl -sf "$LRS_URL/about" > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker logs lrs
+          echo "::error::lrsql did not start"
+          exit 1
+
+      - name: Run the native sample
+        run: |
+          for version in 1.0.3 2.0.0 ''; do
+            XAPI_ENDPOINT="$LRS_URL" XAPI_KEY="$LRS_KEY" XAPI_SECRET="$LRS_SECRET" XAPI_VERSION="$version" artifacts/aot/ConsoleClient
+          done
