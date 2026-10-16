@@ -1,0 +1,164 @@
+namespace Microsoft.Extensions.DependencyInjection
+{
+    public static class XapiOutboxServiceCollectionExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddXapiOutbox(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Func<System.IServiceProvider, Xapi.Client.Outbox.IOutboxStore> storeFactory, System.Action<Xapi.Client.Outbox.OutboxOptions>? configure = null) { }
+        public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddXapiOutbox(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, string directory, System.Action<Xapi.Client.Outbox.OutboxOptions>? configure = null) { }
+    }
+}
+namespace Xapi.Client.Outbox
+{
+    public sealed record FileOutboxRecovery : System.IEquatable<Xapi.Client.Outbox.FileOutboxRecovery>
+    {
+        public FileOutboxRecovery(int UnreadableRecords, long DiscardedTailBytes, string? CorruptJournalCopyPath) { }
+        public string? CorruptJournalCopyPath { get; init; }
+        public long DiscardedTailBytes { get; init; }
+        public int UnreadableRecords { get; init; }
+    }
+    public sealed class FileOutboxStore : System.IDisposable, Xapi.Client.Outbox.IOutboxStore
+    {
+        public FileOutboxStore(string directory) { }
+        public string Directory { get; }
+        public Xapi.Client.Outbox.FileOutboxRecovery? Recovery { get; }
+        public System.Threading.Tasks.ValueTask<bool> AddAsync(Xapi.Client.Outbox.OutboxEntry entry, System.Threading.CancellationToken cancellationToken) { }
+        public void Dispose() { }
+        public System.Threading.Tasks.ValueTask<int> GetDeadLetterCountAsync(System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Xapi.Client.Outbox.OutboxDeadLetter>> GetDeadLettersAsync(System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Xapi.Client.Outbox.OutboxEntry>> GetPendingAsync(int maxCount, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<int> GetPendingCountAsync(System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask MoveToDeadLettersAsync(Xapi.Client.Outbox.OutboxDeadLetter deadLetter, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask RecordFailedAttemptAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid> statementIds, string error, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask RemoveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid> statementIds, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<bool> RemoveDeadLetterAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<bool> RequeueAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken) { }
+    }
+    public interface IOutboxStore
+    {
+        System.Threading.Tasks.ValueTask<bool> AddAsync(Xapi.Client.Outbox.OutboxEntry entry, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask<int> GetDeadLetterCountAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Xapi.Client.Outbox.OutboxDeadLetter>> GetDeadLettersAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Xapi.Client.Outbox.OutboxEntry>> GetPendingAsync(int maxCount, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask<int> GetPendingCountAsync(System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask MoveToDeadLettersAsync(Xapi.Client.Outbox.OutboxDeadLetter deadLetter, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask RecordFailedAttemptAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid> statementIds, string error, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask RemoveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid> statementIds, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask<bool> RemoveDeadLetterAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.ValueTask<bool> RequeueAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken);
+    }
+    public sealed class InMemoryOutboxStore : Xapi.Client.Outbox.IOutboxStore
+    {
+        public InMemoryOutboxStore() { }
+        public System.Threading.Tasks.ValueTask<bool> AddAsync(Xapi.Client.Outbox.OutboxEntry entry, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<int> GetDeadLetterCountAsync(System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Xapi.Client.Outbox.OutboxDeadLetter>> GetDeadLettersAsync(System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Xapi.Client.Outbox.OutboxEntry>> GetPendingAsync(int maxCount, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<int> GetPendingCountAsync(System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask MoveToDeadLettersAsync(Xapi.Client.Outbox.OutboxDeadLetter deadLetter, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask RecordFailedAttemptAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid> statementIds, string error, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask RemoveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid> statementIds, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<bool> RemoveDeadLetterAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken) { }
+        public System.Threading.Tasks.ValueTask<bool> RequeueAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken) { }
+    }
+    public sealed record OutboxDeadLetter : System.IEquatable<Xapi.Client.Outbox.OutboxDeadLetter>
+    {
+        public OutboxDeadLetter(Xapi.Statement statement, Xapi.Client.Outbox.OutboxDeadLetterReason reason, string error, System.DateTimeOffset deadLetteredAt) { }
+        public int Attempts { get; init; }
+        public System.DateTimeOffset DeadLetteredAt { get; }
+        public System.DateTimeOffset EnqueuedAt { get; init; }
+        public string Error { get; }
+        public Xapi.Client.Outbox.OutboxDeadLetterReason Reason { get; }
+        public string? ResponseBody { get; init; }
+        public Xapi.Statement Statement { get; }
+        public System.Guid StatementId { get; }
+        public System.Net.HttpStatusCode? StatusCode { get; init; }
+    }
+    public enum OutboxDeadLetterReason
+    {
+        Rejected = 0,
+        TooLarge = 1,
+        Conflict = 2,
+        MaxAttemptsExceeded = 3,
+    }
+    public sealed class OutboxDeadLetteredEventArgs : System.EventArgs
+    {
+        public OutboxDeadLetteredEventArgs(Xapi.Client.Outbox.OutboxDeadLetter deadLetter) { }
+        public Xapi.Client.Outbox.OutboxDeadLetter DeadLetter { get; }
+    }
+    public sealed class OutboxDeliveredEventArgs : System.EventArgs
+    {
+        public OutboxDeliveredEventArgs(System.Collections.Generic.IReadOnlyList<System.Guid> statementIds) { }
+        public System.Collections.Generic.IReadOnlyList<System.Guid> StatementIds { get; }
+    }
+    public sealed record OutboxEntry : System.IEquatable<Xapi.Client.Outbox.OutboxEntry>
+    {
+        public OutboxEntry(Xapi.Statement statement, System.DateTimeOffset enqueuedAt) { }
+        public int Attempts { get; init; }
+        public System.DateTimeOffset EnqueuedAt { get; }
+        public string? LastError { get; init; }
+        public Xapi.Statement Statement { get; }
+        public System.Guid StatementId { get; }
+    }
+    public sealed record OutboxFlushResult : System.IEquatable<Xapi.Client.Outbox.OutboxFlushResult>
+    {
+        public OutboxFlushResult() { }
+        public int DeadLettered { get; init; }
+        public int Delivered { get; init; }
+        public Xapi.Client.Outbox.OutboxStatus Status { get; init; }
+    }
+    public sealed class OutboxFullException : System.InvalidOperationException
+    {
+        public OutboxFullException() { }
+        public OutboxFullException(string message) { }
+        public OutboxFullException(string message, System.Exception innerException) { }
+    }
+    public sealed class OutboxOptions
+    {
+        public OutboxOptions() { }
+        public int BatchSize { get; set; }
+        public System.TimeSpan InitialRetryDelay { get; set; }
+        public int? MaxAttempts { get; set; }
+        public int? MaxQueueSize { get; set; }
+        public System.TimeSpan MaxRetryDelay { get; set; }
+        public System.TimeProvider TimeProvider { get; set; }
+    }
+    public sealed class OutboxPausedEventArgs : System.EventArgs
+    {
+        public OutboxPausedEventArgs(System.Exception error) { }
+        public System.Exception Error { get; }
+    }
+    public enum OutboxState
+    {
+        Idle = 0,
+        Sending = 1,
+        WaitingToRetry = 2,
+        Paused = 3,
+    }
+    public sealed record OutboxStatus : System.IEquatable<Xapi.Client.Outbox.OutboxStatus>
+    {
+        public OutboxStatus() { }
+        public int ConsecutiveFailures { get; init; }
+        public int DeadLetterCount { get; init; }
+        public string? LastError { get; init; }
+        public int PendingCount { get; init; }
+        public System.DateTimeOffset? RetryAt { get; init; }
+        public Xapi.Client.Outbox.OutboxState State { get; init; }
+    }
+    public sealed class StatementOutbox : System.IAsyncDisposable, System.IDisposable
+    {
+        public StatementOutbox(Xapi.Client.IXapiClient client, Xapi.Client.Outbox.IOutboxStore store, Xapi.Client.Outbox.OutboxOptions? options = null) { }
+        public event System.EventHandler<Xapi.Client.Outbox.OutboxDeadLetteredEventArgs>? DeadLettered;
+        public event System.EventHandler<Xapi.Client.Outbox.OutboxDeliveredEventArgs>? Delivered;
+        public event System.EventHandler<Xapi.Client.Outbox.OutboxPausedEventArgs>? Paused;
+        public void Dispose() { }
+        public System.Threading.Tasks.ValueTask DisposeAsync() { }
+        public System.Threading.Tasks.ValueTask<System.Guid> EnqueueAsync(Xapi.Statement statement, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.Task<Xapi.Client.Outbox.OutboxFlushResult> FlushAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Xapi.Client.Outbox.OutboxDeadLetter>> GetDeadLettersAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.ValueTask<Xapi.Client.Outbox.OutboxStatus> GetStatusAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.ValueTask<bool> RemoveDeadLetterAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.ValueTask<int> RequeueAllDeadLettersAsync(System.Threading.CancellationToken cancellationToken = default) { }
+        public System.Threading.Tasks.ValueTask<bool> RequeueDeadLetterAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken = default) { }
+        public void Resume() { }
+        public System.Threading.Tasks.Task RunAsync(System.Threading.CancellationToken cancellationToken = default) { }
+    }
+}

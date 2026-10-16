@@ -24,6 +24,7 @@ public class PublicApiTests
     [Theory]
     [InlineData("Xapi.Core")]
     [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Client.Outbox")]
     [InlineData("Xapi.Lrs")]
     [InlineData("Xapi.Lrs.Sqlite")]
     [InlineData("Xapi.Lrs.PostgreSql")]

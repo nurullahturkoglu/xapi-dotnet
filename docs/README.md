@@ -6,7 +6,7 @@ The guides below are planned and will be written as the packages they describe a
 | --- | --- |
 | `getting-started.md` | Installing the packages and sending a first statement |
 | `client.md` | `XapiClient`: resources, version negotiation, documents and ETags, attachments, resilience |
-| `outbox.md` | `StatementOutbox`: stores, error classification, dead letters, hosting |
+| [`outbox.md`](outbox.md) | `StatementOutbox`: stores, error classification, dead letters, hosting |
 | `lrs.md` | Embedding the LRS: `AddXapiLrs`, `MapXapiLrs`, storage providers, authentication, telemetry |
 | `versions.md` | Differences between xAPI 1.0.3 and 2.0.0 and how the packages handle them |
 | `migrating-from-tincan.md` | Mapping TinCan.NET types and calls to this library |

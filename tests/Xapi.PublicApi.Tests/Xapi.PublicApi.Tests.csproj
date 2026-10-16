@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
+    <ProjectReference Include="../../src/Xapi.Client.Outbox/Xapi.Client.Outbox.csproj" />
     <ProjectReference Include="../../src/Xapi.Core/Xapi.Core.csproj" />
     <ProjectReference Include="../../src/Xapi.Lrs/Xapi.Lrs.csproj" />
     <ProjectReference Include="../../src/Xapi.Lrs.Sqlite/Xapi.Lrs.Sqlite.csproj" />
