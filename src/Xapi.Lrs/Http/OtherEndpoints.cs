@@ -27,6 +27,9 @@ internal static class FallbackEndpoint
     {
         ["statements"] = "GET, HEAD, PUT, POST",
         ["about"] = "GET, HEAD",
+        ["activities/state"] = "GET, HEAD, PUT, POST, DELETE",
+        ["activities/profile"] = "GET, HEAD, PUT, POST, DELETE",
+        ["agents/profile"] = "GET, HEAD, PUT, POST, DELETE",
     };
 
     public static IResult Handle(HttpContext http, string? path)

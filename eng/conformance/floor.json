@@ -12,12 +12,12 @@
   },
   "xapi-dotnet": {
     "sqlite": {
-      "1.0.3": { "total": 1365, "minPassed": 1129, "maxNeverRan": 8, "strict": false },
-      "2.0.0": { "total": 1435, "minPassed": 1160, "maxNeverRan": 13, "strict": false }
+      "1.0.3": { "total": 1365, "minPassed": 1244, "maxNeverRan": 5, "strict": false },
+      "2.0.0": { "total": 1435, "minPassed": 1312, "maxNeverRan": 7, "strict": false }
     },
     "postgres": {
-      "1.0.3": { "total": 1365, "minPassed": 1129, "maxNeverRan": 8, "strict": false },
-      "2.0.0": { "total": 1435, "minPassed": 1160, "maxNeverRan": 13, "strict": false }
+      "1.0.3": { "total": 1365, "minPassed": 1244, "maxNeverRan": 5, "strict": false },
+      "2.0.0": { "total": 1435, "minPassed": 1312, "maxNeverRan": 7, "strict": false }
     }
   }
 }

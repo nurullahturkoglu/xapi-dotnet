@@ -9,6 +9,10 @@ internal enum XapiAccess
     Authenticated,
     StatementsWrite,
     StatementsRead,
+    StateRead,
+    StateWrite,
+    ProfileRead,
+    ProfileWrite,
 }
 
 internal sealed record XapiEndpointMetadata(XapiAccess Access, bool VersionHeaderRequired, bool IsStatementResource);

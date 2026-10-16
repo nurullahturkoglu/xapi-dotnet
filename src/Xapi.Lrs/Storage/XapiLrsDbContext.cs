@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Xapi.Lrs.Storage;
 
@@ -33,6 +34,12 @@ public sealed class XapiLrsDbContext : DbContext
     internal DbSet<ActivityEntity> Activities => Set<ActivityEntity>();
 
     internal DbSet<CredentialEntity> Credentials => Set<CredentialEntity>();
+
+    internal DbSet<StateDocumentEntity> StateDocuments => Set<StateDocumentEntity>();
+
+    internal DbSet<ActivityProfileEntity> ActivityProfiles => Set<ActivityProfileEntity>();
+
+    internal DbSet<AgentProfileEntity> AgentProfiles => Set<AgentProfileEntity>();
 
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -123,5 +130,45 @@ public sealed class XapiLrsDbContext : DbContext
             e.Property(c => c.Scopes).HasColumnName("scopes");
             e.Property(c => c.AuthorityPayload).HasColumnName("authority_payload");
         });
+
+        // Document tables: the natural key is the primary key, led by the columns every request filters on.
+        modelBuilder.Entity<StateDocumentEntity>(e =>
+        {
+            e.ToTable("xapi_state_document");
+            e.HasKey(d => new { d.ActivityIri, d.AgentIfi, d.Registration, d.DocumentId }).HasName("pk_xapi_state_document");
+            e.Property(d => d.ActivityIri).HasColumnName("activity_iri");
+            e.Property(d => d.AgentIfi).HasColumnName("agent_ifi");
+            e.Property(d => d.Registration).HasColumnName("registration");
+            e.Property(d => d.DocumentId).HasColumnName("state_id");
+            MapDocumentContent(e);
+        });
+
+        modelBuilder.Entity<ActivityProfileEntity>(e =>
+        {
+            e.ToTable("xapi_activity_profile");
+            e.HasKey(d => new { d.ActivityIri, d.DocumentId }).HasName("pk_xapi_activity_profile");
+            e.Property(d => d.ActivityIri).HasColumnName("activity_iri");
+            e.Property(d => d.DocumentId).HasColumnName("profile_id");
+            MapDocumentContent(e);
+        });
+
+        modelBuilder.Entity<AgentProfileEntity>(e =>
+        {
+            e.ToTable("xapi_agent_profile");
+            e.HasKey(d => new { d.AgentIfi, d.DocumentId }).HasName("pk_xapi_agent_profile");
+            e.Property(d => d.AgentIfi).HasColumnName("agent_ifi");
+            e.Property(d => d.DocumentId).HasColumnName("profile_id");
+            MapDocumentContent(e);
+        });
+    }
+
+    private static void MapDocumentContent<T>(EntityTypeBuilder<T> e)
+        where T : DocumentEntity
+    {
+        e.Property(d => d.ContentType).HasColumnName("content_type");
+        e.Property(d => d.Content).HasColumnName("content");
+        // A write that read an older ETag fails instead of overwriting (ADR-0012)
+        e.Property(d => d.ETag).HasColumnName("etag").IsConcurrencyToken();
+        e.Property(d => d.Updated).HasColumnName("updated");
     }
 }

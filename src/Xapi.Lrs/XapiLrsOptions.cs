@@ -45,6 +45,12 @@ public sealed class XapiLrsOptions
     public bool EnableVersion1_0_3 { get; set; } = true;
 
     /// <summary>
+    /// The largest State, Activity Profile or Agent Profile document accepted, in bytes; larger ones get 413
+    /// (IEEE 9274.1.1, 4.1.5). Applies to the document stored after a POST merge as well. Defaults to 1 MiB.
+    /// </summary>
+    public long MaxDocumentBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
     /// Whether the database migrations are applied when the host starts. Off by default, so production
     /// deployments can migrate as a separate step.
     /// </summary>

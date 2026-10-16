@@ -43,6 +43,7 @@ public static class XapiLrsServiceCollectionExtensions
             database.Configure(builder);
         });
         services.TryAddSingleton<IStatementStore, EfStatementStore>();
+        services.TryAddSingleton<IDocumentStore, EfDocumentStore>();
         services.AddSingleton<CredentialStore>();
         services.AddSingleton<CallerFactory>();
         services.AddSingleton<StatementWriteTracker>();

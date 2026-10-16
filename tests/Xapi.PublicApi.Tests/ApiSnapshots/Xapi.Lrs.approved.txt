@@ -19,6 +19,56 @@ namespace Microsoft.Extensions.DependencyInjection
 namespace Xapi.Lrs.Storage
 {
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class DocumentChange
+    {
+        public System.ReadOnlyMemory<byte> Content { get; }
+        public string? ContentType { get; }
+        public Xapi.Lrs.Storage.DocumentChangeKind Kind { get; }
+        public static Xapi.Lrs.Storage.DocumentChange Delete { get; }
+        public static Xapi.Lrs.Storage.DocumentChange None { get; }
+        public static Xapi.Lrs.Storage.DocumentChange Store(System.ReadOnlyMemory<byte> content, string contentType) { }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public enum DocumentChangeKind
+    {
+        None = 0,
+        Store = 1,
+        Delete = 2,
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public enum DocumentResource
+    {
+        State = 0,
+        ActivityProfile = 1,
+        AgentProfile = 2,
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class DocumentScope
+    {
+        public Xapi.Iri? ActivityId { get; }
+        public Xapi.Agent? Agent { get; }
+        public System.Guid? Registration { get; }
+        public Xapi.Lrs.Storage.DocumentResource Resource { get; }
+        public static Xapi.Lrs.Storage.DocumentScope ForActivityProfile(Xapi.Iri activityId) { }
+        public static Xapi.Lrs.Storage.DocumentScope ForAgentProfile(Xapi.Agent agent) { }
+        public static Xapi.Lrs.Storage.DocumentScope ForState(Xapi.Iri activityId, Xapi.Agent agent, System.Guid? registration = default) { }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class DocumentSummary
+    {
+        public DocumentSummary(string id, System.DateTimeOffset updated) { }
+        public string Id { get; }
+        public System.DateTimeOffset Updated { get; }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public interface IDocumentStore
+    {
+        System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredDocument?> ChangeAsync(Xapi.Lrs.Storage.DocumentScope scope, string id, System.Func<Xapi.Lrs.Storage.StoredDocument?, Xapi.Lrs.Storage.DocumentChange> decide, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task DeleteAllAsync(Xapi.Lrs.Storage.DocumentScope scope, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredDocument?> GetAsync(Xapi.Lrs.Storage.DocumentScope scope, string id, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.DocumentSummary>> ListAsync(Xapi.Lrs.Storage.DocumentScope scope, System.DateTimeOffset? since, System.Threading.CancellationToken cancellationToken = default);
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
     public interface IStatementStore
     {
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredStatement?> GetAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken = default);
@@ -45,6 +95,16 @@ namespace Xapi.Lrs.Storage
         public static Xapi.Lrs.Storage.StatementStoreResult Conflict(System.Guid statementId) { }
     }
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    public sealed class StoredDocument
+    {
+        public StoredDocument(string id, System.ReadOnlyMemory<byte> content, string contentType, string etag, System.DateTimeOffset updated) { }
+        public System.ReadOnlyMemory<byte> Content { get; }
+        public string ContentType { get; }
+        public string ETag { get; }
+        public string Id { get; }
+        public System.DateTimeOffset Updated { get; }
+    }
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
     public sealed class StoredStatement
     {
         public StoredStatement(System.Guid id, System.DateTimeOffset stored, string version, bool isVoided, string? authorityKey, string json) { }
@@ -59,6 +119,8 @@ namespace Xapi.Lrs.Storage
     public static class XapiLrsBuilderStorageExtensions
     {
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UseDatabaseProvider(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder, Xapi.Lrs.Storage.XapiLrsDatabaseProvider provider) { }
+        public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UseDocumentStore<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)]  TStore>(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder)
+            where TStore :  class, Xapi.Lrs.Storage.IDocumentStore { }
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UseStatementStore<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)]  TStore>(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder)
             where TStore :  class, Xapi.Lrs.Storage.IStatementStore { }
     }
@@ -109,6 +171,7 @@ namespace Xapi.Lrs
         public Xapi.Iri AuthorityHomePage { get; set; }
         public Xapi.Lrs.XapiCredentialList Credentials { get; }
         public bool EnableVersion1_0_3 { get; set; }
+        public long MaxDocumentBytes { get; set; }
         public bool MigrateOnStartup { get; set; }
         public string ScopeClaimType { get; set; }
     }

@@ -61,6 +61,9 @@ public sealed class LrsApp : IAsyncDisposable
         public const string Writer = "writer";
         public const string Reader = "reader";
         public const string Mine = "mine";
+        public const string State = "state";
+        public const string Profile = "profile";
+        public const string AllRead = "allread";
 
         public static string SecretOf(string key) => key + "-secret";
     }
@@ -83,6 +86,9 @@ public sealed class LrsApp : IAsyncDisposable
                     options.Credentials.Add(Credentials.Writer, Credentials.SecretOf(Credentials.Writer), XapiScope.StatementsWrite);
                     options.Credentials.Add(Credentials.Reader, Credentials.SecretOf(Credentials.Reader), XapiScope.StatementsRead);
                     options.Credentials.Add(Credentials.Mine, Credentials.SecretOf(Credentials.Mine), XapiScope.StatementsWrite, XapiScope.StatementsReadMine);
+                    options.Credentials.Add(Credentials.State, Credentials.SecretOf(Credentials.State), XapiScope.State);
+                    options.Credentials.Add(Credentials.Profile, Credentials.SecretOf(Credentials.Profile), XapiScope.Profile);
+                    options.Credentials.Add(Credentials.AllRead, Credentials.SecretOf(Credentials.AllRead), XapiScope.AllRead);
                 });
                 configure?.Invoke(services);
             });

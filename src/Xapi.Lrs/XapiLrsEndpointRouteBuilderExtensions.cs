@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Xapi.Lrs;
 using Xapi.Lrs.Http;
 using Xapi.Lrs.Hosting;
+using Xapi.Lrs.Storage;
 
 namespace Microsoft.AspNetCore.Builder;
 
@@ -39,10 +42,26 @@ public static class XapiLrsEndpointRouteBuilderExtensions
         group.MapMethods("/statements", read, StatementEndpoints.GetAsync)
             .WithMetadata(new XapiEndpointMetadata(XapiAccess.StatementsRead, VersionHeaderRequired: true, IsStatementResource: true));
 
+        MapDocuments(group, "/activities/state", DocumentResource.State, XapiAccess.StateRead, XapiAccess.StateWrite);
+        MapDocuments(group, "/activities/profile", DocumentResource.ActivityProfile, XapiAccess.ProfileRead, XapiAccess.ProfileWrite);
+        MapDocuments(group, "/agents/profile", DocumentResource.AgentProfile, XapiAccess.ProfileRead, XapiAccess.ProfileWrite);
+
         // Unknown paths and methods still get an xAPI error with the version header (4.1.7: every response)
         group.Map("/{**path}", FallbackEndpoint.Handle)
             .WithMetadata(new XapiEndpointMetadata(XapiAccess.Authenticated, VersionHeaderRequired: true, IsStatementResource: false));
 
         return group;
+    }
+
+    private static void MapDocuments(RouteGroupBuilder group, string pattern, DocumentResource resource, XapiAccess read, XapiAccess write)
+    {
+        group.MapMethods(pattern, [HttpMethods.Get, HttpMethods.Head], (HttpContext http, IDocumentStore store) => DocumentEndpoints.GetAsync(http, store, resource))
+            .WithMetadata(new XapiEndpointMetadata(read, VersionHeaderRequired: true, IsStatementResource: false));
+        group.MapPut(pattern, (HttpContext http, IDocumentStore store, IOptions<XapiLrsOptions> options) => DocumentEndpoints.PutAsync(http, store, options, resource))
+            .WithMetadata(new XapiEndpointMetadata(write, VersionHeaderRequired: true, IsStatementResource: false));
+        group.MapPost(pattern, (HttpContext http, IDocumentStore store, IOptions<XapiLrsOptions> options) => DocumentEndpoints.PostAsync(http, store, options, resource))
+            .WithMetadata(new XapiEndpointMetadata(write, VersionHeaderRequired: true, IsStatementResource: false));
+        group.MapDelete(pattern, (HttpContext http, IDocumentStore store) => DocumentEndpoints.DeleteAsync(http, store, resource))
+            .WithMetadata(new XapiEndpointMetadata(write, VersionHeaderRequired: true, IsStatementResource: false));
     }
 }

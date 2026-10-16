@@ -39,6 +39,42 @@ namespace Xapi.Lrs.PostgreSql.Migrations
                     b.ToTable("xapi_activity", (string)null);
                 });
 
+            modelBuilder.Entity("Xapi.Lrs.Storage.ActivityProfileEntity", b =>
+                {
+                    b.Property<string>("ActivityIri")
+                        .HasColumnType("text")
+                        .HasColumnName("activity_iri");
+
+                    b.Property<string>("DocumentId")
+                        .HasColumnType("text")
+                        .HasColumnName("profile_id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("ETag")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("etag");
+
+                    b.Property<DateTimeOffset>("Updated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated");
+
+                    b.HasKey("ActivityIri", "DocumentId")
+                        .HasName("pk_xapi_activity_profile");
+
+                    b.ToTable("xapi_activity_profile", (string)null);
+                });
+
             modelBuilder.Entity("Xapi.Lrs.Storage.ActorEntity", b =>
                 {
                     b.Property<string>("Ifi")
@@ -58,6 +94,42 @@ namespace Xapi.Lrs.PostgreSql.Migrations
                         .HasName("pk_xapi_actor");
 
                     b.ToTable("xapi_actor", (string)null);
+                });
+
+            modelBuilder.Entity("Xapi.Lrs.Storage.AgentProfileEntity", b =>
+                {
+                    b.Property<string>("AgentIfi")
+                        .HasColumnType("text")
+                        .HasColumnName("agent_ifi");
+
+                    b.Property<string>("DocumentId")
+                        .HasColumnType("text")
+                        .HasColumnName("profile_id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("ETag")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("etag");
+
+                    b.Property<DateTimeOffset>("Updated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated");
+
+                    b.HasKey("AgentIfi", "DocumentId")
+                        .HasName("pk_xapi_agent_profile");
+
+                    b.ToTable("xapi_agent_profile", (string)null);
                 });
 
             modelBuilder.Entity("Xapi.Lrs.Storage.CredentialEntity", b =>
@@ -85,6 +157,50 @@ namespace Xapi.Lrs.PostgreSql.Migrations
                         .HasName("pk_xapi_credential");
 
                     b.ToTable("xapi_credential", (string)null);
+                });
+
+            modelBuilder.Entity("Xapi.Lrs.Storage.StateDocumentEntity", b =>
+                {
+                    b.Property<string>("ActivityIri")
+                        .HasColumnType("text")
+                        .HasColumnName("activity_iri");
+
+                    b.Property<string>("AgentIfi")
+                        .HasColumnType("text")
+                        .HasColumnName("agent_ifi");
+
+                    b.Property<Guid>("Registration")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration");
+
+                    b.Property<string>("DocumentId")
+                        .HasColumnType("text")
+                        .HasColumnName("state_id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("ETag")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("etag");
+
+                    b.Property<DateTimeOffset>("Updated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated");
+
+                    b.HasKey("ActivityIri", "AgentIfi", "Registration", "DocumentId")
+                        .HasName("pk_xapi_state_document");
+
+                    b.ToTable("xapi_state_document", (string)null);
                 });
 
             modelBuilder.Entity("Xapi.Lrs.Storage.StatementActivityEntity", b =>
