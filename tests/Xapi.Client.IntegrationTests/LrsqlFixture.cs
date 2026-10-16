@@ -37,7 +37,9 @@ public sealed class LrsqlFixture : IAsyncLifetime
 
     public Uri Endpoint { get; private set; } = null!;
 
-    public XapiClient CreateClient(XapiVersion? version) => new(_http, new XapiClientOptions
+    public XapiClient CreateClient(XapiVersion? version) => CreateClient(version, _http);
+
+    public XapiClient CreateClient(XapiVersion? version, HttpClient http) => new(http, new XapiClientOptions
     {
         Endpoint = Endpoint,
         Version = version,

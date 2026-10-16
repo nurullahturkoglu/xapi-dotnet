@@ -20,6 +20,7 @@
   <ItemGroup Condition="'$(XapiPackageVersion)' != ''">
     <PackageReference Include="Xapi.Core" VersionOverride="$(XapiPackageVersion)" />
     <PackageReference Include="Xapi.Client" VersionOverride="$(XapiPackageVersion)" />
+    <PackageReference Include="Xapi.Client.Outbox" VersionOverride="$(XapiPackageVersion)" />
   </ItemGroup>
 
   <!-- The LRS packages target net10.0 only -->

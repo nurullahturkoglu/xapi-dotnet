@@ -1,4 +1,4 @@
-// Sends one statement to an LRS and reads it back.
+// Sends one statement to an LRS and reads it back, then sends one more through a file-backed outbox.
 //
 //   XAPI_ENDPOINT   the LRS endpoint, for example http://localhost:8080/xapi/
 //   XAPI_KEY        Basic auth key
@@ -7,6 +7,7 @@
 
 using Xapi;
 using Xapi.Client;
+using Xapi.Client.Outbox;
 using Xapi.Json;
 using Xapi.Validation;
 
@@ -64,4 +65,34 @@ if (stored is null || !StatementEquivalence.AreEquivalent(statement with { Id = 
 
 Console.WriteLine($"xAPI {version}: the LRS stored statement {id}.");
 Console.WriteLine(XapiJson.SerializeStatement(stored, version));
+
+var outboxDirectory = Path.Combine(Path.GetTempPath(), "xapi-dotnet-sample-outbox", Guid.NewGuid().ToString("N"));
+try
+{
+    Guid queuedId;
+    using (var store = new FileOutboxStore(outboxDirectory))
+    {
+        await using var outbox = new StatementOutbox(client, store);
+        queuedId = await outbox.EnqueueAsync(statement with { Id = null });
+        var flush = await outbox.FlushAsync();
+        if (flush.Delivered != 1)
+        {
+            Console.Error.WriteLine($"The outbox did not deliver statement {queuedId}: {flush.Status.LastError}");
+            return 1;
+        }
+    }
+
+    if (await client.GetStatementAsync(queuedId) is null)
+    {
+        Console.Error.WriteLine($"The LRS does not have statement {queuedId} that the outbox delivered.");
+        return 1;
+    }
+
+    Console.WriteLine($"The outbox delivered statement {queuedId}.");
+}
+finally
+{
+    Directory.Delete(outboxDirectory, recursive: true);
+}
+
 return 0;

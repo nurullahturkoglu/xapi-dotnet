@@ -120,6 +120,30 @@ public class StatementTests
     }
 
     [Fact]
+    public async Task Save_batch_accepts_missing_ids_of_statements_the_lrs_already_had()
+    {
+        // lrsql answers a batch it partly or fully stored before with the ids of the new Statements only
+        var (client, handler) = TestClient.Create();
+        handler.RespondJson($"[\"{Samples.Id(2)}\"]").RespondJson("[]");
+        Statement[] statements = [Samples.Statement(Samples.Id(1)), Samples.Statement(Samples.Id(2))];
+
+        Assert.Equal([Samples.Id(1), Samples.Id(2)], await client.SaveStatementsAsync(statements, cancellationToken: Ct));
+        Assert.Equal([Samples.Id(1), Samples.Id(2)], await client.SaveStatementsAsync(statements, cancellationToken: Ct));
+    }
+
+    [Fact]
+    public async Task Save_batch_rejects_an_id_that_was_not_sent()
+    {
+        var (client, handler) = TestClient.Create();
+        handler.RespondJson($"[\"{Samples.Id(3)}\"]");
+
+        var exception = await Assert.ThrowsAsync<XapiHttpException>(
+            () => client.SaveStatementsAsync([Samples.Statement(Samples.Id(1)), Samples.Statement(Samples.Id(2))], cancellationToken: Ct));
+
+        Assert.Contains("1 Statement ids for 2 Statements", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Invalid_statement_is_rejected_before_any_request()
     {
         var (client, handler) = TestClient.Create();

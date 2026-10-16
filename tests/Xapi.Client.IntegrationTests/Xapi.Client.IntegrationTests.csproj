@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Runs XapiClient against a real LRS (lrsql in Docker, through Testcontainers). The project is built with the
-    solution on every OS, but it is not a test project unless XapiIntegrationTests=true, so the solution-wide
-    `dotnet test` (also the 3-OS CI job; macOS and Windows runners cannot run Linux containers) leaves it out.
-    The client-integration job in .github/workflows/ci.yml runs it on Linux with -p:XapiIntegrationTests=true;
-    CONTRIBUTING.md has the local command.
+    Runs XapiClient and StatementOutbox against a real LRS (lrsql in Docker, through Testcontainers). The project
+    is built with the solution on every OS, but it is not a test project unless XapiIntegrationTests=true, so the
+    solution-wide `dotnet test` (also the 3-OS CI job; macOS and Windows runners cannot run Linux containers)
+    leaves it out. The client-integration job in .github/workflows/ci.yml runs it on Linux with
+    -p:XapiIntegrationTests=true; CONTRIBUTING.md has the local command.
   -->
 
   <PropertyGroup>
@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
+    <ProjectReference Include="../../src/Xapi.Client.Outbox/Xapi.Client.Outbox.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
+    <ProjectReference Include="../../src/Xapi.Client.Outbox/Xapi.Client.Outbox.csproj" />
   </ItemGroup>
 
 </Project>

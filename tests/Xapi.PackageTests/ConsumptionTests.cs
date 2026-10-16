@@ -7,6 +7,7 @@ public class ConsumptionTests
     [Theory]
     [InlineData("Xapi.Core")]
     [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Client.Outbox")]
 #if NET
     [InlineData("Xapi.Lrs")]
     [InlineData("Xapi.Lrs.Sqlite")]
