@@ -72,7 +72,7 @@ public class StatementReaderTests
         Assert.False(result.IsSuccess);
         Assert.Equal(
             ["$.foo json.property.unknown", "$.id format.uuid", "$.timestamp format.timestamp", "$.verb.id format.iri"],
-            result.Errors.Select(e => $"{e.Path} {e.Code}").Order(StringComparer.Ordinal));
+            result.Errors.Select(e => $"{e.Path} {e.Code}").OrderBy(e => e, StringComparer.Ordinal));
     }
 
     [Fact]

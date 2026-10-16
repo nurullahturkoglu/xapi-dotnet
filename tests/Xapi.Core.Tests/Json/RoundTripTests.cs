@@ -232,6 +232,6 @@ public class RoundTripTests
         var json = "[" + Compact(MinimalStatement) + "," + Compact(MinimalStatement) + "]";
         var statements = XapiJson.ParseStatements(json, XapiVersion.V2_0_0).GetValueOrThrow();
         var written = XapiJson.SerializeStatements(statements, XapiVersion.V2_0_0);
-        Assert.Equal(json.Replace("{\"mbox\"", "{\"objectType\":\"Agent\",\"mbox\"", StringComparison.Ordinal).Replace("\"object\":{\"id\"", "\"object\":{\"objectType\":\"Activity\",\"id\"", StringComparison.Ordinal), written);
+        Assert.Equal(json.Replace("{\"mbox\"", "{\"objectType\":\"Agent\",\"mbox\"").Replace("\"object\":{\"id\"", "\"object\":{\"objectType\":\"Activity\",\"id\""), written);
     }
 }

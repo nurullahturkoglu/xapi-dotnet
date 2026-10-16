@@ -93,6 +93,5 @@ public class SpecExampleTests
 
     private static string InObject(string json) => MinimalStatement.TrimEnd().TrimEnd('}').Replace(
         "\"object\": { \"id\": \"http://example.com/activities/1\" }",
-        "\"object\": " + json,
-        StringComparison.Ordinal) + "}";
+        "\"object\": " + json) + "}";
 }
