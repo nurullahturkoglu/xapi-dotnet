@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xapi.Lrs;
 using Xapi.Lrs.Hosting;

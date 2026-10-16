@@ -33,7 +33,7 @@ internal sealed partial class EfStatementStore(
             }
             catch (Exception exception) when (attempt < MaxAttempts && provider.IsTransientWriteFailure(exception))
             {
-                LogRetry(logger, attempt, exception.GetType().Name);
+                LogRetry(logger, attempt, exception);
                 var delay = TimeSpan.FromMilliseconds((5 << attempt) + Random.Shared.Next(0, 10 << attempt));
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
@@ -330,6 +330,6 @@ internal sealed partial class EfStatementStore(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Statement write attempt {Attempt} hit a concurrent write ({Exception}); retrying")]
-    private static partial void LogRetry(ILogger logger, int attempt, string exception);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Statement write attempt {Attempt} hit a concurrent write; retrying")]
+    private static partial void LogRetry(ILogger logger, int attempt, Exception exception);
 }
