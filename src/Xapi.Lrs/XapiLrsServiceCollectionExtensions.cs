@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xapi.Lrs;
 using Xapi.Lrs.Hosting;
+using Xapi.Lrs.Http;
 using Xapi.Lrs.Security;
 using Xapi.Lrs.Statements;
 using Xapi.Lrs.Storage;
@@ -49,6 +51,8 @@ public static class XapiLrsServiceCollectionExtensions
         services.AddSingleton<StatementWriteTracker>();
         services.AddSingleton<StatementWriter>();
         services.AddHostedService<XapiLrsStartup>();
+        services.AddSingleton<XapiLrsPaths>();
+        services.AddTransient<IStartupFilter, AlternateRequestSyntaxStartupFilter>();
         services.AddAuthentication()
             .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>(XapiLrsAuthenticationDefaults.AuthenticationScheme, displayName: null, configureOptions: null);
 

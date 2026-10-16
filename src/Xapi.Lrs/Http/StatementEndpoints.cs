@@ -74,8 +74,11 @@ internal static class StatementEndpoints
         var request = XapiRequestFeature.Get(http);
         if (http.Request.Query.Count > 0)
         {
-            // xAPI 1.0.3 Alternate Request Syntax (?method=...) is not implemented, so every parameter is unknown
-            return BadRequest(RequestReading.CheckParameters(http.Request.Query, []) ?? "No parameters are allowed.");
+            // A well-formed xAPI 1.0.x Alternate Request Syntax request was already rewritten by
+            // AlternateRequestSyntaxMiddleware; anything else with a method parameter is rejected here.
+            return BadRequest(http.Request.Query.ContainsKey(AlternateRequestSyntax.MethodParameter)
+                ? AlternateRequestSyntax.RejectionMessage(request.Version)
+                : RequestReading.CheckParameters(http.Request.Query, []) ?? "No parameters are allowed.");
         }
 
         if (CheckContentType(http.Request) is { } contentError)
