@@ -64,8 +64,16 @@ public sealed partial class XapiClient
         using var response = await SendAsync(HttpMethod.Post, StatementsResource, null, content, null, version, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
         var ids = await ReadIdsAsync(response, cancellationToken).ConfigureAwait(false);
-        return ids.Count == statements.Count
-            ? ids
+        if (ids.Count == statements.Count)
+        {
+            return ids;
+        }
+
+        // Some LRSs (lrsql among them) leave out the ids of Statements they already had, for example when a batch
+        // is sent again after a lost response. When every Statement carries its id, those ids are the answer.
+        var sent = statements.Select(s => s.Id).ToList();
+        return sent.TrueForAll(id => id is not null) && ids.All(id => sent.Contains(id))
+            ? sent.ConvertAll(id => id!.Value)
             : throw Unusable(response, null, $"returned {ids.Count} Statement ids for {statements.Count} Statements");
     }
 
