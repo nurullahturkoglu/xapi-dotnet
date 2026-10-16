@@ -57,4 +57,41 @@ public class ClientInteropTests(LrsHosts hosts)
         Assert.Null(await client.GetStatementAsync(voided, cancellationToken: ct));
         Assert.Equal(voided, (await client.GetVoidedStatementAsync(voided, cancellationToken: ct))!.Id);
     }
+
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public async Task The_client_reads_Persons_and_Activities(TestDatabase database, string version)
+    {
+        var app = await hosts.SharedAsync(database);
+        using var http = app.Anonymous(version: null);
+        var client = new XapiClient(http, new XapiClientOptions
+        {
+            Endpoint = new Uri(http.BaseAddress!, "xapi/"),
+            Credentials = XapiCredentials.Basic(Credentials.All, Credentials.SecretOf(Credentials.All)),
+            Version = version == "2.0.0" ? XapiVersion.V2_0_0 : XapiVersion.V1_0_3,
+        });
+        var ct = TestContext.Current.CancellationToken;
+        var account = new Account(new Iri("http://accounts.example.com/"), Guid.NewGuid().ToString("N"));
+        var activityId = new Iri(StatementApi.NewIri());
+        var verb = new Verb(new Iri(StatementApi.NewIri("verbs")));
+        LanguageMap Name(string language, string text) => LanguageMap.Empty.With(language, text);
+
+        await client.SaveStatementAsync(
+            new Statement(new Agent(account) { Name = "Learner" }, verb, new Activity(activityId) { Definition = new ActivityDefinition { Name = Name("en-US", "Quiz") } }),
+            cancellationToken: ct);
+        await client.SaveStatementAsync(
+            new Statement(new Agent(account), verb, new Activity(activityId) { Definition = new ActivityDefinition { Name = Name("fr-FR", "Examen") } }),
+            cancellationToken: ct);
+
+        var person = await client.GetPersonAsync(new Agent(account), ct);
+        Assert.Equal(new Person { Names = ["Learner"], Accounts = [account] }, person);
+
+        var activity = await client.GetActivityAsync(activityId, ct);
+        Assert.Equal(new Activity(activityId) { Definition = new ActivityDefinition { Name = Name("en-US", "Quiz").With("fr-FR", "Examen") } }, activity);
+
+        var unknown = new Iri(StatementApi.NewIri());
+        Assert.Equal(new Activity(unknown), await client.GetActivityAsync(unknown, ct));
+        var stranger = new Agent(new Mbox(StatementApi.NewMbox()));
+        Assert.Equal(new Person { Mboxes = [(Mbox)stranger.Ifi] }, await client.GetPersonAsync(stranger, ct));
+    }
 }

@@ -22,11 +22,13 @@ internal static class AboutEndpoint
 
 internal static class FallbackEndpoint
 {
-    // Resources defined by the standard that this version does not serve yet answer 404 like unknown paths.
+    // The methods of each resource, for the Allow header of a 405 (IEEE 9274.1.1, 4.1, resource table)
     private static readonly Dictionary<string, string> Allowed = new(StringComparer.Ordinal)
     {
         ["statements"] = "GET, HEAD, PUT, POST",
         ["about"] = "GET, HEAD",
+        ["agents"] = "GET, HEAD",
+        ["activities"] = "GET, HEAD",
         ["activities/state"] = "GET, HEAD, PUT, POST, DELETE",
         ["activities/profile"] = "GET, HEAD, PUT, POST, DELETE",
         ["agents/profile"] = "GET, HEAD, PUT, POST, DELETE",

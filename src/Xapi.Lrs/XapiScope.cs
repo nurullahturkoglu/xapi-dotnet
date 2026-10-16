@@ -21,7 +21,7 @@ public enum XapiScope
     /// <summary><c>define</c>: update the canonical definitions of Activities and Agents from stored statements.</summary>
     Define = 5,
 
-    /// <summary><c>profile</c>: read and write Activity and Agent Profile documents.</summary>
+    /// <summary><c>profile</c>: read and write Activity and Agent Profile documents, and read the Agents and Activities Resources.</summary>
     Profile = 6,
 
     /// <summary><c>all/read</c>: read everything.</summary>

@@ -143,6 +143,40 @@ internal sealed partial class EfStatementStore(
         }
     }
 
+    public async Task<Person> GetPersonAsync(Agent agent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(agent);
+
+        // An Agent has exactly one identifier and nothing in a statement links two identifiers to one person, so
+        // the Person is built from the single actor row of that identifier. A Group row with the same identifier
+        // describes the Group, not a person, and is left out.
+        var ifi = IfiKeys.For(agent.Ifi);
+        var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (context.ConfigureAwait(false))
+        {
+            var payload = await context.Actors.AsNoTracking()
+                .Where(a => a.Ifi == ifi && a.Type == ActorType.Agent)
+                .Select(a => a.Payload)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var name = payload is null ? null : ReadActor(payload).Name;
+            return PersonOf(agent.Ifi, name);
+        }
+    }
+
+    private static Person PersonOf(InverseFunctionalIdentifier ifi, string? name)
+    {
+        var person = ifi switch
+        {
+            Mbox mbox => new Person { Mboxes = [mbox] },
+            MboxSha1Sum sha1 => new Person { MboxSha1Sums = [sha1] },
+            OpenId openId => new Person { OpenIds = [openId] },
+            Account account => new Person { Accounts = [account] },
+            _ => throw new ArgumentOutOfRangeException(nameof(ifi), ifi.GetType().Name, "Unknown identifier type."),
+        };
+        return name is null ? person : person with { Names = [name] };
+    }
+
     // The content filters, as a condition on one statement row, or null when the query has none
     private static Expression<Func<StatementEntity, bool>>? Matches(XapiLrsDbContext context, StatementFilter filter)
     {
@@ -434,6 +468,14 @@ internal sealed partial class EfStatementStore(
         return result.IsSuccess
             ? result.Value
             : throw new InvalidOperationException("A stored activity could not be read: " + string.Join("; ", result.Errors));
+    }
+
+    private static Actor ReadActor(string payload)
+    {
+        var result = XapiJson.ParseActor(payload, XapiVersion.V2_0_0, XapiReadMode.Lenient);
+        return result.IsSuccess
+            ? result.Value
+            : throw new InvalidOperationException("A stored actor could not be read: " + string.Join("; ", result.Errors));
     }
 
     // One row per identified Agent or Group, holding the latest form seen (name included) for the Agents
