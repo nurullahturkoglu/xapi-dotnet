@@ -29,13 +29,11 @@ jobs:
       fail-fast: false
       matrix:
         xapi: ['1.0.3', '2.0.0']
-        # Until our LRS exists (M4) the job tests the pipeline itself against lrsql.
-        # M4: target: [lrsql, xapi-dotnet] and db: [sqlite, postgres], then add
-        #   exclude:
-        #     - { target: lrsql, db: postgres }
-        # and fill in the "Start xapi-dotnet" step below.
-        target: [lrsql]
-        db: [sqlite]
+        # lrsql is the reference run that tests the pipeline itself; one database is enough for it.
+        target: [lrsql, xapi-dotnet]
+        db: [sqlite, postgres]
+        exclude:
+          - { target: lrsql, db: postgres }
     env:
       XAPI: ${{ matrix.xapi }}
       TARGET: ${{ matrix.target }}
@@ -121,8 +119,17 @@ jobs:
       - name: Start xapi-dotnet
         if: matrix.target == 'xapi-dotnet'
         run: |
-          echo "::error::samples/LrsHost is not written yet (M4); start it here on $LRS_URL with $LRS_KEY/$LRS_SECRET and DB=$DB"
-          exit 1
+          # MinVer needs the full history, which this shallow checkout lacks; the sample is not versioned.
+          dotnet build samples/LrsHost -c Release -p:MinVerSkip=true
+          export ASPNETCORE_URLS=http://127.0.0.1:8080 Lrs__Database="$DB" Lrs__Key="$LRS_KEY" Lrs__Secret="$LRS_SECRET"
+          if [[ $DB == postgres ]]; then
+            export Lrs__ConnectionString='Host=127.0.0.1;Port=5432;Username=lrsql;Password=lrsql;Database=lrsql'
+          else
+            export Lrs__ConnectionString="Data Source=$RUNNER_TEMP/lrs.db"
+          fi
+          # From the output folder, so appsettings.json (log levels) is found in the content root
+          cd samples/LrsHost/bin/Release/net10.0
+          nohup dotnet LrsHost.dll > "$GITHUB_WORKSPACE/$OUT/lrs.log" 2>&1 &
 
       - name: Wait for the LRS
         run: |

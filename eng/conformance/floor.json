@@ -1,5 +1,5 @@
 {
-  "$comment": "target > db > xAPI battery. total: expected test count at the pinned CTS sha. minPassed: ratchet, only ever raised. strict: fail on any failure outside the allowlist. See README.md.",
+  "$comment": "target > db > xAPI battery. total: expected test count at the pinned CTS sha. minPassed: ratchet, only ever raised. maxNeverRan (default 0): tests a failing suite hook may skip, only ever lowered. strict: fail on any failure outside the allowlist. See README.md.",
   "lrsql": {
     "sqlite": {
       "1.0.3": { "total": 1365, "minPassed": 1365, "strict": true },
@@ -12,12 +12,12 @@
   },
   "xapi-dotnet": {
     "sqlite": {
-      "1.0.3": { "total": 1365, "minPassed": 0, "strict": false },
-      "2.0.0": { "total": 1435, "minPassed": 0, "strict": false }
+      "1.0.3": { "total": 1365, "minPassed": 1129, "maxNeverRan": 8, "strict": false },
+      "2.0.0": { "total": 1435, "minPassed": 1160, "maxNeverRan": 13, "strict": false }
     },
     "postgres": {
-      "1.0.3": { "total": 1365, "minPassed": 0, "strict": false },
-      "2.0.0": { "total": 1435, "minPassed": 0, "strict": false }
+      "1.0.3": { "total": 1365, "minPassed": 1129, "maxNeverRan": 8, "strict": false },
+      "2.0.0": { "total": 1435, "minPassed": 1160, "maxNeverRan": 13, "strict": false }
     }
   }
 }

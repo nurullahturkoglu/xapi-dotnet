@@ -44,7 +44,7 @@ It fails (exit code 1) when any of these holds:
 
 - the log reports a battery other than `--xapi`, or a `state` other than `finished`;
 - the total test count is below `total` from `floor.json` (or `--floor`);
-- any test never ran (`total - passed - failed > 0`), which is what a failing root hook such as a wrong password or a rejected version header looks like: 1 failure and 1434 tests that never ran;
+- more tests never ran (`total - passed - failed`) than `maxNeverRan` from `floor.json` (default 0). A failing root hook such as a wrong password or a rejected version header looks like 1 failure and 1434 tests that never ran. A failing `before` hook inside one suite skips only that suite's tests, which is expected while the resource it needs is not implemented yet;
 - fewer than `minPassed` tests passed (or `--min-passed`);
 - in strict mode, any failed test whose title path is not in the allowlist.
 
@@ -66,7 +66,7 @@ Remove an entry in the same pull request that makes the test pass. lrsql passes 
 
 `floor.json` is keyed by target, database and battery. `total` is the number of tests at the pinned suite commit and changes only when the commit changes. `minPassed` is a ratchet: it is only ever raised, and CI fails when the passed count drops below it.
 
-The `xapi-dotnet` rows start at `minPassed: 0` with `strict: false`, so failures are reported but only a drop below `minPassed`, a short run or tests that never ran fail the job. When a pull request makes more tests pass, set `minPassed` to the new passed count in the same pull request; the gate prints a note when it can be raised. Once a battery passes completely, set `minPassed` to `total` and `strict` to `true`.
+The `xapi-dotnet` rows have `strict: false`, so failures are reported but only a drop below `minPassed`, a short run or more than `maxNeverRan` tests that never ran fail the job. `maxNeverRan` is a ratchet in the other direction: it is only ever lowered, and the gate prints a note when it can be. It is 0 for every row once the LRS implements all resources. When a pull request makes more tests pass, set `minPassed` to the new passed count in the same pull request; the gate prints a note when it can be raised. Once a battery passes completely, set `minPassed` to `total` and `strict` to `true`.
 
 ## Updating the pinned suite commit
 

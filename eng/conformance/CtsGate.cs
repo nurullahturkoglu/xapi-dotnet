@@ -14,7 +14,8 @@ const string Usage = """
 
       --floor N           minimum total test count
       --min-passed N      minimum passed count (ratchet)
-      --floor-file F      read total, minPassed and strict from F[target][db][xapi]
+      --max-never-ran N   tests allowed to never run because a hook of an unimplemented feature failed (default 0)
+      --floor-file F      read total, minPassed, maxNeverRan and strict from F[target][db][xapi]
       --target T          floor file key (lrsql, xapi-dotnet)
       --db D              floor file key (sqlite, postgres)
       --xapi V            expected battery version; the log must report the same
@@ -23,7 +24,7 @@ const string Usage = """
       --junit F           write JUnit XML (allowlisted failures become <skipped>)
       --summary F         append a Markdown summary (e.g. $GITHUB_STEP_SUMMARY)
 
-    --floor and --min-passed override the floor file.
+    --floor, --min-passed and --max-never-ran override the floor file.
     Exit codes: 0 gate passed, 1 gate failed, 2 bad arguments or unreadable input.
     """;
 
@@ -79,9 +80,11 @@ if (run.Total < limits.Floor)
 {
     problems.Add($"total {run.Total} is below the floor {limits.Floor}");
 }
-if (neverRan > 0)
+if (neverRan > limits.MaxNeverRan)
 {
-    problems.Add($"{neverRan} tests never ran (root hook failure, bail or crash)");
+    problems.Add(limits.MaxNeverRan == 0
+        ? $"{neverRan} tests never ran (root hook failure, bail or crash)"
+        : $"{neverRan} tests never ran, more than maxNeverRan {limits.MaxNeverRan} (hook failure, bail or crash)");
 }
 if (run.Passed < limits.MinPassed)
 {
@@ -98,6 +101,10 @@ if (limits.Ratchet && run.Passed > limits.MinPassed)
 {
     notes.Add($"passed {run.Passed} is above minPassed {limits.MinPassed}; raise it in floor.json");
 }
+if (neverRan < limits.MaxNeverRan)
+{
+    notes.Add($"only {neverRan} tests never ran, below maxNeverRan {limits.MaxNeverRan}; lower it in floor.json");
+}
 if (!limits.Strict && unexpected.Count > 0)
 {
     notes.Add($"{unexpected.Count} failures outside the allowlist (not fatal: strict mode is off)");
@@ -107,7 +114,7 @@ var ok = problems.Count == 0;
 var inGitHub = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
 
 Console.WriteLine(Invariant($"xAPI {run.Version}: state={run.State} total={run.Total} passed={run.Passed} failed={run.Failed} never-ran={neverRan} allowlisted-failures={allowedCount} duration={run.DurationMs}ms"));
-Console.WriteLine(Invariant($"limits: floor={limits.Floor} minPassed={limits.MinPassed} strict={limits.Strict}"));
+Console.WriteLine(Invariant($"limits: floor={limits.Floor} minPassed={limits.MinPassed} maxNeverRan={limits.MaxNeverRan} strict={limits.Strict}"));
 foreach (var leaf in unexpected)
 {
     Console.WriteLine($"FAIL {leaf.DisplayPath}");
@@ -288,11 +295,11 @@ internal sealed record RunLog(string State, string Version, int Total, int Passe
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
 }
 
-internal sealed record Limits(int Floor, int MinPassed, bool Strict, bool Ratchet)
+internal sealed record Limits(int Floor, int MinPassed, int MaxNeverRan, bool Strict, bool Ratchet)
 {
     public static Limits Resolve(Options opt, string xapi)
     {
-        int? floor = null, minPassed = null;
+        int? floor = null, minPassed = null, maxNeverRan = null;
         bool? strict = null;
         if (opt.FloorFile is not null)
         {
@@ -304,24 +311,26 @@ internal sealed record Limits(int Floor, int MinPassed, bool Strict, bool Ratche
                 ?? throw new KeyNotFoundException($"{opt.FloorFile} has no entry {opt.Target}.{opt.Db}.{xapi}");
             floor = entry["total"]?.GetValue<int>();
             minPassed = entry["minPassed"]?.GetValue<int>();
+            maxNeverRan = entry["maxNeverRan"]?.GetValue<int>();
             strict = entry["strict"]?.GetValue<bool>();
         }
         return new Limits(
             opt.Floor ?? floor ?? throw new FormatException("no floor: pass --floor or --floor-file"),
             opt.MinPassed ?? minPassed ?? 0,
+            opt.MaxNeverRan ?? maxNeverRan ?? 0,
             !opt.NoStrict && (strict ?? true),
             (opt.MinPassed ?? minPassed) is not null);
     }
 }
 
 internal sealed record Options(
-    string LogPath, int? Floor, int? MinPassed, string? FloorFile, string? Target, string? Db, string? Xapi,
+    string LogPath, int? Floor, int? MinPassed, int? MaxNeverRan, string? FloorFile, string? Target, string? Db, string? Xapi,
     bool NoStrict, string? AllowlistPath, string? JUnitPath, string? SummaryPath)
 {
     public static Options Parse(string[] args)
     {
         string? log = null, floorFile = null, target = null, db = null, xapi = null, allowlist = null, junit = null, summary = null;
-        int? floor = null, minPassed = null;
+        int? floor = null, minPassed = null, maxNeverRan = null;
         var noStrict = false;
         for (var i = 0; i < args.Length; i++)
         {
@@ -332,6 +341,7 @@ internal sealed record Options(
             {
                 case "--floor": floor = Count(); break;
                 case "--min-passed": minPassed = Count(); break;
+                case "--max-never-ran": maxNeverRan = Count(); break;
                 case "--floor-file": floorFile = Value(); break;
                 case "--target": target = Value(); break;
                 case "--db": db = Value(); break;
@@ -349,6 +359,6 @@ internal sealed record Options(
                     break;
             }
         }
-        return new Options(log ?? throw new FormatException("missing log path"), floor, minPassed, floorFile, target, db, xapi, noStrict, allowlist, junit, summary);
+        return new Options(log ?? throw new FormatException("missing log path"), floor, minPassed, maxNeverRan, floorFile, target, db, xapi, noStrict, allowlist, junit, summary);
     }
 }
