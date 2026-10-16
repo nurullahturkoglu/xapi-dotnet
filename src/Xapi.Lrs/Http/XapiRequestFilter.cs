@@ -115,6 +115,10 @@ internal sealed partial class XapiRequestFilter(
     {
         XapiAccess.StatementsWrite => Scopes.CanWriteStatements(scopes),
         XapiAccess.StatementsRead => Scopes.CanReadStatements(scopes),
+        XapiAccess.StateRead => Scopes.CanUseState(scopes, write: false),
+        XapiAccess.StateWrite => Scopes.CanUseState(scopes, write: true),
+        XapiAccess.ProfileRead => Scopes.CanUseProfiles(scopes, write: false),
+        XapiAccess.ProfileWrite => Scopes.CanUseProfiles(scopes, write: true),
         _ => true,
     };
 

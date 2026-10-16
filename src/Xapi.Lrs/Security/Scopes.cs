@@ -63,4 +63,10 @@ internal static class Scopes
     public static bool CanReadStatements(ScopeSet set) => CanReadAllStatements(set) || (set & ScopeSet.StatementsReadMine) != 0;
 
     public static bool CanDefine(ScopeSet set) => (set & (ScopeSet.All | ScopeSet.Define)) != 0;
+
+    // state and profile grant reading and writing their documents; all/read grants reading (1.0.3
+    // Communication 4.0, OAuth scopes)
+    public static bool CanUseState(ScopeSet set, bool write) => (set & (ScopeSet.All | ScopeSet.State | (write ? ScopeSet.None : ScopeSet.AllRead))) != 0;
+
+    public static bool CanUseProfiles(ScopeSet set, bool write) => (set & (ScopeSet.All | ScopeSet.Profile | (write ? ScopeSet.None : ScopeSet.AllRead))) != 0;
 }

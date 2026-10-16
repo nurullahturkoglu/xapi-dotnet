@@ -33,4 +33,17 @@ public static class XapiLrsBuilderStorageExtensions
         builder.Services.AddSingleton<IStatementStore, TStore>();
         return builder;
     }
+
+    /// <summary>Replaces the document store, for example with a decorator or a different database.</summary>
+    /// <typeparam name="TStore">The store type, resolved as a singleton.</typeparam>
+    /// <param name="builder">The builder returned by <c>AddXapiLrs</c>.</param>
+    /// <returns>The builder.</returns>
+    public static IXapiLrsBuilder UseDocumentStore<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TStore>(this IXapiLrsBuilder builder)
+        where TStore : class, IDocumentStore
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.RemoveAll<IDocumentStore>();
+        builder.Services.AddSingleton<IDocumentStore, TStore>();
+        return builder;
+    }
 }
