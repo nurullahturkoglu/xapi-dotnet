@@ -43,4 +43,17 @@ public interface IStatementStore
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The known Activities by id; unknown ids are left out.</returns>
     Task<IReadOnlyDictionary<Iri, Activity>> GetActivitiesAsync(IReadOnlyCollection<Iri> activityIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads what the store knows about the person behind an Agent, for the Agents Resource. The default
+    /// implementation knows one persona per identifier: the Person holds the Agent's identifier and the latest
+    /// name seen with it in a statement stored with the <c>define</c> scope.
+    /// </summary>
+    /// <param name="agent">The Agent. Only its identifier is used for the lookup.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>
+    /// The Person. For an Agent the store has never seen, a Person with only the Agent's identifier
+    /// (IEEE 9274.1.1, 4.1.6.3).
+    /// </returns>
+    Task<Person> GetPersonAsync(Agent agent, CancellationToken cancellationToken = default);
 }

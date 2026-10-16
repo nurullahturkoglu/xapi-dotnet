@@ -1,5 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
+using Xapi.Json;
 
 namespace Xapi.Lrs.Http;
 
@@ -27,6 +29,35 @@ internal static class RequestReading
         }
 
         return null;
+    }
+
+    // The agent parameter is an Agent, not a Group (1.0.3 Communication 2.4 and 2.6, note; IEEE 9274.1.1 tables
+    // 4.1.6.2, 4.1.6.3 and 4.1.6.5). A Group's identifier can be sent inside an Agent object instead.
+    public static bool TryReadAgent(IQueryCollection query, XapiVersion version, [NotNullWhen(true)] out Agent? agent, out IResult error)
+    {
+        agent = null;
+        error = default!;
+        if (!query.TryGetValue("agent", out var value))
+        {
+            error = XapiResults.Problem(StatusCodes.Status400BadRequest, "The agent parameter is required.");
+            return false;
+        }
+
+        var parsed = XapiJson.ParseActor(value.ToString(), version);
+        if (!parsed.IsSuccess)
+        {
+            error = XapiResults.Problem(StatusCodes.Status400BadRequest, "The agent parameter is not a valid Agent.", parsed.Errors);
+            return false;
+        }
+
+        if (parsed.Value is not Agent found)
+        {
+            error = XapiResults.Problem(StatusCodes.Status400BadRequest, "The agent parameter must be an Agent, not a Group. Send the Group's identifier in an Agent object.");
+            return false;
+        }
+
+        agent = found;
+        return true;
     }
 
     // UUIDs must be in the standard string form (4.2.7)

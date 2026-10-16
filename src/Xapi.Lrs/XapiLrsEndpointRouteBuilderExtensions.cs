@@ -43,6 +43,13 @@ public static class XapiLrsEndpointRouteBuilderExtensions
         group.MapMethods("/statements", read, StatementEndpoints.GetAsync)
             .WithMetadata(new XapiEndpointMetadata(XapiAccess.StatementsRead, VersionHeaderRequired: true, IsStatementResource: true));
 
+        // The scope list (xAPI 1.0.3 Communication 4.2) names no scope for these two; they describe the Agents and
+        // Activities that profile documents are about, so they are read like profiles (profile, all/read, all).
+        group.MapMethods("/agents", read, AgentsEndpoint.GetAsync)
+            .WithMetadata(new XapiEndpointMetadata(XapiAccess.ProfileRead, VersionHeaderRequired: true, IsStatementResource: false));
+        group.MapMethods("/activities", read, ActivitiesEndpoint.GetAsync)
+            .WithMetadata(new XapiEndpointMetadata(XapiAccess.ProfileRead, VersionHeaderRequired: true, IsStatementResource: false));
+
         MapDocuments(group, "/activities/state", DocumentResource.State, XapiAccess.StateRead, XapiAccess.StateWrite);
         MapDocuments(group, "/activities/profile", DocumentResource.ActivityProfile, XapiAccess.ProfileRead, XapiAccess.ProfileWrite);
         MapDocuments(group, "/agents/profile", DocumentResource.AgentProfile, XapiAccess.ProfileRead, XapiAccess.ProfileWrite);

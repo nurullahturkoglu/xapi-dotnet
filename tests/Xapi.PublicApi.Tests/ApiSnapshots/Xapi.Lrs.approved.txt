@@ -73,6 +73,7 @@ namespace Xapi.Lrs.Storage
     {
         System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<Xapi.Iri, Xapi.Activity>> GetActivitiesAsync(System.Collections.Generic.IReadOnlyCollection<Xapi.Iri> activityIds, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredStatement?> GetAsync(System.Guid statementId, System.Threading.CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<Xapi.Person> GetPersonAsync(Xapi.Agent agent, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StatementPage> QueryAsync(Xapi.Lrs.Storage.StatementFilter filter, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StatementStoreResult> StoreAsync(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StatementRecord> statements, bool updateDefinitions, System.Threading.CancellationToken cancellationToken = default);
     }
