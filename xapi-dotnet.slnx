@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/ConsoleClient/ConsoleClient.csproj" />
+    <Project Path="samples/EmbedInAspNetCore/EmbedInAspNetCore.csproj" />
+    <Project Path="samples/FakeLrsInTests/FakeLrsInTests.csproj" />
     <Project Path="samples/LrsHost/LrsHost.csproj" />
   </Folder>
   <Folder Name="/src/">
@@ -16,6 +18,7 @@
     <Project Path="tests/Xapi.Client.Outbox.Tests/Xapi.Client.Outbox.Tests.csproj" />
     <Project Path="tests/Xapi.Client.Tests/Xapi.Client.Tests.csproj" />
     <Project Path="tests/Xapi.Core.Tests/Xapi.Core.Tests.csproj" />
+    <Project Path="tests/Xapi.Documentation.Tests/Xapi.Documentation.Tests.csproj" />
     <Project Path="tests/Xapi.Lrs.Tests/Xapi.Lrs.Tests.csproj" />
     <Project Path="tests/Xapi.PublicApi.Tests/Xapi.PublicApi.Tests.csproj" />
   </Folder>
