@@ -15,24 +15,13 @@ Each section links to the guide that covers its topic in full.
 `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` target netstandard2.0 (.NET Framework 4.6.2 and later) and
 net10.0. The LRS packages target net10.0.
 
-The packages are not on NuGet yet. Until the first preview is published, build them from source and use the
-output folder as a package source:
+The packages are previews, so add them with `--prerelease`:
 
 ```bash
-git clone https://github.com/nurullahturkoglu/xapi-dotnet.git
-cd xapi-dotnet
-dotnet pack xapi-dotnet.slnx -c Release -o artifacts/packages
-```
-
-Then, in your project:
-
-```bash
-dotnet nuget add source /path/to/xapi-dotnet/artifacts/packages --name xapi-dotnet-local
 dotnet add package Xapi.Client --prerelease
 ```
 
-Package versions come from git tags, and the repository has none yet, so the packages are versioned
-`0.0.0-preview.0.N`. Once a preview is on NuGet, `dotnet add package Xapi.Client --prerelease` is enough.
+For Unity, see [unity.md](unity.md).
 
 ## Send a statement
 
