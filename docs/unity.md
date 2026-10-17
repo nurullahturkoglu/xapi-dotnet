@@ -14,12 +14,14 @@ a `FileOutboxStore` while the LRS cannot be reached, then deliver them after the
 | --- | --- | --- |
 | Editor (play mode), macOS | Mono | Passed |
 | macOS player, Apple silicon | IL2CPP, Managed Stripping Level High | Passed |
-| Linux player (CI) | IL2CPP | Runs in CI when the Unity license secrets are set |
+| Editor (play mode), Linux (CI) | Mono | Passed |
+| Linux player, x86-64 (CI) | IL2CPP | Passed |
 | WebGL | IL2CPP | Not tested yet |
 | Android, iOS | IL2CPP | Not tested yet |
 
 Tested with Unity 6.3 LTS (6000.3.26f1), API Compatibility Level .NET Standard 2.1 (the default),
-NuGetForUnity 4.5.0 and the packages at 0.1.0-preview.1 from nuget.org.
+NuGetForUnity 4.5.0 and the packages at 0.1.0-preview.1 from nuget.org. CI runs the Linux rows on every change to
+the three packages, with packages packed from the commit.
 
 The packages do not use reflection, so they need no `link.xml`: the player tests pass with the highest stripping
 level.
