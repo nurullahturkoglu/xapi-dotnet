@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Xapi.Lrs.Security;
 using Xapi.Lrs.Tests.Infrastructure;
 using static Xapi.Lrs.Tests.Infrastructure.LrsApp;
 using static Xapi.Lrs.Tests.Infrastructure.StatementApi;
@@ -137,6 +139,38 @@ public class AuthenticationTests(LrsHosts hosts)
         Assert.Equal(
             """{"objectType":"Agent","account":{"homePage":"https://lrs.example.com/","name":"alice"}}""",
             stored["authority"]!.ToJsonString());
+    }
+
+    [Fact]
+    public async Task An_unknown_key_takes_as_long_to_reject_as_a_wrong_secret()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var app = await hosts.SharedAsync(TestDatabase.Sqlite);
+        var store = app.Services.GetRequiredService<CredentialStore>();
+        Assert.Null(await store.ValidateAsync("nobody", "secret", ct));
+        Assert.Null(await store.ValidateAsync(Credentials.All, "wrong", ct));
+
+        // The fastest of a few runs: PBKDF2 sets the floor, scheduling noise only adds to it. Without the check
+        // against a placeholder hash, an unknown key is rejected after the database lookup alone, well over ten
+        // times faster.
+        var unknown = await FastestAsync(() => store.ValidateAsync("nobody", "secret", ct));
+        var wrong = await FastestAsync(() => store.ValidateAsync(Credentials.All, "wrong", ct));
+
+        Assert.True(unknown >= wrong / 2, $"Unknown key: {unknown.TotalMilliseconds} ms, wrong secret: {wrong.TotalMilliseconds} ms.");
+    }
+
+    private static async Task<TimeSpan> FastestAsync(Func<Task> action)
+    {
+        var fastest = TimeSpan.MaxValue;
+        for (var i = 0; i < 5; i++)
+        {
+            var started = Stopwatch.GetTimestamp();
+            await action();
+            var elapsed = Stopwatch.GetElapsedTime(started);
+            fastest = elapsed < fastest ? elapsed : fastest;
+        }
+
+        return fastest;
     }
 
     private static HttpClient HeaderClient(LrsApp app, string user, string scopes)

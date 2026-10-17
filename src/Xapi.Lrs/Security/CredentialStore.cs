@@ -15,6 +15,10 @@ internal sealed class CredentialStore(IDbContextFactory<XapiLrsDbContext> contex
 {
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(1);
 
+    // Checked against when the key is unknown, so that an unknown key costs the same PBKDF2 work as a wrong
+    // secret and response times do not tell which keys exist
+    private static readonly Lazy<string> UnknownKeyHash = new(() => SecretHasher.Hash(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))));
+
     private readonly ConcurrentDictionary<string, CacheEntry> _verified = new(StringComparer.Ordinal);
 
     public async Task<ValidatedCredential?> ValidateAsync(string key, string secret, CancellationToken cancellationToken)
@@ -35,7 +39,13 @@ internal sealed class CredentialStore(IDbContextFactory<XapiLrsDbContext> contex
                 .ConfigureAwait(false);
         }
 
-        if (row is null || !SecretHasher.Verify(secret, row.SecretHash))
+        if (row is null)
+        {
+            _ = SecretHasher.Verify(secret, UnknownKeyHash.Value);
+            return null;
+        }
+
+        if (!SecretHasher.Verify(secret, row.SecretHash))
         {
             return null;
         }
