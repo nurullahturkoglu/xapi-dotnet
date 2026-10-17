@@ -242,9 +242,8 @@ internal static class StatementEndpoints
             return XapiResults.Json(json, lastModified);
         }
 
-        var data = await store.GetAttachmentsAsync([.. statements.Select(s => s.Id)], cancellationToken).ConfigureAwait(false);
-        var (contentType, body) = MultipartResponse.Write(json, data);
-        return XapiResults.Body(contentType, body, lastModified);
+        var data = await store.GetAttachmentSummariesAsync([.. statements.Select(s => s.Id)], cancellationToken).ConfigureAwait(false);
+        return new MultipartResponse(json, data, store, lastModified);
     }
 
     private static string WriteStatementResult(List<string> statements, string more)

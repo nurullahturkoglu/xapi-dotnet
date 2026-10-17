@@ -1,7 +1,11 @@
+using System.Collections.Concurrent;
+using System.Data.Common;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Xapi.Lrs.Tests.Infrastructure;
 using static Xapi.Lrs.Tests.Infrastructure.MultipartApi;
@@ -11,7 +15,7 @@ using static Xapi.Lrs.Tests.Infrastructure.StatementApi;
 namespace Xapi.Lrs.Tests;
 
 // multipart/mixed statement requests and the attachments=true response format (IEEE 9274.1.1, 4.1.3, 4.1.6.1).
-public class AttachmentTests(LrsHosts hosts)
+public partial class AttachmentTests(LrsHosts hosts)
 {
     [Theory]
     [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
@@ -287,5 +291,62 @@ public class AttachmentTests(LrsHosts hosts)
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         await using var context = app.CreateDbContext();
         Assert.False(await context.AttachmentContents.AnyAsync(c => c.Sha2 == part.Sha2, TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task Attachment_data_is_read_one_attachment_at_a_time_and_not_at_all_for_HEAD(TestDatabase database)
+    {
+        var queries = new QueryLog();
+        var app = await hosts.CreateAsync(database, services => Interception.Add(services, queries));
+        var client = app.Client();
+        var id = Guid.NewGuid();
+        Part[] parts = [new(BinaryData(300), "image/png"), new(BinaryData(5000)), new(Encoding.UTF8.GetBytes("text " + Guid.NewGuid()), "text/plain")];
+        using (var put = await client.PutMultipartAsync(id, Statement().WithAttachments([.. parts.Select(p => Attachment(p))]), parts))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+        }
+
+        var url = $"/xapi/statements?statementId={id}&attachments=true";
+        queries.Queries.Clear();
+        using var get = await client.GetAsync(url, TestContext.Current.CancellationToken);
+        var body = await get.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(3, queries.Queries.Count(ReadsAttachmentData));
+        Assert.Equal(body.Length, get.Content.Headers.ContentLength);
+        var received = await ReadPartsAsync(get);
+        Assert.Equal(id.ToString(), JsonOf(received[0])["id"]!.GetValue<string>());
+        Assert.Equal(parts.Select(p => p.Sha2).Order(StringComparer.Ordinal), received.Skip(1).Select(p => p.Header("X-Experience-API-Hash")).Order(StringComparer.Ordinal));
+        foreach (var part in parts)
+        {
+            var match = received.Single(r => r.Header("X-Experience-API-Hash") == part.Sha2);
+            Assert.Equal(part.ContentType, match.Header("Content-Type"));
+            Assert.Equal(part.Data, match.Data);
+        }
+
+        queries.Queries.Clear();
+        using var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, url), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, head.StatusCode);
+        Assert.Equal(body.Length, head.Content.Headers.ContentLength);
+        Assert.Equal(0, queries.Queries.Count(ReadsAttachmentData));
+    }
+
+    // A query that reads the content column of the attachment data table (not content_type)
+    private static bool ReadsAttachmentData(string sql) =>
+        sql.Contains("xapi_attachment_content", StringComparison.Ordinal) && ContentColumn().IsMatch(sql);
+
+    [GeneratedRegex(@"\.""?content""?(?![_a-z])")]
+    private static partial Regex ContentColumn();
+
+    // The text of every query the LRS runs
+    private sealed class QueryLog : DbCommandInterceptor
+    {
+        public ConcurrentQueue<string> Queries { get; } = new();
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            Queries.Enqueue(command.CommandText);
+            return ValueTask.FromResult(result);
+        }
     }
 }

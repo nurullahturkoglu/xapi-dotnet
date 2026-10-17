@@ -160,7 +160,7 @@ internal sealed partial class EfStatementStore(
         return name is null ? person : person with { Names = [name] };
     }
 
-    public async Task<IReadOnlyList<AttachmentContent>> GetAttachmentsAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AttachmentSummary>> GetAttachmentSummariesAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(statementIds);
         if (statementIds.Count == 0)
@@ -177,9 +177,27 @@ internal sealed partial class EfStatementStore(
                 .Select(a => a.Sha2);
             var rows = await context.AttachmentContents.AsNoTracking()
                 .Where(c => sha2s.Contains(c.Sha2))
+                .OrderBy(c => c.Sha2)
+                .Select(c => new { c.Sha2, c.ContentType, c.Length })
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
-            return rows.ConvertAll(r => new AttachmentContent(r.Sha2, r.ContentType, r.Content));
+            return rows.ConvertAll(r => new AttachmentSummary(r.Sha2, r.ContentType, r.Length));
+        }
+    }
+
+    public async Task<AttachmentContent?> GetAttachmentContentAsync(string sha2, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sha2);
+        var key = sha2.ToLowerInvariant();
+        var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using (context.ConfigureAwait(false))
+        {
+            var row = await context.AttachmentContents.AsNoTracking()
+                .Where(c => c.Sha2 == key)
+                .Select(c => new { c.Sha2, c.ContentType, c.Content })
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return row is null ? null : new AttachmentContent(row.Sha2, row.ContentType, row.Content);
         }
     }
 

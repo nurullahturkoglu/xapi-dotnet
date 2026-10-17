@@ -265,6 +265,9 @@ A statement request is read into memory whole before it is validated, so one req
 `MaxStatementBytes` plus `MaxAttachmentBytes` of memory, and more while it is parsed. Lower the limits if many
 large requests can arrive at once. There is no separate limit on the number of statements in a batch.
 
+Responses with `attachments=true` are written as they are read: the statements first, then the data of one
+attachment at a time, so a response holds at most one attachment in memory.
+
 ## xAPI versions
 
 Requests with `X-Experience-API-Version` `2.0` or `2.0.x` are handled as xAPI 2.0.0, and `1.0` or `1.0.x` as
