@@ -3,7 +3,7 @@
 `Xapi.Client.Outbox` puts a durable queue in front of `XapiClient`. `EnqueueAsync` stores a statement on
 disk and returns; the outbox delivers it later, in order and in batches, and keeps it through network
 outages, LRS downtime and app restarts. It targets netstandard2.0 and net10.0 and uses no reflection, so it
-runs on .NET Framework, under Native AOT and (once verified, see below) under Unity IL2CPP.
+runs on .NET Framework, under Native AOT and in Unity IL2CPP players (see below).
 
 ## Quick start
 
@@ -203,15 +203,15 @@ so a custom store keeps compiling. The tests in
 
 ## Unity
 
-Unity support is not verified yet; it is planned for milestone M8. The package is built with that in mind:
+The tests in `tests/Unity` queue statements in a `FileOutboxStore` while the LRS cannot be reached and deliver
+them after the store is reopened, in the editor and in an IL2CPP player; [unity.md](unity.md) lists the
+platforms. The package has no reflection, no dynamic code and no Microsoft.Extensions dependencies outside the
+net10.0 build.
 
-- No reflection, no dynamic code and no Microsoft.Extensions dependencies outside the net10.0 build. JSON goes
-  through the hand-written reader and writer of `Xapi.Core`.
 - Put the store under `Application.persistentDataPath`, the one location that survives app updates on
   every platform.
 - Start the loop once (`_ = outbox.RunAsync(token)`) and call `FlushAsync` from `OnApplicationPause(true)`,
   because mobile platforms may kill a suspended app without warning. Dispose the outbox and the store in
   `OnApplicationQuit`.
 - Events are usually raised on a thread-pool thread. Marshal to the main thread before touching Unity objects.
-- WebGL has no threads or synchronous file flush; whether `HttpClient` and the file store work there is part
-  of the M8 spike.
+- WebGL has no threads or synchronous file flush; the outbox is not tested there yet.

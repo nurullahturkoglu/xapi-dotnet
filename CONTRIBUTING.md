@@ -138,6 +138,34 @@ Each package ships its own `README.md` from its project folder (`src/<Package>/R
 shows on the package page. Keep it short, and mark its C# blocks as snippets like the guides (see
 `tests/Xapi.Documentation.Tests`).
 
+## Unity tests
+
+`tests/Unity` is a Unity 6.3 project whose play mode tests use `Xapi.Core`, `Xapi.Client` and
+`Xapi.Client.Outbox` as a Unity app would, installed by NuGetForUnity from `Assets/packages.config`. The
+`Unity` workflow packs the three packages, points the project at them with `tests/Unity/UseLocalPackages.cs`,
+and runs the tests in the editor and in a Linux IL2CPP player. It needs the `UNITY_LICENSE`, `UNITY_EMAIL` and
+`UNITY_PASSWORD` secrets and is skipped without them.
+
+To run the tests locally, install Unity 6000.3.26f1 with Mac (or Windows or Linux) Build Support (IL2CPP),
+start the LRS image, restore the packages and run the tests in the editor or in a player:
+
+```bash
+docker run -d -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret ghcr.io/nurullahturkoglu/xapi-lrs
+cd tests/Unity
+dotnet tool restore
+dotnet nugetforunity restore .
+Unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults playmode.xml
+Unity -batchmode -projectPath . -runTests -testPlatform StandaloneOSX -testResults player.xml
+```
+
+Without the restore step, batch mode stops on compiler errors before NuGetForUnity can restore anything. To
+test packages packed from your checkout instead of the versions on nuget.org, run
+`dotnet run tests/Unity/UseLocalPackages.cs -- artifacts/packages` before the restore, and undo its changes to
+`Assets/packages.config` and `Assets/NuGet.config` afterwards. When a dependency floor changes (see below),
+`UseLocalPackages.cs` fails until `Assets/packages.config` lists the new version: install the packages again
+from the NuGet window, or run `Unity -batchmode -quit -projectPath . -executeMethod XapiPackages.Install` with
+`XAPI_PACKAGE_VERSION` set to a published version.
+
 ## Dependency floors
 
 On `netstandard2.0`, `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` depend on System.Text.Json,
@@ -149,7 +177,7 @@ and no known vulnerability, not the newest. On `net10.0` these come with the sha
 To check a candidate, set it in `Directory.Packages.props` and run `dotnet build`: the `netstandard2.0` builds
 fail on an API the version lacks, and NuGet audit fails restore on a version with a known vulnerability. Raise a
 floor only when the code needs a newer API or an advisory covers the floor, and then also change the comment
-next to it and `DependencyFloors` in `tests/Xapi.PackageTests/PackageUnderTest.cs`. Dependabot ignores these
+next to it, `DependencyFloors` in `tests/Xapi.PackageTests/PackageUnderTest.cs` and `tests/Unity/Assets/packages.config`. Dependabot ignores these
 four packages so that floors do not move with routine updates.
 
 The `net481` test targets restore against the floors, so the .NET Framework runs test the oldest versions the

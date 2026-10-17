@@ -1,0 +1,18 @@
+{
+    "name": "Xapi.Unity.Tests",
+    "references": [ "UnityEngine.TestRunner" ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "Xapi.Core.dll",
+        "Xapi.Client.dll",
+        "Xapi.Client.Outbox.dll",
+        "System.Text.Json.dll",
+        "Microsoft.Bcl.AsyncInterfaces.dll",
+        "Microsoft.Bcl.TimeProvider.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [ "UNITY_INCLUDE_TESTS" ]
+}

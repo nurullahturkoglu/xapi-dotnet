@@ -1,0 +1,6 @@
+{
+    "name": "Xapi.Unity.Setup",
+    "references": [ "NuGetForUnity" ],
+    "includePlatforms": [ "Editor" ],
+    "autoReferenced": false
+}

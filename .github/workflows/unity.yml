@@ -1,0 +1,141 @@
+name: Unity
+
+# Runs tests/Unity against packages packed from this commit: in the editor (Mono) and in a Linux player built
+# with IL2CPP. Needs a Unity Personal license in the UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD secrets
+# (https://game.ci/docs/github/activation); without them, as on pull requests from forks, the tests are skipped.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/Xapi.Core/**
+      - src/Xapi.Client/**
+      - src/Xapi.Client.Outbox/**
+      - tests/Unity/**
+      - Directory.Build.props
+      - Directory.Build.targets
+      - Directory.Packages.props
+      - eng/Library.targets
+      - global.json
+      - .github/workflows/unity.yml
+  pull_request:
+    paths:
+      - src/Xapi.Core/**
+      - src/Xapi.Client/**
+      - src/Xapi.Client.Outbox/**
+      - tests/Unity/**
+      - Directory.Build.props
+      - Directory.Build.targets
+      - Directory.Packages.props
+      - eng/Library.targets
+      - global.json
+      - .github/workflows/unity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  license:
+    name: Check for a Unity license
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No UNITY_LICENSE secret; the Unity tests are skipped"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Unity ${{ matrix.testMode }}
+    needs: license
+    if: needs.license.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # playmode runs in the editor on Mono; standalone builds a StandaloneLinux64 player with the IL2CPP
+        # backend set in ProjectSettings and runs the same tests in it
+        testMode: [playmode, standalone]
+    env:
+      LRS_URL: http://localhost:8080/xapi
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # MinVer needs the tags and history to compute the version
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Start the LRS
+        run: |
+          docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
+          docker run -d --name lrs -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret xapi-lrs
+          for _ in $(seq 60); do
+            if curl -sf "$LRS_URL/about" > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          docker logs lrs
+          echo "::error::The LRS did not start"
+          exit 1
+
+      - name: Pack
+        run: |
+          for project in Xapi.Core Xapi.Client Xapi.Client.Outbox; do
+            dotnet pack "src/$project" -c Release -o artifacts/unity-packages
+          done
+
+      - name: Install the packages into the Unity project
+        run: |
+          dotnet run tests/Unity/UseLocalPackages.cs -- artifacts/unity-packages
+          cd tests/Unity
+          dotnet tool restore
+          dotnet nugetforunity restore .
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tests/Unity/Library
+          key: unity-library-${{ matrix.testMode }}-${{ hashFiles('tests/Unity/ProjectSettings/ProjectVersion.txt', 'tests/Unity/Packages/packages-lock.json', 'tests/Unity/Assets/packages.config') }}
+          restore-keys: unity-library-${{ matrix.testMode }}-
+
+      - uses: game-ci/unity-test-runner@fa6ced25861c16ef56187828c43f76d00df43a23 # v4.3.2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: tests/Unity
+          testMode: ${{ matrix.testMode }}
+          artifactsPath: artifacts/unity-${{ matrix.testMode }}
+          # The tests reach the LRS at localhost:8080
+          useHostNetwork: true
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: unity-${{ matrix.testMode }}
+          path: artifacts/unity-${{ matrix.testMode }}
+          if-no-files-found: ignore
