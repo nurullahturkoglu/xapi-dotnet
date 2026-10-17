@@ -34,4 +34,8 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: on PostgreSQL, IRIs, agent identifiers and document ids too long for an index get 400 instead of 500.
 - docs/lrs.md covers rate limiting against secret guessing, CORS for browser clients, and keeping agent email addresses out of request logs.
 
+### Changed
+
+- `Xapi.Core`: reading a statement allocates about a quarter of what it did (5.2 KB instead of 19.7 KB for a 1 KB statement in strict mode) and takes about 40% less time. JSON paths are formatted only when an error is reported, and known property names are matched without creating strings or a hash set per object. Errors are unchanged. See [docs/benchmarks.md](docs/benchmarks.md).
+
 [Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/commits/main

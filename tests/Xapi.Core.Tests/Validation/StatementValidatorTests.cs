@@ -59,6 +59,11 @@ public class StatementValidatorTests
     [InlineData("mailto:example.com", false)]
     [InlineData("mailto:@example.com", false)]
     [InlineData("mailto:a@", false)]
+    [InlineData("mailto:a@b@example.com", false)]
+    [InlineData("mailto:a@.example.com", false)]
+    [InlineData("mailto:a@example..com", false)]
+    [InlineData("mailto:a@example.com.", false)]
+    [InlineData("mailto:a@exa mple.com", false)]
     public void Mbox_must_be_a_mailto_iri(string mbox, bool valid)
     {
         var statement = Base with { Actor = new Agent(new Mbox(mbox)) };

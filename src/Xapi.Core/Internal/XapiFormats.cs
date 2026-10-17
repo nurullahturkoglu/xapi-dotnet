@@ -18,7 +18,7 @@ internal static class XapiFormats
             return false;
         }
 
-        if (GrandfatheredTags.Contains(tag!))
+        if (IsLanguageAndRegion(tag!) || GrandfatheredTags.Contains(tag!))
         {
             return true;
         }
@@ -94,6 +94,40 @@ internal static class XapiFormats
         return i == n;
     }
 
+    // The most common shapes, en, fil, en-US or es-419, accepted without splitting the tag. Anything else goes
+    // through the full grammar.
+    private static bool IsLanguageAndRegion(string tag)
+    {
+        var language = 0;
+        while (language < tag.Length && IsAsciiLetter(tag[language]))
+        {
+            language++;
+        }
+
+        if (language is < 2 or > 3)
+        {
+            return false;
+        }
+
+        var region = tag.Length - language - 1;
+        if (region < 0)
+        {
+            return true;
+        }
+
+        if (tag[language] != '-')
+        {
+            return false;
+        }
+
+        return region switch
+        {
+            2 => IsAsciiLetter(tag[language + 1]) && IsAsciiLetter(tag[language + 2]),
+            3 => IsDigit(tag[language + 1]) && IsDigit(tag[language + 2]) && IsDigit(tag[language + 3]),
+            _ => false,
+        };
+    }
+
     /// <summary>Checks for a <c>mailto:</c> IRI with a plausible addr-spec (no query, no whitespace).</summary>
     public static bool IsMbox(string? value)
     {
@@ -103,39 +137,45 @@ internal static class XapiFormats
             return false;
         }
 
-        var address = value.Substring(Scheme.Length);
-        var at = address.LastIndexOf('@');
-        if (at <= 0 || at == address.Length - 1)
+        var at = value.LastIndexOf('@');
+        if (at <= Scheme.Length || at == value.Length - 1)
         {
             return false;
         }
 
-        for (var i = 0; i < at; i++)
+        for (var i = Scheme.Length; i < at; i++)
         {
-            if (!IsLocalPartChar(address[i]))
+            if (!IsLocalPartChar(value[i]))
             {
                 return false;
             }
         }
 
-        var domain = address.Substring(at + 1);
-        foreach (var label in domain.Split('.'))
+        // Dot-separated labels, none of them empty
+        var labelLength = 0;
+        for (var i = at + 1; i < value.Length; i++)
         {
-            if (label.Length == 0)
+            var c = value[i];
+            if (c == '.')
             {
-                return false;
-            }
-
-            foreach (var c in label)
-            {
-                if (!(IsAsciiLetterOrDigit(c) || c == '-' || c > 0x7F))
+                if (labelLength == 0)
                 {
                     return false;
                 }
+
+                labelLength = 0;
+            }
+            else if (IsAsciiLetterOrDigit(c) || c == '-' || c > 0x7F)
+            {
+                labelLength++;
+            }
+            else
+            {
+                return false;
             }
         }
 
-        return true;
+        return labelLength > 0;
     }
 
     public static bool IsSha1Hex(string? value) => value is { Length: 40 } && IsHex(value);
@@ -331,9 +371,9 @@ internal static class XapiFormats
     private static bool IsPrivateUseTail(string[] parts, int start) => start < parts.Length;
 
     private static bool IsLocalPartChar(char c) =>
-        IsAsciiLetterOrDigit(c) || c > 0x7F || "!#$%&'*+/=?^_`{|}~.-".Contains(c);
+        IsAsciiLetterOrDigit(c) || c > 0x7F || "!#$%&'*+/=?^_`{|}~.-".AsSpan().IndexOf(c) >= 0;
 
-    private static bool IsTokenChar(char c) => IsAsciiLetterOrDigit(c) || "!#$%&'*+-.^_`|~".Contains(c);
+    private static bool IsTokenChar(char c) => IsAsciiLetterOrDigit(c) || "!#$%&'*+-.^_`|~".AsSpan().IndexOf(c) >= 0;
 
     private static int SkipDotSeparatedIdentifiers(string value, int i)
     {

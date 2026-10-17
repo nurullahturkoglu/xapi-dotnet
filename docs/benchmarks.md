@@ -10,14 +10,14 @@ none were measured.
 
 | | |
 | --- | --- |
-| Date | 17 October 2026, 03:02 to 03:09 (UTC+3) |
+| Date | 17 October 2026, 03:02 to 03:09 (UTC+3); the `Xapi.Core` table was measured again at 03:34 to 03:37 |
 | Machine | MacBook Pro, Apple M1 Pro (8 performance and 2 efficiency cores), 16 GB memory, on AC power |
 | OS | macOS 27.0.1 (26A434) |
 | .NET | SDK 10.0.402, runtime 10.0.13, Arm64 RyuJIT, Release build |
 | BenchmarkDotNet | 0.15.8, default out-of-process toolchain |
 | Job | 1 launch, 3 warmup iterations, 5 measured iterations (`Short` below) |
 | PostgreSQL | 17.11 (`postgres:17.11-alpine`, arm64) in Docker Desktop 28.5.1, Linux VM with 10 CPUs and 7.65 GiB |
-| Source | the commit that added this file |
+| Source | the commit that added this file; for the `Xapi.Core` table, the commit that reduced the reader's allocations |
 
 The machine was not idle: other builds, test runs and containers were running, and the load average was
 between 3 and 12 during the run. That shows up as wide error bars on the LRS rows. The two single-writer
@@ -33,25 +33,32 @@ JSON (`JsonDocument.Parse`) or only writing it (`JsonElement.WriteTo`).
 
 | Operation | Statements | Mean | Ratio | Allocated |
 | --- | ---: | ---: | ---: | ---: |
-| `JsonDocument.Parse` (baseline) | 1 | 1.41 μs | 1.00 | 72 B |
-| `XapiJson.ParseStatement`, strict | 1 | 8.85 μs | 6.27 | 19.7 KB |
-| `XapiJson.ParseStatement`, lenient | 1 | 8.43 μs | 5.97 | 18.0 KB |
-| `JsonDocument.Parse` (baseline) | 100 | 139 μs | 1.00 | 72 B |
-| `XapiJson.ParseStatements`, strict | 100 | 938 μs | 6.75 | 2.0 MB |
-| `XapiJson.ParseStatements`, lenient | 100 | 912 μs | 6.57 | 1.8 MB |
+| `JsonDocument.Parse` (baseline) | 1 | 1.37 μs | 1.00 | 72 B |
+| `XapiJson.ParseStatement`, strict | 1 | 5.48 μs | 4.01 | 5.2 KB |
+| `XapiJson.ParseStatement`, lenient | 1 | 5.38 μs | 3.94 | 4.9 KB |
+| `JsonDocument.Parse` (baseline) | 100 | 136 μs | 1.00 | 72 B |
+| `XapiJson.ParseStatements`, strict | 100 | 537 μs | 3.96 | 343 KB |
+| `XapiJson.ParseStatements`, lenient | 100 | 522 μs | 3.85 | 331 KB |
 | `JsonElement.WriteTo` (baseline) | 1 | 0.96 μs | 1.00 | 0 B |
-| `XapiJson.WriteStatement`, exact | 1 | 1.04 μs | 1.08 | 400 B |
-| `JsonElement.WriteTo` (baseline) | 100 | 97 μs | 1.00 | 0 B |
-| `XapiJson.WriteStatements`, exact | 100 | 114 μs | 1.17 | 35.2 KB |
-| `StatementValidator.Validate` | 1 | 0.39 μs | | 1.7 KB |
-| `StatementValidator.ValidateBatch` | 100 | 49 μs | | 196 KB |
+| `XapiJson.WriteStatement`, exact | 1 | 1.04 μs | 1.09 | 400 B |
+| `JsonElement.WriteTo` (baseline) | 100 | 96 μs | 1.00 | 0 B |
+| `XapiJson.WriteStatements`, exact | 100 | 111 μs | 1.16 | 35.2 KB |
+| `StatementValidator.Validate` | 1 | 0.11 μs | | 336 B |
+| `StatementValidator.ValidateBatch` | 100 | 11.6 μs | | 11.6 KB |
 | `StatementEquivalence.AreEquivalent` | 1 | 0.09 μs | | 0 B |
 | `StatementEquivalence.AreEquivalent`, each pair | 100 | 12.3 μs | | 0 B |
 
-Reading a statement costs about six times tokenizing it, almost all of it in building the model: strict
-mode, which adds validation, is only 3 to 5% slower than lenient mode, in line with the validator rows.
-Writing is close to copying the JSON. The reader allocates about 20 KB per 1 KB statement; that is the main
-thing to look at if parsing ever shows up in a profile.
+Reading a statement costs about four times tokenizing it, almost all of it in building the model: strict
+mode, which adds validation, is only 2 to 3% slower than lenient mode. Writing is close to copying the JSON.
+What the reader still allocates, about 5 KB per 1 KB statement, is mostly the model itself: the strings,
+IRIs, language maps and objects a `Statement` holds.
+
+The first version of this table had the reader at 8.85 μs and 19.7 KB per statement, 938 μs and 2.0 MB per
+batch, and the validator at 1.7 KB per statement. Most of that went into JSON paths built as strings for
+every property, a hash set per object for duplicate detection, and property names turned into strings to
+look them up. Paths are now kept as segments and only formatted when an error is reported, known property
+names are matched on their UTF-8 bytes, and duplicate checks use a bit mask or a few direct comparisons.
+Error codes, paths and messages are unchanged.
 
 ## Outbox enqueue (`Xapi.Client.Outbox`)
 
