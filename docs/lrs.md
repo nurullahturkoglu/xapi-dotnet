@@ -69,6 +69,7 @@ builder.Services
 | `MaxStatementBytes` | 16 MiB | The most statement JSON in one statement PUT or POST: the whole `application/json` body, or the first part of a `multipart/mixed` one. More gets 413. |
 | `MaxAttachmentBytes` | 50 MiB | The most attachment data in one statement request, all parts together. More gets 413. |
 | `MaxStatementsPerBatch` | 1,000 | The most statements in one statement POST. More gets 413. |
+| `MaxAlternateRequestBytes` | 1 MiB | The largest form of an xAPI 1.0.3 Alternate Request Syntax request. More gets 413. |
 | `MaxStatementsPerPage` | 100 | The page size of statement queries when the request asks for `limit=0` or no limit; larger limits are lowered to it. |
 | `MigrateOnStartup` | `false` | Apply database migrations when the host starts. |
 
@@ -252,6 +253,7 @@ clients you do not trust can write documents, consider mapping the LRS on a host
 | Statement JSON per statement request | `MaxStatementBytes` (16 MiB) | 413 |
 | Attachment data per statement request | `MaxAttachmentBytes` (50 MiB) | 413 |
 | Statements per POST | `MaxStatementsPerBatch` (1,000) | 413 |
+| Form of an Alternate Request Syntax request | `MaxAlternateRequestBytes` (1 MiB) | 413 |
 | Statements per query page | `MaxStatementsPerPage` (100) | The page is shorter and has a `more` link. |
 | Request body of other requests | The server, for example Kestrel's `MaxRequestBodySize` (30,000,000 bytes by default) | 413 |
 
@@ -273,6 +275,12 @@ through; at 1,000 statements of about 1 KB that is roughly 20 MB and 0.3 to 0.5 
 [benchmarks.md](benchmarks.md). The ADL conformance suite sends batches of at most 2 statements, and the outbox in
 `Xapi.Client.Outbox` sends 50 by default. The answer is 413 rather than 400 because the batch is valid, only
 larger than this LRS accepts; the client can send it in parts.
+
+The Alternate Request Syntax of xAPI 1.0.3 carries the credentials as a form field, so the LRS has to read the
+form before it can authenticate the request. `MaxAlternateRequestBytes` is therefore what an anonymous client can
+make the LRS read and hold, and it is kept well below the other limits. The syntax is meant for browsers that
+cannot send other methods or headers across origins, which send single statements and small documents. The
+statements or document in the form must still fit `MaxStatementBytes` or `MaxDocumentBytes`.
 
 Responses with `attachments=true` are written as they are read: the statements first, then the data of one
 attachment at a time, so a response holds at most one attachment in memory.

@@ -113,6 +113,27 @@ public sealed class XapiLrsOptions
     } = 1000;
 
     /// <summary>
+    /// The largest form body of an xAPI 1.0.3 Alternate Request Syntax request (a POST with a <c>method</c>
+    /// query parameter), in bytes, counting every URL-encoded field. Larger requests get 413. Defaults to 1 MiB.
+    /// </summary>
+    /// <remarks>
+    /// The LRS reads this form before it authenticates the request, because the credentials can be one of its
+    /// fields. This limit, rather than <see cref="MaxStatementBytes"/> or the server's request body limit, is
+    /// what an unauthenticated client can make the LRS read and hold in memory. The statements or document in
+    /// the form must also fit <see cref="MaxStatementBytes"/> or <see cref="MaxDocumentBytes"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
+    public long MaxAlternateRequestBytes
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            field = value;
+        }
+    } = 1024 * 1024;
+
+    /// <summary>
     /// The most statements one page of a statement query returns, and the page size when the request asks for
     /// <c>limit=0</c> or gives no limit. Larger limits are lowered to it. Defaults to 100.
     /// </summary>

@@ -82,26 +82,77 @@ internal sealed class AlternateRequestSyntaxMiddleware(RequestDelegate next, Xap
             IsFormOrEmpty(request) &&
             paths.Contains(request.Path))
         {
-            await TryRewriteAsync(http, method).ConfigureAwait(false);
+            // The form is read before authentication, since the credentials can be one of its fields, so it has a
+            // limit of its own instead of the server's (about 28.6 MiB in Kestrel)
+            var limit = options.Value.MaxAlternateRequestBytes;
+            var body = await ReadBodyAsync(http, limit).ConfigureAwait(false);
+            if (body is null)
+            {
+                await TooLargeAsync(http, limit).ConfigureAwait(false);
+                return;
+            }
+
+            // A request that is not rewritten reaches the endpoint with its body intact
+            request.Body = new MemoryStream(body, writable: false);
+            await TryRewriteAsync(http, method, body).ConfigureAwait(false);
         }
 
         await next(http).ConfigureAwait(false);
     }
 
-    private static async Task TryRewriteAsync(HttpContext http, string method)
+    // The whole body, or null once it is longer than limit
+    private static async Task<byte[]?> ReadBodyAsync(HttpContext http, long limit)
     {
         var request = http.Request;
+        if (request.ContentLength > limit)
+        {
+            return null;
+        }
 
-        // Buffered, so a request that is not rewritten reaches the endpoint with its body intact
-        request.EnableBuffering();
+        RequestReading.SetBodyLimit(http, limit);
+        try
+        {
+            using var buffer = new MemoryStream();
+            var chunk = new byte[16 * 1024];
+            int read;
+            while ((read = await request.Body.ReadAsync(chunk, http.RequestAborted).ConfigureAwait(false)) > 0)
+            {
+                if (buffer.Length + read > limit)
+                {
+                    return null;
+                }
+
+                buffer.Write(chunk, 0, read);
+            }
+
+            return buffer.ToArray();
+        }
+        catch (BadHttpRequestException exception) when (exception.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            return null;
+        }
+    }
+
+    // Answered here, before routing: the headers that XapiRequestFilter puts on every xAPI response are set here.
+    // The syntax only exists in xAPI 1.0.3.
+    private static Task TooLargeAsync(HttpContext http, long limit)
+    {
+        http.Response.Headers[XapiHeaders.Version] = XapiVersion.V1_0_3.HeaderValue;
+        http.Response.Headers.XContentTypeOptions = "nosniff";
+        return XapiResults.Problem(StatusCodes.Status413PayloadTooLarge, $"An Alternate Request Syntax request may have at most {limit} bytes of form data.")
+            .ExecuteAsync(http);
+    }
+
+    private static async Task TryRewriteAsync(HttpContext http, string method, byte[] form)
+    {
+        var request = http.Request;
         List<KeyValuePair<string, string>> fields;
         try
         {
-            fields = await ReadFormAsync(request, http.RequestAborted).ConfigureAwait(false);
+            fields = await ReadFormAsync(form, http.RequestAborted).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is InvalidDataException or BadHttpRequestException)
+        catch (InvalidDataException)
         {
-            request.Body.Position = 0;
             return;
         }
 
@@ -114,7 +165,6 @@ internal sealed class AlternateRequestSyntaxMiddleware(RequestDelegate next, Xap
             {
                 if (content is not null)
                 {
-                    request.Body.Position = 0;
                     return;
                 }
 
@@ -124,7 +174,6 @@ internal sealed class AlternateRequestSyntaxMiddleware(RequestDelegate next, Xap
             {
                 if (!headers.TryAdd(header, value))
                 {
-                    request.Body.Position = 0;
                     return;
                 }
             }
@@ -139,7 +188,6 @@ internal sealed class AlternateRequestSyntaxMiddleware(RequestDelegate next, Xap
         var version = headers.TryGetValue(XapiHeaders.Version, out var formVersion) ? formVersion : request.Headers[XapiHeaders.Version].ToString();
         if (XapiVersion.TryParseHeader(version, out var parsed) && parsed.IsV2)
         {
-            request.Body.Position = 0;
             return;
         }
 
@@ -164,12 +212,12 @@ internal sealed class AlternateRequestSyntaxMiddleware(RequestDelegate next, Xap
             : content is null ? null : "application/json";
     }
 
-    private static async Task<List<KeyValuePair<string, string>>> ReadFormAsync(HttpRequest request, CancellationToken cancellationToken)
+    private static async Task<List<KeyValuePair<string, string>>> ReadFormAsync(byte[] form, CancellationToken cancellationToken)
     {
         var fields = new List<KeyValuePair<string, string>>();
-        using var reader = new FormReader(request.Body, Encoding.UTF8)
+        using var reader = new FormReader(new MemoryStream(form, writable: false), Encoding.UTF8)
         {
-            // The content field holds whole statement batches; the server's request size limit still applies
+            // The content field holds whole statement batches; MaxAlternateRequestBytes bounds the form
             ValueLengthLimit = int.MaxValue,
         };
         while (await reader.ReadNextPairAsync(cancellationToken).ConfigureAwait(false) is { } pair)

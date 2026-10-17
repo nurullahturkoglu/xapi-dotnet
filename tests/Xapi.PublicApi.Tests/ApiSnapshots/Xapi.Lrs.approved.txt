@@ -217,6 +217,7 @@ namespace Xapi.Lrs
         public Xapi.Iri AuthorityHomePage { get; set; }
         public Xapi.Lrs.XapiCredentialList Credentials { get; }
         public bool EnableVersion1_0_3 { get; set; }
+        public long MaxAlternateRequestBytes { get; set; }
         public long MaxAttachmentBytes { get; set; }
         public long MaxDocumentBytes { get; set; }
         public long MaxStatementBytes { get; set; }

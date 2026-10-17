@@ -38,6 +38,7 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: an unknown Basic key now costs the same PBKDF2 check as a wrong secret, so response times no longer tell which keys exist.
 - `Xapi.Lrs`: every response has `X-Content-Type-Options: nosniff`, and documents that are not JSON are served with `Content-Disposition: attachment` and a sandboxing `Content-Security-Policy`, so stored HTML or SVG cannot run on the origin of the app that hosts the LRS.
 - `Xapi.Lrs`: on PostgreSQL, IRIs, agent identifiers and document ids too long for an index get 400 instead of 500.
+- `Xapi.Lrs`: the form of an Alternate Request Syntax request, which is read before the request is authenticated, is limited to `MaxAlternateRequestBytes` (1 MiB by default) instead of the server's request body limit; larger forms get 413.
 - docs/lrs.md covers rate limiting against secret guessing, CORS for browser clients, and keeping agent email addresses out of request logs.
 
 ### Changed
