@@ -18,6 +18,7 @@
     <Project Path="tests/Xapi.Client.Outbox.Tests/Xapi.Client.Outbox.Tests.csproj" />
     <Project Path="tests/Xapi.Client.Tests/Xapi.Client.Tests.csproj" />
     <Project Path="tests/Xapi.Core.Tests/Xapi.Core.Tests.csproj" />
+    <Project Path="tests/Xapi.Documentation.Tests/Xapi.Documentation.Tests.csproj" />
     <Project Path="tests/Xapi.Lrs.Tests/Xapi.Lrs.Tests.csproj" />
     <Project Path="tests/Xapi.PublicApi.Tests/Xapi.PublicApi.Tests.csproj" />
   </Folder>

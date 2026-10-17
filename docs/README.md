@@ -1,17 +1,18 @@
 # Documentation
 
-The guides below are planned and will be written as the packages they describe are built.
-
 | Guide | Covers |
 | --- | --- |
-| `getting-started.md` | Installing the packages and sending a first statement |
-| `client.md` | `XapiClient`: resources, version negotiation, documents and ETags, attachments, resilience |
+| [`getting-started.md`](getting-started.md) | Installing the packages, sending a first statement, hosting an LRS |
+| [`client.md`](client.md) | `XapiClient`: versions and negotiation, credentials, DI and retries, statements, documents and ETags, attachments, errors |
 | [`outbox.md`](outbox.md) | `StatementOutbox`: stores, error classification, dead letters, hosting |
-| `lrs.md` | Embedding the LRS: `AddXapiLrs`, `MapXapiLrs`, storage providers, authentication, telemetry |
+| [`lrs.md`](lrs.md) | Embedding the LRS: `AddXapiLrs`, `MapXapiLrs`, options, storage providers, migrations, authentication and scopes, limits |
 | [`signatures.md`](signatures.md) | Signing statements with `StatementSigner` and what the LRS checks |
-| `versions.md` | Differences between xAPI 1.0.3 and 2.0.0 and how the packages handle them |
-| `migrating-from-tincan.md` | Mapping TinCan.NET types and calls to this library |
-| `conformance.md` | Conformance suite results and the known suite issues |
+| [`versions.md`](versions.md) | Differences between xAPI 1.0.3 and 2.0.0 and how the packages handle them |
+| [`migrating-from-tincan.md`](migrating-from-tincan.md) | Mapping TinCan.NET types and calls to this library, and what is missing |
+| [`conformance.md`](conformance.md) | How the conformance suite runs in CI, current results, and where the suite and the standard disagree |
+
+The C# blocks in these guides and in the README are compiled and checked by `tests/Xapi.Documentation.Tests`
+(except in `outbox.md`, `signatures.md` and the TinCan.NET side of the migration guide).
 
 ## Architecture decision records
 
