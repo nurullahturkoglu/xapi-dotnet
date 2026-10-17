@@ -15,10 +15,10 @@ Each section links to the guide that covers its topic in full.
 `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` target netstandard2.0 (.NET Framework 4.6.2 and later) and
 net10.0. The LRS packages target net10.0.
 
-The packages are previews, so add them with `--prerelease`:
+Add the package you need:
 
 ```bash
-dotnet add package Xapi.Client --prerelease
+dotnet add package Xapi.Client
 ```
 
 For Unity, see [unity.md](unity.md).
@@ -137,7 +137,7 @@ Create a web app and add the SQLite provider:
 ```bash
 dotnet new web -n MyLrs
 cd MyLrs
-dotnet add package Xapi.Lrs.Sqlite --prerelease
+dotnet add package Xapi.Lrs.Sqlite
 ```
 
 Replace `Program.cs` with this:

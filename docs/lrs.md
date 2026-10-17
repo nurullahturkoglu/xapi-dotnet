@@ -422,20 +422,20 @@ check opens a connection and reads the migrations history table.
 
 Each release publishes the standalone sample as `ghcr.io/nurullahturkoglu/xapi-lrs`, for linux/amd64 and
 linux/arm64, tagged with the release version (`0.1.0`, `0.1.0-preview.1`) and, for releases that are not
-previews, `latest`. Every release so far is a preview, so there is no `latest` yet; use a version tag. The image
+previews, `latest`. A version tag keeps upgrades under your control. The image
 runs as a non-root user, stores SQLite data in the `/data` volume and does not
 start until a credential is given:
 
 ```bash
 docker run -p 8080:8080 -e LrsHost__Key=my-key -e LrsHost__Secret=my-secret -v xapi-lrs-data:/data \
-  ghcr.io/nurullahturkoglu/xapi-lrs:0.1.0-preview.1
+  ghcr.io/nurullahturkoglu/xapi-lrs:0.2.0
 ```
 
 Each image has a signed build provenance attestation that ties it to the release workflow run and the tagged
 commit. The GitHub CLI checks it:
 
 ```bash
-gh attestation verify oci://ghcr.io/nurullahturkoglu/xapi-lrs:0.1.0-preview.1 --repo nurullahturkoglu/xapi-dotnet
+gh attestation verify oci://ghcr.io/nurullahturkoglu/xapi-lrs:0.2.0 --repo nurullahturkoglu/xapi-dotnet
 ```
 
 To build the image from the repository instead, run `samples/LrsHost/Dockerfile` from the repository root:

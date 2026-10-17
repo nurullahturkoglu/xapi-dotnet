@@ -153,7 +153,7 @@ start the LRS image, restore the packages and run the tests in the editor or in 
 
 ```bash
 docker run -d -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret -e "LrsHost__AllowedOrigins=*" \
-  ghcr.io/nurullahturkoglu/xapi-lrs:0.1.0-preview.1
+  ghcr.io/nurullahturkoglu/xapi-lrs:0.2.0
 cd tests/Unity
 dotnet tool restore
 dotnet nugetforunity restore .
@@ -255,8 +255,8 @@ Unity package in `src/Xapi.Unity` is installed from git, so its `package.json` h
 
 1. In a pull request, rename `[Unreleased]` in `CHANGELOG.md` to `[x.y.z] - YYYY-MM-DD`, add a new empty
    `[Unreleased]` section and the comparison links, and record measured results (test counts, conformance
-   results, benchmarks where relevant). Until the first stable release there is no `latest` image, so also
-   move the `xapi-lrs:<version>` tags in the docs to the new version (`git grep 'xapi-lrs:'`). Set `version`
+   results, benchmarks where relevant). The docs pin the image version, so also move the `xapi-lrs:<version>`
+   tags in the docs to the new version (`git grep 'xapi-lrs:'`). Set `version`
    in `src/Xapi.Unity/package.json` to the new version, and move the `#v<version>` in the Unity install URLs
    (`git grep 'Xapi.Unity#v'`). Merge it.
 2. Tag the merge commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. Previews use

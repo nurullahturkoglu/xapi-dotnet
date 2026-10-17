@@ -9,6 +9,10 @@ listed under a "Breaking" heading.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-17
+
+The first release without a preview suffix. It adds Unity WebGL support through a new Unity package; the public API of the NuGet packages is unchanged. The LRS still passes both ADL conformance batteries in full on SQLite and PostgreSQL (xAPI 2.0.0: 1435 of 1435, 1.0.3: 1365 of 1365), the solution has about 5,300 tests, and the 11 Unity tests pass in the editor, in a Linux IL2CPP player and, locally, in WebGL.
+
 ### Added
 
 - `samples/LrsHost` and the `xapi-lrs` image: `LrsHost:AllowedOrigins` (`LrsHost__AllowedOrigins` in Docker) turns on CORS for the listed origins, so xAPI content in a browser on another origin can use the LRS. It is off by default.
@@ -76,5 +80,6 @@ The first preview of all six packages. The LRS passes both ADL conformance batte
 - `Xapi.Lrs`: the form of an Alternate Request Syntax request, which is read before the request is authenticated, is limited to `MaxAlternateRequestBytes` (1 MiB by default) instead of the server's request body limit; larger forms get 413.
 - docs/lrs.md covers rate limiting against secret guessing, CORS for browser clients, and keeping agent email addresses out of request logs.
 
-[Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.1.0-preview.1...HEAD
+[Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.1.0-preview.1...v0.2.0
 [0.1.0-preview.1]: https://github.com/nurullahturkoglu/xapi-dotnet/releases/tag/v0.1.0-preview.1

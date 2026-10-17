@@ -6,7 +6,7 @@ reflection. `Xapi.Client` and `Xapi.Lrs` build on this package; use it on its ow
 JSON.
 
 ```bash
-dotnet add package Xapi.Core --prerelease
+dotnet add package Xapi.Core
 ```
 
 ## Usage

@@ -7,8 +7,8 @@ scopes, and EF Core storage. It passes the ADL LRS Conformance Test Suite for bo
 This package needs a database provider, and the provider brings it in. Install one of them:
 
 ```bash
-dotnet add package Xapi.Lrs.Sqlite --prerelease
-dotnet add package Xapi.Lrs.PostgreSql --prerelease
+dotnet add package Xapi.Lrs.Sqlite
+dotnet add package Xapi.Lrs.PostgreSql
 ```
 
 ## Usage

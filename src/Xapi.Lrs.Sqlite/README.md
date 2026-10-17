@@ -5,7 +5,7 @@ migrations, WAL mode and serialized statement writes. It suits an LRS on one ser
 sharing one database, use `Xapi.Lrs.PostgreSql`.
 
 ```bash
-dotnet add package Xapi.Lrs.Sqlite --prerelease
+dotnet add package Xapi.Lrs.Sqlite
 ```
 
 ## Usage

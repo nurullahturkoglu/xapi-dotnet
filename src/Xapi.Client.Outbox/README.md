@@ -6,7 +6,7 @@ error classification, dead letters and idempotent resend. Statements survive net
 app restarts.
 
 ```bash
-dotnet add package Xapi.Client.Outbox --prerelease
+dotnet add package Xapi.Client.Outbox
 ```
 
 ## Usage
