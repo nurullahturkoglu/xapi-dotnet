@@ -33,6 +33,11 @@ public class LanguageMapTests
     [InlineData("en-a")]
     [InlineData("toolongtag")]
     [InlineData("en-US-123456789")]
+    [InlineData("en-U")]
+    [InlineData("en-U1")]
+    [InlineData("en-41")]
+    [InlineData("en-41a")]
+    [InlineData("e1-US")]
     public void Rejects_malformed_tags(string tag) => Assert.False(LanguageMap.IsValidLanguageTag(tag));
 
     [Fact]
