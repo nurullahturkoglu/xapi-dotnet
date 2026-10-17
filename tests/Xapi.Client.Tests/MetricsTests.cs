@@ -40,7 +40,7 @@ public class MetricsTests
     {
         // The shared meter is process-wide: other tests' clients report on it too, so only this handler's count is
         // compared, as a lower bound
-        using var metrics = new MetricRecorder(i => i.Meter.Name == XapiClientDiagnostics.MeterName && i.Meter.Scope is null);
+        using var metrics = new MetricRecorder(i => i.Meter.Name == XapiClientDiagnostics.MeterName && MetricRecorder.IsUnscoped(i.Meter));
         var (client, handler) = TestClient.Create();
         handler.Respond(HttpStatusCode.NoContent);
 

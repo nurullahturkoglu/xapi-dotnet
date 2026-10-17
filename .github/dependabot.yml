@@ -9,6 +9,13 @@ updates:
     groups:
       nuget:
         patterns: ["*"]
+    # The netstandard2.0 dependency floors in Directory.Packages.props are the lowest usable versions, not the
+    # newest, and are only raised on purpose (CONTRIBUTING.md, "Dependency floors")
+    ignore:
+      - dependency-name: System.Text.Json
+      - dependency-name: Microsoft.Bcl.AsyncInterfaces
+      - dependency-name: Microsoft.Bcl.TimeProvider
+      - dependency-name: System.Diagnostics.DiagnosticSource
 
   - package-ecosystem: github-actions
     directory: /

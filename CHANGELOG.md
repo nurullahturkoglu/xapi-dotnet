@@ -54,6 +54,7 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: setting `MaxDocumentBytes` below 1 throws `ArgumentOutOfRangeException`, like the other size limits.
 - Each package has its own NuGet tags on top of the shared ones (`lrs` and `learning-record-store` only on the LRS packages), and the package release notes link to this changelog.
 - `Xapi.Lrs`: the options are validated when the host starts (`ValidateOnStart`). A host with no credentials and no `AuthenticationScheme`, an empty or built-in (`XapiBasic`) scheme name, an empty `ScopeClaimType` or a default `AuthorityHomePage` now fails to start with an `OptionsValidationException` that lists every problem, instead of starting with settings under which requests cannot be authenticated.
+- The netstandard2.0 builds of `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` depend on the lowest versions that have the APIs they use and no known vulnerability, instead of the newest: System.Text.Json 10.0.0, Microsoft.Bcl.AsyncInterfaces 10.0.0, Microsoft.Bcl.TimeProvider 8.0.1 and System.Diagnostics.DiagnosticSource 7.0.0 (were 10.0.13), so a .NET Framework or Unity app that already uses one of them does not have to move it to the newest release.
 
 ### Fixed
 

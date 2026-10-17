@@ -11,12 +11,25 @@
     <PackageVersion Include="PolySharp" Version="1.16.0" />
   </ItemGroup>
 
+  <!--
+    Dependency floors of the netstandard2.0 builds: the lowest version that has every API the libraries use and no
+    known vulnerability. They become the minimum versions in the nuspec, and the net481 tests run against them.
+    Raise one only on purpose (CONTRIBUTING.md, "Dependency floors"); Dependabot ignores them. The net10.0 builds do
+    not reference them, because the shared framework has these APIs.
+  -->
+  <ItemGroup>
+    <!-- JsonMarshal.GetRawUtf8PropertyName is new in 10.0 -->
+    <PackageVersion Include="System.Text.Json" Version="10.0.0" />
+    <!-- System.Text.Json 10.0.0 depends on 10.0.0 -->
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.0" />
+    <!-- 8.0.0 has every API used, but Microsoft.Extensions.TimeProvider.Testing needs 8.0.1 in the net481 tests -->
+    <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="8.0.1" />
+    <!-- Meter.CreateObservableUpDownCounter is new in 7.0 -->
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="7.0.0" />
+  </ItemGroup>
+
   <!-- Runtime dependencies of the libraries -->
   <ItemGroup>
-    <PackageVersion Include="System.Text.Json" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Bcl.TimeProvider" Version="10.0.13" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />

@@ -157,6 +157,35 @@ public class PackageContentTests
         }
     }
 
+    // A netstandard2.0 dependency is a minimum version for every .NET Framework and Unity app, so it is the lowest
+    // version that has the APIs used and no known vulnerability, not the newest one
+    [Theory]
+    [InlineData("Xapi.Core")]
+    [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Client.Outbox")]
+    public void NetStandard_dependencies_are_the_floor_versions(string packageId)
+    {
+        using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
+        XDocument nuspec;
+        using (var stream = archive.GetEntry($"{packageId}.nuspec")!.Open())
+        {
+            nuspec = XDocument.Load(stream);
+        }
+
+        var group = nuspec.Descendants().Single(e => e.Name.LocalName == "group" && e.Attribute("targetFramework")?.Value == ".NETStandard2.0");
+        var dependencies = group.Elements()
+            .Where(e => e.Name.LocalName == "dependency" && !e.Attribute("id")!.Value.StartsWith("Xapi.", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.NotEmpty(dependencies);
+        Assert.All(dependencies, d =>
+        {
+            var id = d.Attribute("id")!.Value;
+            Assert.True(PackageUnderTest.DependencyFloors.TryGetValue(id, out var floor), $"{id} has no floor in Directory.Packages.props.");
+            Assert.Equal(floor, d.Attribute("version")?.Value);
+        });
+    }
+
     // The providers bind to the experimental storage types of Xapi.Lrs, which can change in any release, so a
     // provider must never be resolved against a different Xapi.Lrs than the one it was built with
     [Theory]

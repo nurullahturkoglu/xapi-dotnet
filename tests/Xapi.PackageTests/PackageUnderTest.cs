@@ -10,6 +10,16 @@ internal static class PackageUnderTest
 
     public static string Version { get; } = Metadata("XapiPackageVersion");
 
+    // The dependency floors of the netstandard2.0 builds, as in Directory.Packages.props. Repeated here so that a
+    // floor only moves on purpose (CONTRIBUTING.md, "Dependency floors").
+    public static IReadOnlyDictionary<string, string> DependencyFloors { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["Microsoft.Bcl.AsyncInterfaces"] = "10.0.0",
+        ["Microsoft.Bcl.TimeProvider"] = "8.0.1",
+        ["System.Diagnostics.DiagnosticSource"] = "7.0.0",
+        ["System.Text.Json"] = "10.0.0",
+    };
+
     public static string Feed { get; } = Metadata("XapiPackageFeed");
 
     public static string NupkgPath(string packageId)

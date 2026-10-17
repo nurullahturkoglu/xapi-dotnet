@@ -102,8 +102,8 @@ reference in `Xapi.PublicApi.Tests.csproj`.
 ## Package tests
 
 `tests/Xapi.PackageTests` consumes the packed nupkgs from `artifacts/packages` instead of referencing the
-projects. It checks what ends up in the package (README, notices, target frameworks, XML docs, strong
-name). It is not part of the solution, because it can only restore after packing:
+projects. It checks what ends up in the package (README, notices, target frameworks, dependency versions,
+XML docs, strong name). It is not part of the solution, because it can only restore after packing:
 
 ```bash
 dotnet pack xapi-dotnet.slnx -c Release -o artifacts/packages
@@ -113,6 +113,23 @@ dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion=<
 `<version>` is the version in the nupkg file name, for example `0.0.0-preview.0` in
 `Xapi.Core.0.0.0-preview.0.nupkg`. The project restores into `artifacts/package-tests/packages`, so delete
 `artifacts/` before packing the same version again.
+
+## Dependency floors
+
+On `netstandard2.0`, `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` depend on System.Text.Json,
+Microsoft.Bcl.AsyncInterfaces, Microsoft.Bcl.TimeProvider and System.Diagnostics.DiagnosticSource. The versions
+in `Directory.Packages.props` become minimum versions in the nuspec, and a .NET Framework or Unity app that pins
+an older one would have to upgrade. So each is a floor: the lowest version that has every API the libraries use
+and no known vulnerability, not the newest. On `net10.0` these come with the shared framework.
+
+To check a candidate, set it in `Directory.Packages.props` and run `dotnet build`: the `netstandard2.0` builds
+fail on an API the version lacks, and NuGet audit fails restore on a version with a known vulnerability. Raise a
+floor only when the code needs a newer API or an advisory covers the floor, and then also change the comment
+next to it and `DependencyFloors` in `tests/Xapi.PackageTests/PackageUnderTest.cs`. Dependabot ignores these
+four packages so that floors do not move with routine updates.
+
+The `net481` test targets restore against the floors, so the .NET Framework runs test the oldest versions the
+packages allow. For that reason they do not reference the code coverage extension, which needs newer versions.
 
 ## Documentation site
 
