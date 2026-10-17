@@ -66,47 +66,30 @@ internal sealed partial class EfStatementStore(
         var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (context.ConfigureAwait(false))
         {
-            // IEEE 9274.1.1, 4.1.6.1 "Voided Statements": never returned by a query
-            var query = context.Statements.AsNoTracking().Where(s => !s.IsVoided);
-            if (filter.AuthorityKey is { } authority)
-            {
-                query = query.Where(s => s.AuthorityKey == authority);
-            }
+            // One more than the page, to tell whether another page follows
+            var take = filter.Limit + 1;
 
             // Time and paging bounds apply to the returned statement, not to the statements it targets
-            if (filter.Since is { } since)
+            var bounds = KeyBounds(filter);
+
+            // IEEE 9274.1.1, 4.1.6.1 "Voided Statements": never returned by a query
+            var visible = Within(context.Statements.AsNoTracking().Where(s => !s.IsVoided), s => s.Pk, bounds);
+            if (filter.AuthorityKey is { } authority)
             {
-                var first = StatementKeys.FirstAfter(since);
-                query = query.Where(s => s.Pk.CompareTo(first) >= 0);
+                visible = visible.Where(s => s.AuthorityKey == authority);
             }
 
-            if (filter.Until is { } until)
+            var query = visible;
+            var conditions = Conditions(context, filter, bounds);
+            if (conditions.Count > 0)
             {
-                var end = StatementKeys.FirstAfter(until);
-                query = query.Where(s => s.Pk.CompareTo(end) < 0);
-            }
-
-            if (filter.After is { } after)
-            {
-                query = filter.Ascending
-                    ? query.Where(s => s.Pk.CompareTo(after) > 0)
-                    : query.Where(s => s.Pk.CompareTo(after) < 0);
-            }
-
-            if (Matches(context, filter) is { } match)
-            {
-                // 4.1.6.1 "Filter Conditions for StatementRefs": a statement also matches when a statement it
-                // targets matches, recursively (xapi_statement_ref holds every id reached), and voided targets
-                // count (4.1.6.1 "Voided Statements": statements targeting a voided statement are returned)
-                var matching = context.Statements.Where(match);
-                Expression<Func<StatementEntity, bool>> targetsMatch = s =>
-                    context.StatementRefs.Any(r => r.AncestorPk == s.Pk && matching.Any(t => t.StatementId == r.DescendantId));
-                query = query.Where(Or(match, targetsMatch));
+                var candidates = Candidates(context, filter, visible, conditions, bounds, take);
+                query = context.Statements.AsNoTracking().Where(s => candidates.Contains(s.Pk));
             }
 
             query = filter.Ascending ? query.OrderBy(s => s.Pk) : query.OrderByDescending(s => s.Pk);
             var rows = await query
-                .Take(filter.Limit + 1)
+                .Take(take)
                 .Select(s => new { s.Pk, s.StatementId, s.Stored, s.Version, s.IsVoided, s.AuthorityKey, s.Payload })
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -200,27 +183,71 @@ internal sealed partial class EfStatementStore(
         }
     }
 
-    // The content filters, as a condition on one statement row, or null when the query has none
-    private static Expression<Func<StatementEntity, bool>>? Matches(XapiLrsDbContext context, StatementFilter filter)
+    // The keys of the statements a filtered query may return, at most `take` from each index range. Each range is
+    // read in key order and stops once it has a page, so a filter costs about a page of index entries whether it
+    // matches most statements or none. One condition such as "verb = x OR the StatementRef target has verb x"
+    // would instead make the database walk every statement in key order and test it.
+    private static IQueryable<Guid> Candidates(
+        XapiLrsDbContext context,
+        StatementFilter filter,
+        IQueryable<StatementEntity> visible,
+        List<Condition> conditions,
+        List<Expression<Func<Guid, bool>>> bounds,
+        int take)
     {
-        var conditions = new List<Expression<Func<StatementEntity, bool>>>();
-        if (filter.Verb is { } verb)
-        {
-            var iri = verb.Value;
-            conditions.Add(t => t.VerbIri == iri);
-        }
+        // The first condition is read from its index; the others are tested on the statements it finds
+        var driver = conditions[0];
+        var rows = conditions.Skip(1).Aggregate(visible, (query, condition) => query.Where(condition.Match));
+        var ranges = driver.Ranges(rows).Select(keys => First(keys, filter.Ascending, take * driver.RowsPerStatement)).ToList();
 
+        // 4.1.6.1 "Filter Conditions for StatementRefs": a statement also matches when a statement it targets
+        // matches, recursively (xapi_statement_ref holds every id reached), and voided targets count
+        // (4.1.6.1 "Voided Statements": statements targeting a voided statement are returned)
+        var targets = context.Statements.Where(conditions.Select(c => c.Match).Aggregate(And));
+        var ancestors = Within(context.StatementRefs, r => r.AncestorPk, bounds)
+            .Where(r => targets.Any(t => t.StatementId == r.DescendantId))
+            .Select(r => r.AncestorPk);
+        ranges.Add(First(visible.Where(s => ancestors.Contains(s.Pk)).Select(s => s.Pk), filter.Ascending, take));
+
+        return ranges.Aggregate(Queryable.Concat);
+    }
+
+    private static IQueryable<Guid> First(IQueryable<Guid> keys, bool ascending, int take) =>
+        (ascending ? keys.OrderBy(k => k) : keys.OrderByDescending(k => k)).Take(take);
+
+    // A content filter, as a condition on one statement row and as the index ranges that together hold the keys of
+    // every statement it matches, each limited to the given rows. A range may hold a statement's key up to
+    // RowsPerStatement times; the IN of the outer query removes the repeats. (DISTINCT inside a range would make
+    // SQLite read and sort the whole range before the LIMIT.)
+    private sealed record Condition(
+        Expression<Func<StatementEntity, bool>> Match,
+        Func<IQueryable<StatementEntity>, IEnumerable<IQueryable<Guid>>> Ranges,
+        int RowsPerStatement = 1);
+
+    // The content filters, the one to read from its index first. In typical data a registration, an activity or a
+    // learner matches fewer statements than a verb, and one range is cheaper than one per related_* usage. Any
+    // order returns the same statements.
+    private static List<Condition> Conditions(XapiLrsDbContext context, StatementFilter filter, List<Expression<Func<Guid, bool>>> bounds)
+    {
+        var conditions = new List<(int Rank, Condition Condition)>();
         if (filter.Registration is { } registration)
         {
-            conditions.Add(t => t.Registration == registration);
+            conditions.Add((0, new(
+                t => t.Registration == registration,
+                rows => [rows.Where(s => s.Registration == registration).Select(s => s.Pk)])));
         }
 
         if (filter.Activity is { } activity)
         {
             var iri = activity.Value;
-            conditions.Add(filter.RelatedActivities
-                ? t => context.StatementActivities.Any(a => a.StatementPk == t.Pk && a.ActivityIri == iri)
-                : t => context.StatementActivities.Any(a => a.StatementPk == t.Pk && a.ActivityIri == iri && a.Usage == ActivityUsage.Object));
+            var usages = filter.RelatedActivities ? ActivityUsage.All : ActivityUsage.ObjectOnly;
+            conditions.Add((filter.RelatedActivities ? 4 : 1, new(
+                // The usages spelled out, so the database can look up (iri, usage, statement) instead of reading
+                // every row of the activity
+                t => context.StatementActivities.Any(a => a.StatementPk == t.Pk && a.ActivityIri == iri && EF.Constant(usages).Contains(a.Usage)),
+                rows => usages.Select(usage =>
+                    Within(context.StatementActivities.Where(a => a.ActivityIri == iri && a.Usage == usage), a => a.StatementPk, bounds)
+                        .Join(rows, a => a.StatementPk, s => s.Pk, (a, _) => a.StatementPk)))));
         }
 
         if (filter.Agent is { } agent)
@@ -232,32 +259,69 @@ internal sealed partial class EfStatementStore(
                 Group { Ifi: { } groupIfi } => IfiKeys.For(groupIfi),
                 _ => throw new ArgumentException("The agent filter must be an Agent or an identified Group.", nameof(filter)),
             };
-            conditions.Add(filter.RelatedAgents
-                ? t => context.StatementActors.Any(a => a.StatementPk == t.Pk && a.ActorIfi == ifi)
-                : t => context.StatementActors.Any(a => a.StatementPk == t.Pk && a.ActorIfi == ifi &&
-                                                       (a.Usage == ActorUsage.Actor || a.Usage == ActorUsage.Object)));
+            var usages = filter.RelatedAgents ? ActorUsage.All : ActorUsage.ActorOrObject;
+            conditions.Add((filter.RelatedAgents ? 5 : 2, new(
+                t => context.StatementActors.Any(a => a.StatementPk == t.Pk && a.ActorIfi == ifi && EF.Constant(usages).Contains(a.Usage)),
+                rows => usages.Select(usage =>
+                    Within(context.StatementActors.Where(a => a.ActorIfi == ifi && a.Usage == usage), a => a.StatementPk, bounds)
+                        .Join(rows, a => a.StatementPk, s => s.Pk, (a, _) => a.StatementPk)),
+                // An Agent and a Group with the same identifier in one usage are two rows (the key includes the type)
+                RowsPerStatement: 2)));
         }
 
-        return conditions.Count == 0 ? null : conditions.Aggregate((left, right) => Combine(left, right, Expression.AndAlso));
+        if (filter.Verb is { } verb)
+        {
+            var iri = verb.Value;
+            conditions.Add((3, new(
+                t => t.VerbIri == iri,
+                rows => [rows.Where(s => s.VerbIri == iri).Select(s => s.Pk)])));
+        }
+
+        return [.. conditions.OrderBy(c => c.Rank).Select(c => c.Condition)];
     }
 
-    private static Expression<Func<StatementEntity, bool>> Or(Expression<Func<StatementEntity, bool>> left, Expression<Func<StatementEntity, bool>> right) =>
-        Combine(left, right, Expression.OrElse);
-
-    private static Expression<Func<StatementEntity, bool>> Combine(
-        Expression<Func<StatementEntity, bool>> left,
-        Expression<Func<StatementEntity, bool>> right,
-        Func<Expression, Expression, BinaryExpression> combine)
+    // since, until and the previous page, as conditions on a storage key
+    private static List<Expression<Func<Guid, bool>>> KeyBounds(StatementFilter filter)
     {
-        // A new parameter: the same condition also appears as its own lambda inside the combined one (the
-        // StatementRef subquery), and EF Core rejects one parameter object declared by two lambdas
-        var parameter = Expression.Parameter(typeof(StatementEntity), "s");
+        var bounds = new List<Expression<Func<Guid, bool>>>();
+        if (filter.Since is { } since)
+        {
+            var first = StatementKeys.FirstAfter(since);
+            bounds.Add(k => k.CompareTo(first) >= 0);
+        }
+
+        if (filter.Until is { } until)
+        {
+            var end = StatementKeys.FirstAfter(until);
+            bounds.Add(k => k.CompareTo(end) < 0);
+        }
+
+        if (filter.After is { } after)
+        {
+            bounds.Add(filter.Ascending ? k => k.CompareTo(after) > 0 : k => k.CompareTo(after) < 0);
+        }
+
+        return bounds;
+    }
+
+    // The bounds on the key column of a table, so that an index range of that table starts and ends at them
+    private static IQueryable<T> Within<T>(IQueryable<T> query, Expression<Func<T, Guid>> key, List<Expression<Func<Guid, bool>>> bounds) =>
+        bounds.Aggregate(query, (current, bound) =>
+        {
+            var row = Expression.Parameter(typeof(T), "r");
+            var keyOfRow = new ParameterReplacer(key.Parameters[0], row).Visit(key.Body);
+            return current.Where(Expression.Lambda<Func<T, bool>>(new ParameterReplacer(bound.Parameters[0], keyOfRow).Visit(bound.Body), row));
+        });
+
+    private static Expression<Func<StatementEntity, bool>> And(Expression<Func<StatementEntity, bool>> left, Expression<Func<StatementEntity, bool>> right)
+    {
+        var parameter = Expression.Parameter(typeof(StatementEntity), "t");
         var leftBody = new ParameterReplacer(left.Parameters[0], parameter).Visit(left.Body);
         var rightBody = new ParameterReplacer(right.Parameters[0], parameter).Visit(right.Body);
-        return Expression.Lambda<Func<StatementEntity, bool>>(combine(leftBody, rightBody), parameter);
+        return Expression.Lambda<Func<StatementEntity, bool>>(Expression.AndAlso(leftBody, rightBody), parameter);
     }
 
-    private sealed class ParameterReplacer(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+    private sealed class ParameterReplacer(ParameterExpression from, Expression to) : ExpressionVisitor
     {
         protected override Expression VisitParameter(ParameterExpression node) => node == from ? to : base.VisitParameter(node);
     }

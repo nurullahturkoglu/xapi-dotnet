@@ -3,17 +3,19 @@ using BenchmarkDotNet.Attributes;
 
 namespace Xapi.Benchmarks.Lrs;
 
-// GET /xapi/statements against 10,000 stored statements spread over 10 verbs: one statement by id, the first
-// page of a verb filter (limit 100, so 1,000 matches give a "more" link), the page that link returns, and a verb
-// filter that matches nothing, which is the worst case for a query that walks the statements newest first.
+// GET /xapi/statements against 10,000 or 100,000 stored statements spread over 10 verbs and 500 learners: one
+// statement by id, the first page of a verb filter (limit 100, so a tenth of the statements match and there is a
+// "more" link), the page that link returns, a verb filter that matches nothing, and a learner with
+// related_agents (one statement in 500). The last two are where a query that walks the statements newest first
+// and tests each one would read most of the table.
 [MemoryDiagnoser]
 public class StatementQueryBenchmarks
 {
-    private const int Stored = 10_000;
-
     private static readonly Uri ByVerb = new($"statements?verb={Uri.EscapeDataString(StatementSamples.Verbs[1])}&limit=100", UriKind.Relative);
 
     private static readonly Uri ByUnusedVerb = new($"statements?verb={Uri.EscapeDataString("http://example.com/verbs/unused")}&limit=100", UriKind.Relative);
+
+    private static readonly Uri ByRelatedAgent = new($"statements?agent={Uri.EscapeDataString("""{"mbox":"mailto:learner7@example.com"}""")}&related_agents=true&limit=100", UriKind.Relative);
 
     private LrsServer _server = null!;
     private Uri _byId = null!;
@@ -21,6 +23,9 @@ public class StatementQueryBenchmarks
 
     [ParamsSource(typeof(LrsDatabases), nameof(LrsDatabases.All))]
     public string Database { get; set; } = "";
+
+    [Params(10_000, 100_000)]
+    public int Stored { get; set; }
 
     [GlobalSetup]
     public async Task SetupAsync()
@@ -62,6 +67,9 @@ public class StatementQueryBenchmarks
 
     [Benchmark(Description = "GET verb filter, no match")]
     public Task<int> GetByUnusedVerb() => GetAsync(ByUnusedVerb);
+
+    [Benchmark(Description = "GET agent filter, related_agents")]
+    public Task<int> GetByRelatedAgent() => GetAsync(ByRelatedAgent);
 
     private async Task<int> GetAsync(Uri uri)
     {

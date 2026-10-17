@@ -88,22 +88,42 @@ SQLite file (WAL mode) or a new PostgreSQL database. Building the request JSON i
 | --- | ---: | ---: |
 | POST one statement | 2.3 ms | 4.4 ms |
 | POST a batch of 100 statements | 31 ms | 50 ms |
-| GET one statement by `statementId` | 0.16 ms | 0.42 ms |
-| GET `verb=...&limit=100`, first page of 1,000 matches | 1.6 ms | 1.9 ms |
-| GET the `more` link of that page | 1.8 ms | 1.9 ms |
-| GET `verb=...&limit=100` for a verb no statement has | 6.9 ms | 2.8 ms |
 
 The write rows store fresh statements throughout, so the database grows to tens of thousands of statements
-during the run. The query rows run against 10,001 statements spread over 10 verbs. Responses use the
-`exact` format, which returns the stored JSON without parsing it.
+during the run.
 
 A batch of 100 costs about 0.3 to 0.5 ms per statement, against 2 to 4 ms for a statement on its own, so
 senders that can batch (the outbox does, 50 per request by default) should.
 
-The last query row is the worst case for the statement query: the verb filter also matches statements whose
-StatementRef target has the verb, and that `OR` keeps SQLite from using the verb index, so it walks the
-statements newest first until it fills the page. When few statements match, it reads all of them. The cost
-grows with the table: in a separate run against 100,000 statements on SQLite, the same query took 70 ms.
+### Statement queries
+
+GET requests against 10,000 or 100,000 stored statements (plus one) spread over 10 verbs and 500 learners.
+Responses use the `exact` format, which returns the stored JSON without parsing it. These rows come from a
+later run than the rest of this file, on the same machine, on 17 October 2026 from 03:58 to 04:08 (UTC+3),
+with other builds and tests running.
+
+| Request | Stored | SQLite | PostgreSQL |
+| --- | ---: | ---: | ---: |
+| GET one statement by `statementId` | 10,000 | 0.12 ms | 0.43 ms |
+| GET `verb=...&limit=100`, first page of 1,000 matches | 10,000 | 1.1 ms | 1.9 ms |
+| GET the `more` link of that page | 10,000 | 1.1 ms | 2.5 ms |
+| GET `verb=...&limit=100` for a verb no statement has | 10,000 | 0.29 ms | 0.82 ms |
+| GET `agent=...&related_agents=true&limit=100`, 20 matches | 10,000 | 1.1 ms | 3.7 ms |
+| GET one statement by `statementId` | 100,000 | 0.12 ms | 0.42 ms |
+| GET `verb=...&limit=100`, first page of 10,000 matches | 100,000 | 0.96 ms | 1.9 ms |
+| GET the `more` link of that page | 100,000 | 1.0 ms | 2.1 ms |
+| GET `verb=...&limit=100` for a verb no statement has | 100,000 | 0.22 ms | 0.84 ms |
+| GET `agent=...&related_agents=true&limit=100`, first page of 200 matches | 100,000 | 2.3 ms | 5.9 ms |
+
+Each filter reads its own index: the verb filter the statements' verb index, `agent` and `activity` the
+index of the statements that mention them (one range per place in the statement that the filter covers,
+such as actor, object or context), and the matches through StatementRefs a separate range, all newest first
+and only as far as one page. So the time follows the page size and not the number of statements stored.
+
+Until it read these ranges, the query walked the statements newest first and tested each one until it
+filled the page, so the rows with few matches read the whole table. In a run of the same benchmarks just before this one, the
+verb with no statements took 70 ms on SQLite and 52 ms on PostgreSQL at 100,000 statements, and the
+`related_agents` query 581 ms and 15 ms.
 
 ### Concurrent writers
 
@@ -142,11 +162,13 @@ dotnet run -c Release --project benchmarks/Xapi.Benchmarks -- --filter '*'
 Results go to `BenchmarkDotNet.Artifacts/results` in the current directory, one Markdown, CSV and HTML report
 per class, plus `lrs-retries.md` with the retry counts. Useful variations:
 
-- `--filter '*StatementJson*'`, `'*Enqueue*'`, `'*Lrs*'` or `'*ConcurrentWriter*'` runs one group.
+- `--filter '*StatementJson*'`, `'*Enqueue*'`, `'*Lrs*'` or `'*ConcurrentWriter*'` runs one group, and
+  `'*StatementQuery*'` only the query rows.
 - `--list flat` lists the benchmarks.
-- Without `--job`, every benchmark uses the short job above, and the whole suite takes about 6 minutes
-  with PostgreSQL. `--job Default` gives BenchmarkDotNet's full statistics (more launches and iterations
-  until the results are stable) and takes much longer; use it, on an idle machine, before quoting a number.
+- Without `--job`, every benchmark uses the short job above, and the whole suite takes about 15 minutes
+  with PostgreSQL, 10 of them for the query rows, which store 100,000 statements per database first.
+  `--job Default` gives BenchmarkDotNet's full statistics (more launches and iterations until the results
+  are stable) and takes much longer; use it, on an idle machine, before quoting a number.
 - `XAPI_BENCH_POSTGRES=1` adds PostgreSQL to the LRS benchmarks. It starts the same image as the
   conformance job with Testcontainers, so Docker must be running. `XAPI_BENCH_POSTGRES_CONNECTION` points
   them at a server of your own instead; each benchmark process creates its own database there.

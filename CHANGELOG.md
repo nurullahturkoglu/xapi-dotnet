@@ -26,6 +26,10 @@ listed under a "Breaking" heading.
 - `benchmarks/Xapi.Benchmarks`: BenchmarkDotNet benchmarks for statement parsing, writing, validation and equivalence, outbox enqueueing, and the LRS statement endpoints on SQLite and PostgreSQL, with measured results in [docs/benchmarks.md](docs/benchmarks.md).
 - A documentation site built with docfx from the guides and the XML docs, deployed to GitHub Pages from `main`: https://nurullahturkoglu.github.io/xapi-dotnet/
 
+### Changed
+
+- `Xapi.Lrs`: statement queries read each filter's own index (verb, registration, and one range per agent or activity usage, plus StatementRef matches) newest first and only as far as one page, instead of testing every statement. At 100,000 statements a verb with no matches takes 0.22 ms instead of 70 ms on SQLite and 0.84 ms instead of 52 ms on PostgreSQL, and an `agent` query with `related_agents` 2.3 ms instead of 581 ms and 5.9 ms instead of 15 ms.
+
 ### Security
 
 - `Xapi.Lrs`: statement and document writes set the server's request body limit from the LRS options, so `MaxAttachmentBytes` and `MaxDocumentBytes` above Kestrel's default of about 28.6 MiB now take effect. The new `MaxStatementBytes` (16 MiB) limits the statement JSON of one request, which before was bounded only by the server.
