@@ -4,7 +4,7 @@ using System.Globalization;
 namespace Xapi.Client.Outbox.Internal;
 
 // The outbox's instruments on the Xapi.Client meter (ADR-014). An outbox created with its public constructor uses a
-// meter shared by the process; AddXapiOutbox creates one through the host's IMeterFactory. The pending count is
+// meter shared by the process; AddOutbox creates one through the host's IMeterFactory. The pending count is
 // the sum over the outboxes on the same meter: an up-down counter rather than a gauge, because the values add up.
 internal sealed class OutboxMetrics
 {

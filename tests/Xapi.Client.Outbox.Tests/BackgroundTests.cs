@@ -104,32 +104,32 @@ public class BackgroundTests
         await again;
     }
 
-    private sealed class FailingStore : IOutboxStore
+    private sealed class FailingStore : OutboxStore
     {
         private readonly InMemoryOutboxStore _inner = new();
 
         public volatile bool FailReads;
 
-        public ValueTask<bool> AddAsync(OutboxEntry entry, CancellationToken cancellationToken) => _inner.AddAsync(entry, cancellationToken);
+        public override ValueTask<bool> AddAsync(OutboxEntry entry, CancellationToken cancellationToken) => _inner.AddAsync(entry, cancellationToken);
 
-        public ValueTask<IReadOnlyList<OutboxEntry>> GetPendingAsync(int maxCount, CancellationToken cancellationToken) =>
+        public override ValueTask<IReadOnlyList<OutboxEntry>> GetPendingAsync(int maxCount, CancellationToken cancellationToken) =>
             FailReads ? throw new IOException("disk on fire") : _inner.GetPendingAsync(maxCount, cancellationToken);
 
-        public ValueTask<int> GetPendingCountAsync(CancellationToken cancellationToken) => _inner.GetPendingCountAsync(cancellationToken);
+        public override ValueTask<int> GetPendingCountAsync(CancellationToken cancellationToken) => _inner.GetPendingCountAsync(cancellationToken);
 
-        public ValueTask RemoveAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken) => _inner.RemoveAsync(statementIds, cancellationToken);
+        public override ValueTask RemoveAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken) => _inner.RemoveAsync(statementIds, cancellationToken);
 
-        public ValueTask RecordFailedAttemptAsync(IReadOnlyCollection<Guid> statementIds, string error, CancellationToken cancellationToken) =>
+        public override ValueTask RecordFailedAttemptAsync(IReadOnlyCollection<Guid> statementIds, string error, CancellationToken cancellationToken) =>
             _inner.RecordFailedAttemptAsync(statementIds, error, cancellationToken);
 
-        public ValueTask MoveToDeadLettersAsync(OutboxDeadLetter deadLetter, CancellationToken cancellationToken) => _inner.MoveToDeadLettersAsync(deadLetter, cancellationToken);
+        public override ValueTask MoveToDeadLettersAsync(OutboxDeadLetter deadLetter, CancellationToken cancellationToken) => _inner.MoveToDeadLettersAsync(deadLetter, cancellationToken);
 
-        public ValueTask<IReadOnlyList<OutboxDeadLetter>> GetDeadLettersAsync(CancellationToken cancellationToken) => _inner.GetDeadLettersAsync(cancellationToken);
+        public override ValueTask<IReadOnlyList<OutboxDeadLetter>> GetDeadLettersAsync(CancellationToken cancellationToken) => _inner.GetDeadLettersAsync(cancellationToken);
 
-        public ValueTask<int> GetDeadLetterCountAsync(CancellationToken cancellationToken) => _inner.GetDeadLetterCountAsync(cancellationToken);
+        public override ValueTask<int> GetDeadLetterCountAsync(CancellationToken cancellationToken) => _inner.GetDeadLetterCountAsync(cancellationToken);
 
-        public ValueTask<bool> RequeueAsync(Guid statementId, CancellationToken cancellationToken) => _inner.RequeueAsync(statementId, cancellationToken);
+        public override ValueTask<bool> RequeueAsync(Guid statementId, CancellationToken cancellationToken) => _inner.RequeueAsync(statementId, cancellationToken);
 
-        public ValueTask<bool> RemoveDeadLetterAsync(Guid statementId, CancellationToken cancellationToken) => _inner.RemoveDeadLetterAsync(statementId, cancellationToken);
+        public override ValueTask<bool> RemoveDeadLetterAsync(Guid statementId, CancellationToken cancellationToken) => _inner.RemoveDeadLetterAsync(statementId, cancellationToken);
     }
 }

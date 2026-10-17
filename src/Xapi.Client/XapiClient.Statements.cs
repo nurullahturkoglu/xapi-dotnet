@@ -8,15 +8,128 @@ using Xapi.Validation;
 
 namespace Xapi.Client;
 
-public sealed partial class XapiClient
+public partial class XapiClient
 {
     private const string StatementsResource = "statements";
 
-    /// <inheritdoc/>
-    public async Task<Guid> SaveStatementAsync(Statement statement, IReadOnlyList<AttachmentPayload>? attachments = null, CancellationToken cancellationToken = default)
+    /// <summary>Stores one Statement: PUT with <c>statementId</c> when <see cref="Statement.Id"/> is set, POST otherwise.</summary>
+    /// <param name="statement">The Statement.</param>
+    /// <param name="attachments">
+    /// Data for the Statement's Attachments that have no <c>fileUrl</c>. When there is any, the request is sent as
+    /// <c>multipart/mixed</c>.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The Statement id: <see cref="Statement.Id"/>, or the id the LRS assigned.</returns>
+    /// <exception cref="XapiValidationException">The Statement is invalid and <see cref="XapiClientOptions.ValidateBeforeSend"/> is on.</exception>
+    /// <exception cref="XapiConflictException">The LRS has a different Statement with the same id.</exception>
+    public virtual Task<Guid> SaveStatementAsync(Statement statement, IReadOnlyList<AttachmentPayload>? attachments = null, CancellationToken cancellationToken = default) =>
+        SaveStatementCoreAsync(statement, attachments, cancellationToken);
+
+    /// <summary>Stores a batch of Statements with one POST. The LRS stores all or none of them.</summary>
+    /// <remarks>An empty batch returns an empty list without a request.</remarks>
+    /// <param name="statements">The Statements.</param>
+    /// <param name="attachments">Data for Attachments that have no <c>fileUrl</c>, in any of the Statements.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The Statement ids, in the order of <paramref name="statements"/>.</returns>
+    /// <exception cref="XapiValidationException">A Statement is invalid, or two share an id, and <see cref="XapiClientOptions.ValidateBeforeSend"/> is on.</exception>
+    /// <exception cref="XapiConflictException">The LRS has a different Statement with the id of one in the batch.</exception>
+    public virtual async Task<IReadOnlyList<Guid>> SaveStatementsAsync(IReadOnlyList<Statement> statements, IReadOnlyList<AttachmentPayload>? attachments = null, CancellationToken cancellationToken = default)
+    {
+        Guard.NotNull(statements);
+        for (var i = 0; i < statements.Count; i++)
+        {
+            if (statements[i] is null)
+            {
+                throw new ArgumentException($"The Statement at index {i} is null.", nameof(statements));
+            }
+        }
+
+        if (statements.Count == 0)
+        {
+            return [];
+        }
+
+        var version = await VersionAsync(cancellationToken).ConfigureAwait(false);
+        if (_validateBeforeSend)
+        {
+            ThrowIfInvalid(statements, attachments, version, batch: true);
+        }
+
+        var content = CreateStatementsContent(JsonBytes.From(XapiJson.SerializeStatements(statements, version)), attachments);
+        using var response = await SendAsync(HttpMethod.Post, StatementsResource, null, content, null, version, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        var ids = await ReadIdsAsync(response, cancellationToken).ConfigureAwait(false);
+        if (ids.Count != statements.Count)
+        {
+            // Some LRSs (lrsql among them) leave out the ids of Statements they already had, for example when a
+            // batch is sent again after a lost response. When every Statement carries its id, those ids are the answer.
+            var sent = statements.Select(s => s.Id).ToList();
+            ids = sent.TrueForAll(id => id is not null) && ids.All(id => sent.Contains(id))
+                ? sent.ConvertAll(id => id!.Value)
+                : throw Unusable(response, null, $"returned {ids.Count} Statement ids for {statements.Count} Statements");
+        }
+
+        _metrics.StatementsSent(statements.Count, version);
+        return ids;
+    }
+
+    /// <summary>Fetches one Statement by id (<c>statementId</c>). Voided Statements are not returned.</summary>
+    /// <param name="id">The Statement id.</param>
+    /// <param name="format">How much of Agents, Activities and Verbs to return.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The Statement, or <see langword="null"/> when the LRS answers 404.</returns>
+    public virtual Task<Statement?> GetStatementAsync(Guid id, StatementFormat format = StatementFormat.Exact, CancellationToken cancellationToken = default) =>
+        GetSingleStatementAsync("statementId", id, format, cancellationToken);
+
+    /// <summary>Fetches one voided Statement by id (<c>voidedStatementId</c>).</summary>
+    /// <param name="id">The id of the voided Statement (not of the voiding one).</param>
+    /// <param name="format">How much of Agents, Activities and Verbs to return.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The Statement, or <see langword="null"/> when the LRS answers 404.</returns>
+    public virtual Task<Statement?> GetVoidedStatementAsync(Guid id, StatementFormat format = StatementFormat.Exact, CancellationToken cancellationToken = default) =>
+        GetSingleStatementAsync("voidedStatementId", id, format, cancellationToken);
+
+    /// <summary>Fetches the first page of a Statement query.</summary>
+    /// <param name="query">Filters and options.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The page; follow <see cref="StatementResult.More"/> with <see cref="GetMoreStatementsAsync"/>.</returns>
+    public virtual Task<StatementResult> QueryStatementsAsync(StatementQuery query, CancellationToken cancellationToken = default) =>
+        QueryStatementsCoreAsync(query, cancellationToken);
+
+    /// <summary>Fetches the next page of a Statement query.</summary>
+    /// <remarks>
+    /// Only the path and query of <paramref name="more"/> are used; they are sent to the scheme, host and port of
+    /// <see cref="XapiClientOptions.Endpoint"/>, so credentials never go to another host. A path without a leading
+    /// slash is resolved against the endpoint.
+    /// </remarks>
+    /// <param name="more">The <see cref="StatementResult.More"/> of the previous page.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The page.</returns>
+    public virtual Task<StatementResult> GetMoreStatementsAsync(Uri more, CancellationToken cancellationToken = default) =>
+        GetMoreStatementsCoreAsync(more, cancellationToken);
+
+    /// <summary>Runs a Statement query and follows <c>more</c> until the last page, one page request at a time.</summary>
+    /// <remarks>Attachment data is not returned; use <see cref="QueryStatementsAsync"/> for that.</remarks>
+    /// <param name="query">Filters and options.</param>
+    /// <param name="cancellationToken">Cancels the enumeration.</param>
+    /// <returns>Every matching Statement.</returns>
+    public virtual IAsyncEnumerable<Statement> QueryAllStatementsAsync(StatementQuery query, CancellationToken cancellationToken = default) =>
+        // The data would be dropped, so do not ask for it
+        QueryAllCoreAsync(Guard.NotNull(query) with { Attachments = false }, cancellationToken);
+
+    /// <summary>Voids a Statement by storing a Statement with the <c>voided</c> Verb and a StatementRef to it.</summary>
+    /// <remarks>IEEE 9274.1.1, 4.2.5. The voided Statement is then only returned by <see cref="GetVoidedStatementAsync"/>.</remarks>
+    /// <param name="statementId">The id of the Statement to void.</param>
+    /// <param name="actor">Who voids it.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The id of the voiding Statement.</returns>
+    public virtual Task<Guid> VoidStatementAsync(Guid statementId, Actor actor, CancellationToken cancellationToken = default) =>
+        SaveStatementCoreAsync(new Statement(Guard.NotNull(actor), Verbs.Voided, new StatementRef(statementId)), null, cancellationToken);
+
+    private async Task<Guid> SaveStatementCoreAsync(Statement statement, IReadOnlyList<AttachmentPayload>? attachments, CancellationToken cancellationToken)
     {
         Guard.NotNull(statement);
-        var version = await GetVersionAsync(cancellationToken).ConfigureAwait(false);
+        var version = await VersionAsync(cancellationToken).ConfigureAwait(false);
         if (_validateBeforeSend)
         {
             ThrowIfInvalid([statement], attachments, version, batch: false);
@@ -44,57 +157,7 @@ public sealed partial class XapiClient
         return ids[0];
     }
 
-    /// <inheritdoc/>
-    public async Task<IReadOnlyList<Guid>> SaveStatementsAsync(IReadOnlyList<Statement> statements, IReadOnlyList<AttachmentPayload>? attachments = null, CancellationToken cancellationToken = default)
-    {
-        Guard.NotNull(statements);
-        for (var i = 0; i < statements.Count; i++)
-        {
-            if (statements[i] is null)
-            {
-                throw new ArgumentException($"The Statement at index {i} is null.", nameof(statements));
-            }
-        }
-
-        if (statements.Count == 0)
-        {
-            return [];
-        }
-
-        var version = await GetVersionAsync(cancellationToken).ConfigureAwait(false);
-        if (_validateBeforeSend)
-        {
-            ThrowIfInvalid(statements, attachments, version, batch: true);
-        }
-
-        var content = CreateStatementsContent(JsonBytes.From(XapiJson.SerializeStatements(statements, version)), attachments);
-        using var response = await SendAsync(HttpMethod.Post, StatementsResource, null, content, null, version, cancellationToken).ConfigureAwait(false);
-        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
-        var ids = await ReadIdsAsync(response, cancellationToken).ConfigureAwait(false);
-        if (ids.Count != statements.Count)
-        {
-            // Some LRSs (lrsql among them) leave out the ids of Statements they already had, for example when a
-            // batch is sent again after a lost response. When every Statement carries its id, those ids are the answer.
-            var sent = statements.Select(s => s.Id).ToList();
-            ids = sent.TrueForAll(id => id is not null) && ids.All(id => sent.Contains(id))
-                ? sent.ConvertAll(id => id!.Value)
-                : throw Unusable(response, null, $"returned {ids.Count} Statement ids for {statements.Count} Statements");
-        }
-
-        _metrics.StatementsSent(statements.Count, version);
-        return ids;
-    }
-
-    /// <inheritdoc/>
-    public Task<Statement?> GetStatementAsync(Guid id, StatementFormat format = StatementFormat.Exact, CancellationToken cancellationToken = default) =>
-        GetSingleStatementAsync("statementId", id, format, cancellationToken);
-
-    /// <inheritdoc/>
-    public Task<Statement?> GetVoidedStatementAsync(Guid id, StatementFormat format = StatementFormat.Exact, CancellationToken cancellationToken = default) =>
-        GetSingleStatementAsync("voidedStatementId", id, format, cancellationToken);
-
-    /// <inheritdoc/>
-    public async Task<StatementResult> QueryStatementsAsync(StatementQuery query, CancellationToken cancellationToken = default)
+    private async Task<StatementResult> QueryStatementsCoreAsync(StatementQuery query, CancellationToken cancellationToken)
     {
         Guard.NotNull(query);
         if (query.Limit < 0)
@@ -102,7 +165,7 @@ public sealed partial class XapiClient
             throw new ArgumentOutOfRangeException(nameof(query), query.Limit, "StatementQuery.Limit must not be negative.");
         }
 
-        var version = await GetVersionAsync(cancellationToken).ConfigureAwait(false);
+        var version = await VersionAsync(cancellationToken).ConfigureAwait(false);
         var parameters = new QueryBuilder()
             .Add("agent", query.Agent, version)
             .Add("verb", query.Verb)
@@ -120,24 +183,18 @@ public sealed partial class XapiClient
         return await ReadStatementResultAsync(response, version, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc/>
-    public async Task<StatementResult> GetMoreStatementsAsync(Uri more, CancellationToken cancellationToken = default)
+    private async Task<StatementResult> GetMoreStatementsCoreAsync(Uri more, CancellationToken cancellationToken)
     {
         var uri = ResolveMore(Guard.NotNull(more));
-        var version = await GetVersionAsync(cancellationToken).ConfigureAwait(false);
+        var version = await VersionAsync(cancellationToken).ConfigureAwait(false);
         using var response = await SendAsync(HttpMethod.Get, uri, null, null, version, cancellationToken).ConfigureAwait(false);
         return await ReadStatementResultAsync(response, version, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc/>
-    public IAsyncEnumerable<Statement> QueryAllStatementsAsync(StatementQuery query, CancellationToken cancellationToken = default) =>
-        // The data would be dropped, so do not ask for it
-        QueryAllCoreAsync(Guard.NotNull(query) with { Attachments = false }, cancellationToken);
-
     // Separate from the public method so a null query throws at the call, not at the first MoveNextAsync
     private async IAsyncEnumerable<Statement> QueryAllCoreAsync(StatementQuery query, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var page = await QueryStatementsAsync(query, cancellationToken).ConfigureAwait(false);
+        var page = await QueryStatementsCoreAsync(query, cancellationToken).ConfigureAwait(false);
         while (true)
         {
             foreach (var statement in page.Statements)
@@ -150,17 +207,13 @@ public sealed partial class XapiClient
                 yield break;
             }
 
-            page = await GetMoreStatementsAsync(page.More, cancellationToken).ConfigureAwait(false);
+            page = await GetMoreStatementsCoreAsync(page.More, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    /// <inheritdoc/>
-    public Task<Guid> VoidStatementAsync(Guid statementId, Actor actor, CancellationToken cancellationToken = default) =>
-        SaveStatementAsync(new Statement(Guard.NotNull(actor), Verbs.Voided, new StatementRef(statementId)), null, cancellationToken);
-
     private async Task<Statement?> GetSingleStatementAsync(string parameter, Guid id, StatementFormat format, CancellationToken cancellationToken)
     {
-        var version = await GetVersionAsync(cancellationToken).ConfigureAwait(false);
+        var version = await VersionAsync(cancellationToken).ConfigureAwait(false);
         var query = new QueryBuilder().Add(parameter, id).Add("format", format);
         using var response = await SendAsync(HttpMethod.Get, StatementsResource, query, null, null, version, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)

@@ -10,10 +10,18 @@ using Xapi.Json;
 namespace Xapi.Client;
 
 /// <summary>
-/// An <see cref="IXapiClient"/> over an <see cref="HttpClient"/>. Every request carries the
+/// The xAPI resources of one LRS over an <see cref="HttpClient"/>: Statements, State, Activity Profile, Agent
+/// Profile, Agents, Activities and About (IEEE 9274.1.1, 4.1.6). Every request carries the
 /// <c>X-Experience-API-Version</c> header and, if configured, credentials.
 /// </summary>
 /// <remarks>
+/// <para>
+/// Error responses throw <see cref="XapiHttpException"/>, or its subclasses <see cref="XapiConflictException"/>
+/// (409) and <see cref="XapiPreconditionFailedException"/> (412). Methods that fetch one thing by id return
+/// <see langword="null"/> on 404 instead. Network failures and timeouts surface unchanged as
+/// <see cref="HttpRequestException"/> and <see cref="TaskCanceledException"/>. Nothing is retried.
+/// </para>
+/// <para>Responses are read leniently (<see cref="XapiReadMode.Lenient"/>): properties the client does not know are ignored.</para>
 /// <para>
 /// The client keeps no per-request state and can be shared between threads. The <see cref="HttpClient"/> is not
 /// disposed by the client. Configure timeouts, proxies and handlers on the <see cref="HttpClient"/>; the transport
@@ -23,8 +31,13 @@ namespace Xapi.Client;
 /// There is no built-in retry. With dependency injection, add one to the <see cref="HttpClient"/> pipeline; see
 /// <c>AddXapiClient</c>. For offline use and guaranteed delivery, use an outbox instead.
 /// </para>
+/// <para>
+/// The service methods are virtual so that tests can replace them: derive from the class, call the protected
+/// constructor <see cref="XapiClient()"/> and override the methods the code under test calls. Each method stands
+/// alone; overriding one does not change what another does.
+/// </para>
 /// </remarks>
-public sealed partial class XapiClient : IXapiClient
+public partial class XapiClient
 {
     private const string VersionHeader = "X-Experience-API-Version";
     private const string ConsistentThroughHeader = "X-Experience-API-Consistent-Through";
@@ -35,7 +48,7 @@ public sealed partial class XapiClient : IXapiClient
     private readonly Uri _endpoint;
     private readonly XapiCredentials? _credentials;
     private readonly bool _validateBeforeSend;
-    private readonly VersionNegotiation _version;
+    private readonly VersionNegotiation? _version;
     private readonly ClientMetrics _metrics;
 
     /// <summary>Creates a client.</summary>
@@ -45,6 +58,18 @@ public sealed partial class XapiClient : IXapiClient
     public XapiClient(HttpClient httpClient, XapiClientOptions options)
         : this(httpClient, options, null, null)
     {
+    }
+
+    /// <summary>
+    /// Creates a client that cannot send anything, for mocking: a test double derived from <see cref="XapiClient"/>
+    /// calls this constructor and overrides the methods it needs.
+    /// </summary>
+    /// <remarks>The methods that are not overridden throw <see cref="InvalidOperationException"/>.</remarks>
+    protected XapiClient()
+    {
+        _http = null!;
+        _endpoint = null!;
+        _metrics = null!;
     }
 
     internal XapiClient(HttpClient httpClient, XapiClientOptions options, VersionNegotiation? sharedNegotiation, ClientMetrics? metrics)
@@ -58,19 +83,35 @@ public sealed partial class XapiClient : IXapiClient
         _metrics = metrics ?? ClientMetrics.Shared;
     }
 
-    /// <inheritdoc/>
-    public Task<XapiVersion> GetVersionAsync(CancellationToken cancellationToken = default) =>
-        _version.GetAsync(NegotiateAsync, cancellationToken);
+    // Every method reaches the LRS through this, so an instance made for mocking fails here, not with a
+    // NullReferenceException somewhere further on
+    private VersionNegotiation Negotiation => _version ?? throw new InvalidOperationException(
+        $"This {GetType().Name} was created with the protected XapiClient constructor, which is for mocking, and does not override the method that was called.");
 
-    /// <inheritdoc/>
-    public async Task<About> GetAboutAsync(CancellationToken cancellationToken = default) =>
-        await GetAboutAsync(_version.Known ?? XapiVersion.V2_0_0, cancellationToken).ConfigureAwait(false);
+    /// <summary>
+    /// The xAPI version used for requests: <see cref="XapiClientOptions.Version"/>, or the version negotiated with
+    /// the About resource on first use.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the wait for the negotiation.</param>
+    /// <returns>The version.</returns>
+    /// <exception cref="NotSupportedException">The LRS supports neither 2.0.x nor 1.0.x.</exception>
+    public virtual Task<XapiVersion> GetVersionAsync(CancellationToken cancellationToken = default) =>
+        VersionAsync(cancellationToken);
 
-    /// <inheritdoc/>
-    public async Task<Person> GetPersonAsync(Agent agent, CancellationToken cancellationToken = default)
+    /// <summary>Fetches the About resource: the xAPI versions the LRS supports, and extensions.</summary>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The About object.</returns>
+    public virtual async Task<About> GetAboutAsync(CancellationToken cancellationToken = default) =>
+        await GetAboutAsync(Negotiation.Known ?? XapiVersion.V2_0_0, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Fetches the Person object the LRS knows for an Agent (Agents resource).</summary>
+    /// <param name="agent">The Agent.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The Person; at least the identifiers of <paramref name="agent"/>.</returns>
+    public virtual async Task<Person> GetPersonAsync(Agent agent, CancellationToken cancellationToken = default)
     {
         Guard.NotNull(agent);
-        var version = await GetVersionAsync(cancellationToken).ConfigureAwait(false);
+        var version = await VersionAsync(cancellationToken).ConfigureAwait(false);
         var query = new QueryBuilder().Add("agent", agent, version);
         using var response = await SendAsync(HttpMethod.Get, "agents", query, null, null, version, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
@@ -78,11 +119,14 @@ public sealed partial class XapiClient : IXapiClient
         return ParsedOrThrow(XapiJson.ParsePerson(body, version, XapiReadMode.Lenient), response, body, "a Person object");
     }
 
-    /// <inheritdoc/>
-    public async Task<Activity?> GetActivityAsync(Iri activityId, CancellationToken cancellationToken = default)
+    /// <summary>Fetches the LRS's definition of an Activity (Activities resource).</summary>
+    /// <param name="activityId">The Activity id.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The Activity, or <see langword="null"/> when the LRS answers 404.</returns>
+    public virtual async Task<Activity?> GetActivityAsync(Iri activityId, CancellationToken cancellationToken = default)
     {
         Guard.NotDefault(activityId);
-        var version = await GetVersionAsync(cancellationToken).ConfigureAwait(false);
+        var version = await VersionAsync(cancellationToken).ConfigureAwait(false);
         var query = new QueryBuilder().Add("activityId", activityId);
         using var response = await SendAsync(HttpMethod.Get, "activities", query, null, null, version, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -113,6 +157,9 @@ public sealed partial class XapiClient : IXapiClient
             ? endpoint
             : new UriBuilder(endpoint) { Path = endpoint.AbsolutePath + "/" }.Uri;
     }
+
+    private Task<XapiVersion> VersionAsync(CancellationToken cancellationToken) =>
+        Negotiation.GetAsync(NegotiateAsync, cancellationToken);
 
     private async Task<XapiVersion> NegotiateAsync()
     {
@@ -189,9 +236,9 @@ public sealed partial class XapiClient : IXapiClient
 
         throw response.StatusCode switch
         {
-            HttpStatusCode.Conflict => new XapiConflictException(text, message),
-            HttpStatusCode.PreconditionFailed => new XapiPreconditionFailedException(text, message),
-            _ => new XapiHttpException(response.StatusCode, text, message, RetryAfter(response)),
+            HttpStatusCode.Conflict => new XapiConflictException(message, text),
+            HttpStatusCode.PreconditionFailed => new XapiPreconditionFailedException(message, text),
+            _ => new XapiHttpException(message, response.StatusCode, text, RetryAfter(response)),
         };
     }
 
@@ -199,7 +246,7 @@ public sealed partial class XapiClient : IXapiClient
     {
         var text = body is null || body.Length == 0 ? null : Encoding.UTF8.GetString(body);
         var message = $"The LRS answered {Describe(response)} with {(int)response.StatusCode}, but {problem}.";
-        return new XapiHttpException(response.StatusCode, text, message, null, innerException);
+        return new XapiHttpException(message, response.StatusCode, text, innerException: innerException);
     }
 
     // Method and path only: the query can hold personal data (agent parameters)

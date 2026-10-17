@@ -54,7 +54,7 @@ Console.WriteLine($"The LRS stored statement {id}");
 The client asks the LRS which xAPI version to use, validates the statement for that version and sends it.
 To keep statements through network outages and restarts, put a
 [`StatementOutbox`](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/outbox.md) in front of the client; in an ASP.NET Core app, register both with
-`AddXapiClient` and `AddXapiOutbox` ([example](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/getting-started.md#send-from-an-aspnet-core-app)).
+`AddXapiClient(...).AddOutbox(...)` ([example](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/getting-started.md#send-from-an-aspnet-core-app)).
 
 ## Quick start: host an LRS
 

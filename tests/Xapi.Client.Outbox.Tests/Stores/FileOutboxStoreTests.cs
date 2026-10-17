@@ -17,7 +17,7 @@ public sealed class FileOutboxStoreTests : IDisposable
     [Fact]
     public async Task Queue_dead_letters_and_attempts_survive_reopening()
     {
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             for (var i = 1; i <= 4; i++)
             {
@@ -30,7 +30,7 @@ public sealed class FileOutboxStoreTests : IDisposable
             Assert.Null(store.Recovery);
         }
 
-        using var reopened = new FileOutboxStore(_directory.Path);
+        using var reopened = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
 
         Assert.Null(reopened.Recovery);
         var pending = await reopened.GetPendingAsync(10, Ct);
@@ -54,12 +54,12 @@ public sealed class FileOutboxStoreTests : IDisposable
                 Extensions = Extensions.Create(new Iri("https://example.com/ext"), extension),
             },
         };
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             await store.AddAsync(new OutboxEntry(statement, Harness.Start), Ct);
         }
 
-        using (var reopened = new FileOutboxStore(_directory.Path))
+        using (var reopened = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             var read = Assert.Single(await reopened.GetPendingAsync(1, Ct)).Statement;
             Assert.Equal(XapiJson.SerializeStatement(statement, XapiVersion.V2_0_0), XapiJson.SerializeStatement(read, XapiVersion.V2_0_0));
@@ -73,7 +73,7 @@ public sealed class FileOutboxStoreTests : IDisposable
     public async Task Write_cut_off_at_any_byte_loses_only_the_unacknowledged_record()
     {
         // The journal as it is after three acknowledged adds and a fourth add that was being written
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             for (var i = 1; i <= 4; i++)
             {
@@ -89,7 +89,7 @@ public sealed class FileOutboxStoreTests : IDisposable
             using var crashed = new TempDirectory();
             File.WriteAllBytes(crashed.Journal, full.AsSpan(0, cut).ToArray());
 
-            using (var store = new FileOutboxStore(crashed.Path))
+            using (var store = await FileOutboxStore.OpenAsync(crashed.Path, Ct))
             {
                 Assert.Equal([Id(1), Id(2), Id(3)], (await store.GetPendingAsync(10, Ct)).Select(e => e.StatementId));
                 Assert.Equal(cut == lastLineStart ? null : new FileOutboxRecovery(0, cut - lastLineStart, null), store.Recovery);
@@ -99,7 +99,7 @@ public sealed class FileOutboxStoreTests : IDisposable
                 await store.AddAsync(Entry(5), Ct);
             }
 
-            using var reopened = new FileOutboxStore(crashed.Path);
+            using var reopened = await FileOutboxStore.OpenAsync(crashed.Path, Ct);
             Assert.Null(reopened.Recovery);
             Assert.Equal([Id(1), Id(2), Id(3), Id(5)], (await reopened.GetPendingAsync(10, Ct)).Select(e => e.StatementId));
         }
@@ -108,7 +108,7 @@ public sealed class FileOutboxStoreTests : IDisposable
     [Fact]
     public async Task Damaged_line_is_skipped_reported_and_kept_in_a_copy()
     {
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             for (var i = 1; i <= 3; i++)
             {
@@ -124,7 +124,7 @@ public sealed class FileOutboxStoreTests : IDisposable
         damaged[at] = (byte)'7';
         File.WriteAllBytes(_directory.Journal, damaged);
 
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             Assert.Equal([Id(1), Id(3)], (await store.GetPendingAsync(10, Ct)).Select(e => e.StatementId));
             Assert.Equal(1, store.Recovery!.UnreadableRecords);
@@ -133,7 +133,7 @@ public sealed class FileOutboxStoreTests : IDisposable
         }
 
         // The journal was rewritten without the damaged line
-        using var reopened = new FileOutboxStore(_directory.Path);
+        using var reopened = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
         Assert.Null(reopened.Recovery);
         Assert.Equal(2, await reopened.GetPendingCountAsync(Ct));
     }
@@ -141,14 +141,14 @@ public sealed class FileOutboxStoreTests : IDisposable
     [Fact]
     public async Task Leftover_file_of_an_interrupted_compaction_is_ignored()
     {
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             await store.AddAsync(Entry(1), Ct);
         }
 
         File.WriteAllText(_directory.Journal + ".tmp", "{\"crc\":\"00000000\",\"rec");
 
-        using var reopened = new FileOutboxStore(_directory.Path);
+        using var reopened = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
         Assert.Equal(1, await reopened.GetPendingCountAsync(Ct));
         Assert.False(File.Exists(_directory.Journal + ".tmp"));
     }
@@ -156,7 +156,7 @@ public sealed class FileOutboxStoreTests : IDisposable
     [Fact]
     public async Task Journal_is_compacted_and_stays_small_under_churn()
     {
-        using (var store = new FileOutboxStore(_directory.Path, compactionThreshold: 4096))
+        using (var store = await FileOutboxStore.OpenCoreAsync(_directory.Path, compactionThreshold: 4096, Ct))
         {
             for (var round = 0; round < 50; round++)
             {
@@ -172,28 +172,28 @@ public sealed class FileOutboxStoreTests : IDisposable
 
         // Without compaction the journal would have 350 lines: 250 adds, 50 attempts and 50 removals
         Assert.InRange(File.ReadAllLines(_directory.Journal).Length, 50, 175);
-        using var reopened = new FileOutboxStore(_directory.Path);
+        using var reopened = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
         var pending = await reopened.GetPendingAsync(100, Ct);
         Assert.Equal(Enumerable.Range(0, 50).Select(round => Id((round * 5) + 4)), pending.Select(e => e.StatementId));
         Assert.False(File.Exists(_directory.Journal + ".tmp"));
     }
 
     [Fact]
-    public void Second_store_on_the_same_directory_is_refused()
+    public async Task Second_store_on_the_same_directory_is_refused()
     {
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
-            var exception = Assert.Throws<IOException>(() => new FileOutboxStore(_directory.Path));
+            var exception = await Assert.ThrowsAsync<IOException>(() => FileOutboxStore.OpenAsync(_directory.Path, Ct));
             Assert.Contains("in use", exception.Message, StringComparison.Ordinal);
         }
 
-        using var afterDispose = new FileOutboxStore(_directory.Path);
+        using var afterDispose = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
     }
 
     [Fact]
     public async Task Disposed_store_refuses_calls()
     {
-        var store = new FileOutboxStore(_directory.Path);
+        var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
         store.Dispose();
 
         await Assert.ThrowsAsync<ObjectDisposedException>(() => store.AddAsync(Entry(1), Ct).AsTask());
@@ -204,7 +204,7 @@ public sealed class FileOutboxStoreTests : IDisposable
     {
         List<Guid> ids;
         var lrs = new FakeLrs { Reject = s => Number(s) == 2 ? HttpStatusCode.BadRequest : null, Offline = true };
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             await using var first = Harness.Create(store: store, lrs: lrs);
             ids = await first.EnqueueAsync(3);
@@ -212,7 +212,7 @@ public sealed class FileOutboxStoreTests : IDisposable
         }
 
         lrs.Offline = false;
-        using (var store = new FileOutboxStore(_directory.Path))
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
         {
             Assert.All(await store.GetPendingAsync(10, Ct), e => Assert.Equal(1, e.Attempts));
             await using var second = Harness.Create(store: store, lrs: lrs);
@@ -220,7 +220,7 @@ public sealed class FileOutboxStoreTests : IDisposable
             Assert.Equal(2, result.Delivered);
         }
 
-        using var third = new FileOutboxStore(_directory.Path);
+        using var third = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
         Assert.Equal([ids[0], ids[2]], lrs.StoredIds);
         Assert.Equal(0, await third.GetPendingCountAsync(Ct));
         Assert.Equal(ids[1], Assert.Single(await third.GetDeadLettersAsync(Ct)).StatementId);

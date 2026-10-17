@@ -4,7 +4,7 @@ using Xapi.Client.Outbox.Internal;
 namespace Xapi.Client.Outbox;
 
 /// <summary>
-/// An <see cref="IOutboxStore"/> that keeps the outbox in a directory, as an append-only journal that is flushed
+/// An <see cref="OutboxStore"/> that keeps the outbox in a directory, as an append-only journal that is flushed
 /// to disk (<c>fsync</c>) before each change is acknowledged.
 /// </summary>
 /// <remarks>
@@ -21,12 +21,12 @@ namespace Xapi.Client.Outbox;
 /// damaged file is kept; see <see cref="Recovery"/>.
 /// </para>
 /// <para>
-/// The whole queue is also kept in memory, and the journal is read once, in the constructor. The store suits
-/// queues of up to tens of thousands of Statements. All methods are thread-safe; they complete synchronously,
-/// blocking on the disk flush.
+/// The whole queue is also kept in memory, and the journal is read once, by <see cref="OpenAsync"/>. The store
+/// suits queues of up to tens of thousands of Statements. All methods are thread-safe; they complete
+/// synchronously, blocking on the disk flush.
 /// </para>
 /// </remarks>
-public sealed class FileOutboxStore : IOutboxStore, IDisposable
+public sealed class FileOutboxStore : OutboxStore, IDisposable
 {
     private const string JournalFileName = "outbox.v1.jsonl";
     private const string LockFileName = "outbox.lock";
@@ -47,22 +47,14 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     private Dictionary<Guid, int> _deadBytes = [];
     private long _liveBytes;
 
-    private FileStream _journal;
+    private FileStream _journal = null!;
     private long _length;
     private bool _broken;
     private bool _disposed;
 
-    /// <summary>Opens the store in a directory, creating the directory if needed, and reads the journal.</summary>
-    /// <param name="directory">The directory. It should be used by this store only.</param>
-    /// <exception cref="IOException">Another <see cref="FileOutboxStore"/> has the directory open.</exception>
-    public FileOutboxStore(string directory)
-        : this(directory, DefaultCompactionThreshold)
+    // Takes the directory lock; the journal is read by the caller
+    private FileOutboxStore(string directory, long compactionThreshold)
     {
-    }
-
-    internal FileOutboxStore(string directory, long compactionThreshold)
-    {
-        Guard.NotNull(directory);
         Directory = Path.GetFullPath(directory);
         _compactionThreshold = compactionThreshold;
         _journalPath = Path.Combine(Directory, JournalFileName);
@@ -80,7 +72,8 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
 
         try
         {
-            _journal = Load();
+            // A leftover temporary file is an interrupted compaction; the journal it was meant to replace is complete
+            File.Delete(_journalPath + ".tmp");
         }
         catch
         {
@@ -97,8 +90,49 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     /// </summary>
     public FileOutboxRecovery? Recovery { get; private set; }
 
+    /// <summary>Opens the store in a directory, creating the directory if needed, and reads the journal.</summary>
+    /// <param name="directory">The directory. It should be used by this store only.</param>
+    /// <param name="cancellationToken">Cancels reading the journal.</param>
+    /// <returns>The open store. Dispose it to release the directory.</returns>
+    /// <exception cref="IOException">Another <see cref="FileOutboxStore"/> has the directory open.</exception>
+    public static Task<FileOutboxStore> OpenAsync(string directory, CancellationToken cancellationToken = default) =>
+        OpenCoreAsync(Guard.NotNull(directory), DefaultCompactionThreshold, cancellationToken);
+
+    internal static async Task<FileOutboxStore> OpenCoreAsync(string directory, long compactionThreshold, CancellationToken cancellationToken)
+    {
+        var store = new FileOutboxStore(directory, compactionThreshold);
+        try
+        {
+            store.Load(await ReadJournalAsync(store._journalPath, cancellationToken).ConfigureAwait(false));
+            return store;
+        }
+        catch
+        {
+            store._lock.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Opens the store with blocking reads, for dependency injection, whose factories cannot be asynchronous.
+    /// </summary>
+    internal static FileOutboxStore Open(string directory)
+    {
+        var store = new FileOutboxStore(Guard.NotNull(directory), DefaultCompactionThreshold);
+        try
+        {
+            store.Load(File.Exists(store._journalPath) ? File.ReadAllBytes(store._journalPath) : []);
+            return store;
+        }
+        catch
+        {
+            store._lock.Dispose();
+            throw;
+        }
+    }
+
     /// <inheritdoc/>
-    public ValueTask<bool> AddAsync(OutboxEntry entry, CancellationToken cancellationToken)
+    public override ValueTask<bool> AddAsync(OutboxEntry entry, CancellationToken cancellationToken)
     {
         Guard.NotNull(entry);
         cancellationToken.ThrowIfCancellationRequested();
@@ -116,7 +150,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask<IReadOnlyList<OutboxEntry>> GetPendingAsync(int maxCount, CancellationToken cancellationToken)
+    public override ValueTask<IReadOnlyList<OutboxEntry>> GetPendingAsync(int maxCount, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -127,7 +161,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask<int> GetPendingCountAsync(CancellationToken cancellationToken)
+    public override ValueTask<int> GetPendingCountAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -138,7 +172,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask RemoveAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken)
+    public override ValueTask RemoveAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken)
     {
         Guard.NotNull(statementIds);
         cancellationToken.ThrowIfCancellationRequested();
@@ -156,7 +190,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask RecordFailedAttemptAsync(IReadOnlyCollection<Guid> statementIds, string error, CancellationToken cancellationToken)
+    public override ValueTask RecordFailedAttemptAsync(IReadOnlyCollection<Guid> statementIds, string error, CancellationToken cancellationToken)
     {
         Guard.NotNull(statementIds);
         Guard.NotNull(error);
@@ -175,7 +209,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask MoveToDeadLettersAsync(OutboxDeadLetter deadLetter, CancellationToken cancellationToken)
+    public override ValueTask MoveToDeadLettersAsync(OutboxDeadLetter deadLetter, CancellationToken cancellationToken)
     {
         Guard.NotNull(deadLetter);
         cancellationToken.ThrowIfCancellationRequested();
@@ -189,7 +223,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask<IReadOnlyList<OutboxDeadLetter>> GetDeadLettersAsync(CancellationToken cancellationToken)
+    public override ValueTask<IReadOnlyList<OutboxDeadLetter>> GetDeadLettersAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -200,7 +234,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask<int> GetDeadLetterCountAsync(CancellationToken cancellationToken)
+    public override ValueTask<int> GetDeadLetterCountAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -211,7 +245,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask<bool> RequeueAsync(Guid statementId, CancellationToken cancellationToken)
+    public override ValueTask<bool> RequeueAsync(Guid statementId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -228,7 +262,7 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public ValueTask<bool> RemoveDeadLetterAsync(Guid statementId, CancellationToken cancellationToken)
+    public override ValueTask<bool> RemoveDeadLetterAsync(Guid statementId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -260,12 +294,37 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
         }
     }
 
-    private FileStream Load()
+    private static async Task<byte[]> ReadJournalAsync(string path, CancellationToken cancellationToken)
     {
-        // A leftover temporary file is an interrupted compaction; the journal it was meant to replace is complete
-        File.Delete(_journalPath + ".tmp");
+        if (!File.Exists(path))
+        {
+            return [];
+        }
 
-        var data = File.Exists(_journalPath) ? File.ReadAllBytes(_journalPath) : [];
+        // The directory lock keeps writers out, so the length cannot change while it is read
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var data = new byte[stream.Length];
+        var read = 0;
+        while (read < data.Length)
+        {
+#if NET
+            var count = await stream.ReadAsync(data.AsMemory(read), cancellationToken).ConfigureAwait(false);
+#else
+            var count = await stream.ReadAsync(data, read, data.Length - read, cancellationToken).ConfigureAwait(false);
+#endif
+            if (count == 0)
+            {
+                throw new EndOfStreamException($"{path} ended after {read} of {data.Length} bytes.");
+            }
+
+            read += count;
+        }
+
+        return data;
+    }
+
+    private void Load(byte[] data)
+    {
         var unreadable = 0;
         var position = 0;
         while (position < data.Length)
@@ -319,8 +378,6 @@ public sealed class FileOutboxStore : IOutboxStore, IDisposable
         {
             TryCompact();
         }
-
-        return _journal;
     }
 
     private FileStream OpenJournal() =>

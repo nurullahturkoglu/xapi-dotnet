@@ -84,12 +84,13 @@ handler only writes the statement to disk and an LRS outage does not fail the re
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddXapiClient(options =>
-{
-    options.Endpoint = new Uri("https://lrs.example.com/xapi/");
-    options.Credentials = XapiCredentials.Basic(builder.Configuration["Xapi:Key"]!, builder.Configuration["Xapi:Secret"]!);
-});
-builder.Services.AddXapiOutbox(Path.Combine(builder.Environment.ContentRootPath, "xapi-outbox"));
+builder.Services
+    .AddXapiClient(options =>
+    {
+        options.Endpoint = new Uri("https://lrs.example.com/xapi/");
+        options.Credentials = XapiCredentials.Basic(builder.Configuration["Xapi:Key"]!, builder.Configuration["Xapi:Secret"]!);
+    })
+    .AddOutbox(Path.Combine(builder.Environment.ContentRootPath, "xapi-outbox"));
 
 var app = builder.Build();
 
@@ -107,7 +108,7 @@ app.MapPost("/courses/{courseId}/complete", async (string courseId, string email
 app.Run();
 ```
 
-`AddXapiClient` registers `IXapiClient` with `IHttpClientFactory`. `AddXapiOutbox` registers a
+`AddXapiClient` registers `XapiClient` with `IHttpClientFactory`. `AddOutbox` registers a
 `StatementOutbox` that keeps its queue in the given folder and a hosted service that delivers it in the
 background, with retries, backoff and dead letters. `EnqueueAsync` gives the statement an id before storing
 it, so a statement that is sent twice after a crash is stored once. The [outbox guide](outbox.md) has the
@@ -190,7 +191,7 @@ delegated authentication, PostgreSQL, migrations and limits.
 ## Test your code against a real LRS
 
 The embedded LRS also runs inside a test process, without Docker or a network port, so code that uses
-`IXapiClient` can be tested against real LRS behaviour. [samples/FakeLrsInTests](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/FakeLrsInTests)
+`XapiClient` can be tested against real LRS behaviour. [samples/FakeLrsInTests](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/FakeLrsInTests)
 shows how.
 
 ## Samples

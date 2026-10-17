@@ -20,6 +20,12 @@ Option 3. Collections use our own `XapiList<T>` (immutable `IReadOnlyList<T>` wi
 `LanguageMap` and `Extensions`. IRIs are an `Iri` record struct, times are `DateTimeOffset`, durations are
 `XapiDuration`.
 
+Every public record is nominal: an explicit constructor with camelCase parameters and `{ get; init; }`
+properties, with no positional records. A positional record generates a `Deconstruct` whose signature follows
+its parameters, so adding a parameter later would be a binary breaking change, and BCL models rarely offer
+deconstruction. `required` members are not used, because Unity's C# 9 does not have them. (Amended
+2026-10-17; the first version used positional records for some client types and `XapiError`.)
+
 Polymorphism uses abstract records: `StatementObject` has the subtypes `Activity`, `Actor` (`Agent`, `Group`),
 `StatementRef` and `SubStatement`. The inverse functional identifier `InverseFunctionalIdentifier` has the
 subtypes `Mbox`, `MboxSha1Sum`, `OpenId` and `Account`.

@@ -1,6 +1,6 @@
 # Outbox
 
-`Xapi.Client.Outbox` puts a durable queue in front of `IXapiClient`. `EnqueueAsync` stores a statement on
+`Xapi.Client.Outbox` puts a durable queue in front of `XapiClient`. `EnqueueAsync` stores a statement on
 disk and returns; the outbox delivers it later, in order and in batches, and keeps it through network
 outages, LRS downtime and app restarts. It targets netstandard2.0 and net10.0 and uses no reflection, so it
 runs on .NET Framework, under Native AOT and (once verified, see below) under Unity IL2CPP.
@@ -16,7 +16,7 @@ var client = new XapiClient(http, new XapiClientOptions
     Endpoint = new Uri("https://lrs.example.com/xapi/"),
     Credentials = XapiCredentials.Basic(key, secret),
 });
-var store = new FileOutboxStore(Path.Combine(dataDirectory, "xapi-outbox"));
+var store = await FileOutboxStore.OpenAsync(Path.Combine(dataDirectory, "xapi-outbox"));
 var outbox = new StatementOutbox(client, store);
 
 // Deliver in the background until the token is cancelled or the outbox is disposed
@@ -28,18 +28,24 @@ await outbox.EnqueueAsync(statement);
 var result = await outbox.FlushAsync();
 ```
 
-With a .NET host (net10.0), `AddXapiOutbox` registers `StatementOutbox` as a singleton and runs its loop as a
-hosted service. The outbox resolves `IXapiClient` again for every flush, so `IHttpClientFactory` handler
-rotation keeps working:
+With a .NET host (net10.0), `AddOutbox` on the builder that `AddXapiClient` returns registers
+`StatementOutbox` as a singleton and runs its loop as a hosted service. The outbox resolves `XapiClient` again
+for every flush, so `IHttpClientFactory` handler rotation keeps working:
 
 ```csharp
-builder.Services.AddXapiClient(o =>
-{
-    o.Endpoint = new Uri("https://lrs.example.com/xapi/");
-    o.Credentials = XapiCredentials.Basic(key, secret);
-});
-builder.Services.AddXapiOutbox("data/xapi-outbox", o => o.BatchSize = 100);
+builder.Services
+    .AddXapiClient(o =>
+    {
+        o.Endpoint = new Uri("https://lrs.example.com/xapi/");
+        o.Credentials = XapiCredentials.Basic(key, secret);
+    })
+    .AddOutbox("data/xapi-outbox", o => o.BatchSize = 100);
 ```
+
+Service factories cannot be asynchronous, so `AddOutbox` opens the `FileOutboxStore` with blocking reads when
+the outbox is first resolved, at the latest when the host starts. To open it asynchronously beforehand, pass
+the store from `await FileOutboxStore.OpenAsync(directory)` to the overload that takes a factory:
+`.AddOutbox(_ => store)`.
 
 ## Delivery guarantees
 
@@ -113,7 +119,7 @@ instead. `xapi.outbox.dead_letter.reason` is `rejected`, `too_large`, `conflict`
 `pending` is the number of statements waiting to be delivered, dead letters not included, summed over the live
 outboxes on the meter. It is an up-down counter rather than a gauge because the counts of several outboxes add
 up. It is read from the store when the metrics are collected; a custom store whose `GetPendingCountAsync` does
-not complete synchronously counts as 0. An outbox from `AddXapiOutbox` gets its meter from the host's
+not complete synchronously counts as 0. An outbox from `AddOutbox` gets its meter from the host's
 `IMeterFactory`; one created with `new StatementOutbox(...)` reports on a meter shared by the process until it
 is disposed.
 
@@ -134,13 +140,13 @@ Attachment data is not supported in this version: `EnqueueAsync` rejects a state
 has no `fileUrl` (error code `attachment.payload.missing`). Attachments that only reference a `fileUrl` are
 fine. Storing binary payloads in the journal would make it large and slow to read, and bisection would have
 to keep each payload with its statement. Send statements with attachment data, including signed statements,
-directly with `IXapiClient.SaveStatementAsync`.
+directly with `XapiClient.SaveStatementAsync`.
 
 ## Storage
 
-`IOutboxStore` is the storage abstraction. Two stores are built in:
+`OutboxStore` is the storage abstraction, an abstract class. Two stores are built in:
 
-- `FileOutboxStore(directory)` for applications.
+- `FileOutboxStore`, opened with `FileOutboxStore.OpenAsync(directory)`, for applications.
 - `InMemoryOutboxStore` for tests, or where losing queued statements on exit is acceptable.
 
 ### File format
@@ -157,7 +163,7 @@ The directory holds:
 - Rarely, `outbox.v1.jsonl.tmp` (an interrupted compaction, deleted on open) and
   `outbox.v1.jsonl.corrupt-<time>` (a copy of a damaged journal, see below).
 
-The store reads the journal once, in its constructor, and keeps the queue in memory. It suits queues of up
+The store reads the journal once, in `OpenAsync`, and keeps the queue in memory. It suits queues of up
 to tens of thousands of statements.
 
 ### Crash safety
@@ -188,8 +194,10 @@ with it. Journaling file systems (ext4, APFS, NTFS) normally persist the rename.
 
 ### Custom stores
 
-A custom store implements the ten methods of `IOutboxStore`. It must be thread-safe, keep pending entries in
-order and keyed by statement id, and make every change durable before its task completes. The tests in
+A custom store derives from `OutboxStore` and overrides its ten abstract methods. It must be thread-safe, keep
+pending entries in order and keyed by statement id, and make every change durable before its task completes.
+Members added to `OutboxStore` in later versions will be virtual, with a default built on the existing ones,
+so a custom store keeps compiling. The tests in
 `tests/Xapi.Client.Outbox.Tests/Stores/StoreContractTests.cs` describe the contract.
 
 ## Unity

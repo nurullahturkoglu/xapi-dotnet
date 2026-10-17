@@ -70,7 +70,7 @@ var outboxDirectory = Path.Combine(Path.GetTempPath(), "xapi-dotnet-sample-outbo
 try
 {
     Guid queuedId;
-    using (var store = new FileOutboxStore(outboxDirectory))
+    using (var store = await FileOutboxStore.OpenAsync(outboxDirectory))
     {
         await using var outbox = new StatementOutbox(client, store);
         queuedId = await outbox.EnqueueAsync(statement with { Id = null });

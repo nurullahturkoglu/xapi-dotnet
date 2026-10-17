@@ -155,7 +155,7 @@ var bookmark = document is null ? null : Encoding.UTF8.GetString(document.Conten
 
 ## Client mapping
 
-| TinCan.NET (`RemoteLRS`, `ILRS`) | xapi-dotnet (`XapiClient`, `IXapiClient`) |
+| TinCan.NET (`RemoteLRS`, `ILRS`) | xapi-dotnet (`XapiClient`) |
 | --- | --- |
 | `new RemoteLRS(endpoint, username, password)` | `new XapiClient(httpClient, new XapiClientOptions { Endpoint = ..., Credentials = XapiCredentials.Basic(key, secret) })` |
 | `RemoteLRS.version`, `TCAPIVersion.V103` | `XapiClientOptions.Version = XapiVersion.V1_0_3`, or `null` to negotiate |

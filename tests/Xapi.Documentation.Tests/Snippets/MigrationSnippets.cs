@@ -33,7 +33,7 @@ internal static class MigrationSnippets
         // end snippet
     }
 
-    public static async Task Query(IXapiClient client, Agent learner)
+    public static async Task Query(XapiClient client, Agent learner)
     {
         // snippet: tincan-query
         var query = new StatementQuery
@@ -50,7 +50,7 @@ internal static class MigrationSnippets
         // end snippet
     }
 
-    public static async Task State(IXapiClient client, Agent learner)
+    public static async Task State(XapiClient client, Agent learner)
     {
         // snippet: tincan-state
         var key = new StateKey(new Iri("https://example.com/courses/fire-safety"), learner, "bookmark");

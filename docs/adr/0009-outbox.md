@@ -26,7 +26,10 @@ A separate package, `Xapi.Client.Outbox`.
 | 408, 429, 5xx, network error, timeout | Exponential backoff with jitter; `Retry-After` is honoured |
 | 400 rejecting the version header | Renegotiate once through `/about`, then retry |
 
-- Stores: in memory, and file based (append-only JSON Lines with periodic compaction and `fsync`).
+- Stores: in memory, and file based (append-only JSON Lines with periodic compaction and `fsync`). Both derive
+  from the abstract class `OutboxStore`; members added to it later are virtual, with a default built on the
+  existing ones, so custom stores keep compiling (ADR-0008). (Amended 2026-10-17; the first version had an
+  `IOutboxStore` interface.)
 
 ## Consequences
 

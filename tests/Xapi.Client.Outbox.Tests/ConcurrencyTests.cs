@@ -12,8 +12,8 @@ public class ConcurrencyTests
     public async Task Statements_enqueued_during_a_flush_are_all_delivered_once_and_in_order_per_producer(string kind)
     {
         using var directory = new TempDirectory();
-        using var file = kind == "file" ? new FileOutboxStore(directory.Path) : null;
-        await using var h = Harness.Create(o => o.BatchSize = 7, store: (IOutboxStore?)file ?? new InMemoryOutboxStore());
+        using var file = kind == "file" ? await FileOutboxStore.OpenAsync(directory.Path, Ct) : null;
+        await using var h = Harness.Create(o => o.BatchSize = 7, store: (OutboxStore?)file ?? new InMemoryOutboxStore());
         var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var first = true;
         h.Lrs.BeforeHandle = async _ =>

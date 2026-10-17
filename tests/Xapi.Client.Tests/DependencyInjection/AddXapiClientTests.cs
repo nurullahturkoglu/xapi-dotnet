@@ -33,10 +33,9 @@ public class AddXapiClientTests
         handler.Respond(HttpStatusCode.NotFound);
         using var provider = Build(handler, o => o.Version = XapiVersion.V1_0_3);
 
-        var client = provider.GetRequiredService<IXapiClient>();
+        var client = provider.GetRequiredService<XapiClient>();
         await client.GetActivityAsync(Samples.ActivityId, cancellationToken: Ct);
 
-        Assert.IsType<XapiClient>(client);
         var request = handler.Single;
         Assert.Equal(TestClient.Endpoint + "activities", request.Path);
         Assert.Equal("1.0.3", request.Header("X-Experience-API-Version"));
@@ -51,8 +50,8 @@ public class AddXapiClientTests
         handler.Fallback = _ => FakeHandler.Response(HttpStatusCode.NotFound);
         using var provider = Build(handler);
 
-        var first = provider.GetRequiredService<IXapiClient>();
-        var second = provider.GetRequiredService<IXapiClient>();
+        var first = provider.GetRequiredService<XapiClient>();
+        var second = provider.GetRequiredService<XapiClient>();
         await first.GetActivityAsync(Samples.ActivityId, cancellationToken: Ct);
         await second.GetActivityAsync(Samples.ActivityId, cancellationToken: Ct);
 
@@ -75,7 +74,7 @@ public class AddXapiClientTests
             o.Retry.DisableForUnsafeHttpMethods();
         }));
 
-        var activity = await provider.GetRequiredService<IXapiClient>().GetActivityAsync(Samples.ActivityId, cancellationToken: Ct);
+        var activity = await provider.GetRequiredService<XapiClient>().GetActivityAsync(Samples.ActivityId, cancellationToken: Ct);
 
         Assert.Null(activity);
         Assert.Equal(2, handler.Requests.Count);
@@ -98,8 +97,8 @@ public class AddXapiClientTests
         var meterFactory = provider.GetRequiredService<IMeterFactory>();
         using var metrics = new MetricRecorder(i => ReferenceEquals(i.Meter.Scope, meterFactory));
 
-        await provider.GetRequiredService<IXapiClient>().SaveStatementAsync(Samples.Statement(Samples.Id(1)), cancellationToken: Ct);
-        await provider.GetRequiredService<IXapiClient>().SaveStatementAsync(Samples.Statement(Samples.Id(2)), cancellationToken: Ct);
+        await provider.GetRequiredService<XapiClient>().SaveStatementAsync(Samples.Statement(Samples.Id(1)), cancellationToken: Ct);
+        await provider.GetRequiredService<XapiClient>().SaveStatementAsync(Samples.Statement(Samples.Id(2)), cancellationToken: Ct);
 
         var sent = metrics.Of(XapiClientDiagnostics.StatementsSent);
         Assert.Equal(2, sent.Count);

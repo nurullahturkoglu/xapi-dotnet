@@ -48,7 +48,7 @@ public sealed class FakeLrs : IAsyncLifetime
     /// <summary>Creates a client of this LRS, as the application would create one for a real LRS.</summary>
     /// <param name="version">The xAPI version to speak, or <see langword="null"/> to negotiate it.</param>
     /// <returns>The client.</returns>
-    public IXapiClient CreateClient(XapiVersion? version = null)
+    public XapiClient CreateClient(XapiVersion? version = null)
     {
         var server = (_app ?? throw new InvalidOperationException("The LRS has not been started.")).GetTestServer();
         var http = server.CreateClient();

@@ -13,7 +13,7 @@ public class EnqueueBenchmarks
 {
     private string _directory = "";
     private HttpClient _http = null!;
-    private IOutboxStore _store = null!;
+    private OutboxStore _store = null!;
     private StatementOutbox _outbox = null!;
     private Statement _statement = null!;
 
@@ -21,13 +21,13 @@ public class EnqueueBenchmarks
     public string Store { get; set; } = "";
 
     [GlobalSetup]
-    public void Setup()
+    public async Task SetupAsync()
     {
         // The id is left out so EnqueueAsync assigns one, as it does for application code
         _statement = XapiJson.ParseStatement(StatementSamples.Statement(id: null, 7), XapiVersion.V2_0_0).GetValueOrThrow();
 
         _directory = Path.Combine(Path.GetTempPath(), "xapi-bench-outbox-" + Guid.NewGuid().ToString("N"));
-        _store = Store == "File" ? new FileOutboxStore(_directory) : new InMemoryOutboxStore();
+        _store = Store == "File" ? await FileOutboxStore.OpenAsync(_directory) : new InMemoryOutboxStore();
         _http = new HttpClient();
         var client = new XapiClient(_http, new XapiClientOptions
         {
