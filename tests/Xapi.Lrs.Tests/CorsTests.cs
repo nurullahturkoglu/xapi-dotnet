@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,4 +66,65 @@ public class CorsTests
             File.Delete(database);
         }
     }
+
+    // samples/LrsHost sets up the same policy from LrsHost:AllowedOrigins
+    [Theory]
+    [InlineData(Origin, Origin, Origin)]
+    [InlineData("https://other.example.com; " + Origin, Origin, Origin)]
+    [InlineData("*", Origin, "*")]
+    [InlineData(Origin, "https://other.example.com", null)]
+    [InlineData(null, Origin, null)]
+    public async Task LrsHost_allows_the_origins_in_its_settings(string? allowedOrigins, string origin, string? expected)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var database = Path.Combine(Path.GetTempPath(), $"xapi-cors-{Guid.NewGuid():N}.db");
+        try
+        {
+            await using (var factory = LrsHost(database, allowedOrigins))
+            {
+                var client = factory.CreateClient();
+                var preflight = new HttpRequestMessage(HttpMethod.Options, "/xapi/statements");
+                preflight.Headers.Add("Origin", origin);
+                preflight.Headers.Add("Access-Control-Request-Method", "PUT");
+                preflight.Headers.Add("Access-Control-Request-Headers", "authorization,content-type,x-experience-api-version");
+                using var response = await client.SendAsync(preflight, ct);
+
+                Assert.Equal(expected, response.Headers.TryGetValues("Access-Control-Allow-Origin", out var values) ? Assert.Single(values) : null);
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(database);
+        }
+    }
+
+    [Theory]
+    [InlineData("https://app.example.com/")]
+    [InlineData("https://app.example.com/course")]
+    [InlineData("app.example.com")]
+    [InlineData("ftp://app.example.com")]
+    [InlineData("*;https://app.example.com")]
+    public async Task LrsHost_does_not_start_with_an_allowed_origin_that_cannot_match(string allowedOrigins)
+    {
+        var database = Path.Combine(Path.GetTempPath(), $"xapi-cors-{Guid.NewGuid():N}.db");
+        await using var factory = LrsHost(database, allowedOrigins);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => factory.Server);
+
+        Assert.Contains("LrsHost:AllowedOrigins", exception.Message, StringComparison.Ordinal);
+    }
+
+    private static WebApplicationFactory<Program> LrsHost(string database, string? allowedOrigins) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("LrsHost:ConnectionString", $"Data Source={database}");
+            builder.UseSetting("LrsHost:Key", "key");
+            builder.UseSetting("LrsHost:Secret", "secret");
+            builder.UseSetting("Logging:LogLevel:Default", "Warning");
+            if (allowedOrigins is not null)
+            {
+                builder.UseSetting("LrsHost:AllowedOrigins", allowedOrigins);
+            }
+        });
 }

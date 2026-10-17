@@ -11,6 +11,7 @@ listed under a "Breaking" heading.
 
 ### Added
 
+- `samples/LrsHost` and the `xapi-lrs` image: `LrsHost:AllowedOrigins` (`LrsHost__AllowedOrigins` in Docker) turns on CORS for the listed origins, so xAPI content in a browser on another origin can use the LRS. It is off by default.
 - `tests/Unity`: Unity 6.3 tests of `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox`, installed with NuGetForUnity, that run in the editor and in IL2CPP players; CI runs them on Linux against the packages packed from the commit. See [docs/unity.md](docs/unity.md).
 
 ## [0.1.0-preview.1] - 2026-10-17

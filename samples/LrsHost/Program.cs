@@ -4,6 +4,8 @@
 //   LrsHost:Database          sqlite (default) or postgres
 //   LrsHost:ConnectionString  defaults to Data Source=lrs.db for sqlite; required for postgres
 //   LrsHost:Key, :Secret      a Basic credential granted every scope
+//   LrsHost:AllowedOrigins    origins that browser content may call the LRS from, separated by ';'
+//                             (https://course.example.com;http://localhost:5000), or * for any; none by default
 // The Lrs section holds XapiLrsOptions by name, for example Lrs:AuthorityHomePage, Lrs:MaxStatementsPerPage and
 // more credentials as Lrs:Credentials:0:Key, :Secret and :Scopes:0. An unknown key in it stops the host.
 // GET /health answers 200 Healthy when the database can be reached and is migrated, and 503 otherwise.
@@ -30,6 +32,27 @@ if (string.IsNullOrEmpty(key) != string.IsNullOrEmpty(secret))
 if (string.IsNullOrEmpty(key) && !builder.Configuration.GetSection("Lrs:Credentials").Exists())
 {
     throw new InvalidOperationException("Set LrsHost:Key and LrsHost:Secret, or list credentials under Lrs:Credentials.");
+}
+
+var allowedOrigins = (settings["AllowedOrigins"] ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+foreach (var origin in allowedOrigins)
+{
+    // A browser sends the origin as scheme://host[:port]; anything else would never match
+    if (origin == "*" ? allowedOrigins.Length > 1 : !IsOrigin(origin))
+    {
+        throw new InvalidOperationException(
+            $"LrsHost:AllowedOrigins must be * alone or origins such as https://course.example.com, not '{origin}'.");
+    }
+}
+
+if (allowedOrigins.Length > 0)
+{
+    // The policy docs/lrs.md recommends for browser clients on other origins
+    builder.Services.AddCors(options => options.AddPolicy("xapi", policy => policy
+        .WithOrigins(allowedOrigins)
+        .WithMethods("GET", "HEAD", "PUT", "POST", "DELETE")
+        .WithHeaders("Authorization", "Content-Type", "X-Experience-API-Version", "If-Match", "If-None-Match")
+        .WithExposedHeaders("ETag", "Last-Modified", "X-Experience-API-Version", "X-Experience-API-Consistent-Through")));
 }
 
 // A default that Lrs:MigrateOnStartup can override, because it is applied before the section is bound
@@ -61,9 +84,20 @@ switch (database)
 builder.Services.AddHealthChecks().AddXapiLrsHealthCheck();
 
 var app = builder.Build();
-app.MapXapiLrs("/xapi");
+var xapi = app.MapXapiLrs("/xapi");
+if (allowedOrigins.Length > 0)
+{
+    app.UseCors();
+    xapi.RequireCors("xapi");
+}
+
 app.MapHealthChecks("/health");
 app.Run();
+
+static bool IsOrigin(string value) =>
+    Uri.TryCreate(value, UriKind.Absolute, out var uri)
+    && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+    && string.Equals(uri.GetLeftPart(UriPartial.Authority), value, StringComparison.OrdinalIgnoreCase);
 
 /// <summary>The entry point, public so tests can host the app with WebApplicationFactory.</summary>
 public partial class Program;
