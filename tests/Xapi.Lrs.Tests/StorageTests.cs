@@ -1,10 +1,12 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Npgsql;
 using Xapi.Lrs.Storage;
 using Xapi.Lrs.Tests.Infrastructure;
 using static Xapi.Lrs.Tests.Infrastructure.DocumentApi;
@@ -235,6 +237,27 @@ public class StorageTests(LrsHosts hosts)
         using var document = await client.PutDocAsync(DocTarget.New(DocumentResource.State).WithId(text), "x", "text/plain", ifNoneMatch: "*");
         Assert.Equal(database == TestDatabase.PostgreSql ? HttpStatusCode.BadRequest : HttpStatusCode.NoContent, document.StatusCode);
         Assert.Equal("2.0.0", Header(document, "X-Experience-API-Version"));
+    }
+
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task Writes_are_retried_after_conflicts_but_not_after_waiting_for_a_lock(TestDatabase database)
+    {
+        var provider = (await hosts.SharedAsync(database)).Services.GetRequiredService<XapiLrsDatabaseProvider>();
+
+        if (database == TestDatabase.Sqlite)
+        {
+            // SQLITE_BUSY and SQLITE_LOCKED come after the 30-second wait for the lock; a retry would wait again
+            Assert.False(provider.IsTransientWriteFailure(new DbUpdateException("busy", new SqliteException("database is locked", 5))));
+            Assert.False(provider.IsTransientWriteFailure(new SqliteException("database table is locked", 6)));
+            Assert.True(provider.IsTransientWriteFailure(new SqliteException("UNIQUE constraint failed", 19, 2067)));
+        }
+        else
+        {
+            Assert.True(provider.IsTransientWriteFailure(new DbUpdateException("conflict", new PostgresException("could not serialize access", "ERROR", "ERROR", PostgresErrorCodes.SerializationFailure))));
+            Assert.True(provider.IsTransientWriteFailure(new PostgresException("deadlock detected", "ERROR", "ERROR", PostgresErrorCodes.DeadlockDetected)));
+            Assert.False(provider.IsTransientWriteFailure(new PostgresException("syntax error", "ERROR", "ERROR", PostgresErrorCodes.SyntaxError)));
+        }
     }
 
     // Wraps the configured provider and fails SaveChanges once it holds the activity row of FailingIri.

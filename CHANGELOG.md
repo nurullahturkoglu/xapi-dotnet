@@ -32,6 +32,10 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: statement queries read each filter's own index (verb, registration, and one range per agent or activity usage, plus StatementRef matches) newest first and only as far as one page, instead of testing every statement. At 100,000 statements a verb with no matches takes 0.22 ms instead of 70 ms on SQLite and 0.84 ms instead of 52 ms on PostgreSQL, and an `agent` query with `related_agents` 2.3 ms instead of 581 ms and 5.9 ms instead of 15 ms.
 - `Xapi.Lrs`: `attachments=true` responses are streamed, reading the data of one attachment at a time, and HEAD reads none. `IStatementStore.GetAttachmentsAsync` is replaced by `GetAttachmentSummariesAsync` and `GetAttachmentContentAsync`.
 
+### Fixed
+
+- `Xapi.Lrs.Sqlite`: a write that timed out waiting for the database lock (`SQLITE_BUSY`) is no longer retried, which made a request wait about 4 minutes before it failed.
+
 ### Security
 
 - `Xapi.Lrs`: statement and document writes set the server's request body limit from the LRS options, so `MaxAttachmentBytes` and `MaxDocumentBytes` above Kestrel's default of about 28.6 MiB now take effect. The new `MaxStatementBytes` (16 MiB) limits the statement JSON of one request, which before was bounded only by the server.
