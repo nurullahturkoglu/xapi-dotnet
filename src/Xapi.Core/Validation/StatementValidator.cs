@@ -26,7 +26,7 @@ public static class StatementValidator
     {
         Guard.NotNull(statement);
         var walker = new Walker(version);
-        walker.Statement(statement, JsonPath.Root);
+        walker.Statement(statement, walker.Root);
         return walker.Errors;
     }
 
@@ -42,7 +42,7 @@ public static class StatementValidator
         for (var i = 0; i < statements.Count; i++)
         {
             var statement = Guard.NotNull(statements[i]);
-            var path = JsonPath.Index(JsonPath.Root, i);
+            var path = walker.Root.Index(i);
             walker.Statement(statement, path);
             if (statement.Id is not { } id)
             {
@@ -53,7 +53,7 @@ public static class StatementValidator
             {
                 walker.Add(
                     XapiErrorCodes.BatchDuplicateId,
-                    JsonPath.Property(path, "id"),
+                    path.Property("id"),
                     $"The id {id} is already used by the Statement at index {first}.");
             }
             else
@@ -73,7 +73,7 @@ public static class StatementValidator
     {
         Guard.NotNull(actor);
         var walker = new Walker(version);
-        walker.Actor(actor, JsonPath.Root);
+        walker.Actor(actor, walker.Root);
         return walker.Errors;
     }
 
@@ -85,7 +85,7 @@ public static class StatementValidator
     {
         Guard.NotNull(activity);
         var walker = new Walker(version);
-        walker.Activity(activity, JsonPath.Root);
+        walker.Activity(activity, walker.Root);
         return walker.Errors;
     }
 
@@ -99,12 +99,12 @@ public static class StatementValidator
         var walker = new Walker(version);
         for (var i = 0; i < person.Mboxes.Count; i++)
         {
-            walker.Ifi(person.Mboxes[i], JsonPath.Index(JsonPath.Property(JsonPath.Root, "mbox"), i), atValue: true);
+            walker.Ifi(person.Mboxes[i], walker.Root.Property("mbox").Index(i), atValue: true);
         }
 
         for (var i = 0; i < person.MboxSha1Sums.Count; i++)
         {
-            walker.Ifi(person.MboxSha1Sums[i], JsonPath.Index(JsonPath.Property(JsonPath.Root, "mbox_sha1sum"), i), atValue: true);
+            walker.Ifi(person.MboxSha1Sums[i], walker.Root.Property("mbox_sha1sum").Index(i), atValue: true);
         }
 
         return walker.Errors;
@@ -114,36 +114,38 @@ public static class StatementValidator
     {
         public List<XapiError> Errors { get; } = [];
 
-        public void Add(string code, string path, string message) => Errors.Add(new XapiError(code, path, message));
+        public JsonPathRef Root { get; } = new JsonPathStack().Root;
 
-        public void Statement(Statement statement, string path)
+        public void Add(string code, JsonPathRef path, string message) => Errors.Add(new XapiError(code, path.ToString(), message));
+
+        public void Statement(Statement statement, JsonPathRef path)
         {
             if (statement.Version is { } statementVersion && !XapiFormats.IsStatementVersion(statementVersion, version))
             {
                 var allowed = version.IsV2 ? "1.0.x or 2.0.0" : "1.0.x";
-                Add(XapiErrorCodes.Version, JsonPath.Property(path, "version"), $"\"{statementVersion}\" is not a valid version for xAPI {version.HeaderValue}; use {allowed}.");
+                Add(XapiErrorCodes.Version, path.Property("version"), $"\"{statementVersion}\" is not a valid version for xAPI {version.HeaderValue}; use {allowed}.");
             }
 
-            Actor(statement.Actor, JsonPath.Property(path, "actor"));
-            StatementObject(statement.Object, JsonPath.Property(path, "object"));
+            Actor(statement.Actor, path.Property("actor"));
+            StatementObject(statement.Object, path.Property("object"));
 
             // 4.2.5: a voiding Statement must target a Statement.
             if (statement.Verb.Id == Verbs.VoidedId && statement.Object is not StatementRef)
             {
-                Add(XapiErrorCodes.VoidingObject, JsonPath.Property(path, "object"), "A Statement with the voided Verb must have a StatementRef as its object.");
+                Add(XapiErrorCodes.VoidingObject, path.Property("object"), "A Statement with the voided Verb must have a StatementRef as its object.");
             }
 
-            Result(statement.Result, JsonPath.Property(path, "result"));
-            Context(statement.Context, JsonPath.Property(path, "context"), statement.Object is Activity);
+            Result(statement.Result, path.Property("result"));
+            Context(statement.Context, path.Property("context"), statement.Object is Activity);
             if (statement.Authority is { } authority)
             {
-                Authority(authority, JsonPath.Property(path, "authority"));
+                Authority(authority, path.Property("authority"));
             }
 
-            Attachments(statement.Attachments, JsonPath.Property(path, "attachments"));
+            Attachments(statement.Attachments, path.Property("attachments"));
         }
 
-        public void Actor(Actor actor, string path)
+        public void Actor(Actor actor, JsonPathRef path)
         {
             switch (actor)
             {
@@ -157,41 +159,41 @@ public static class StatementValidator
                     }
                     else if (group.Members.IsEmpty)
                     {
-                        Add(XapiErrorCodes.GroupMemberMissing, JsonPath.Property(path, "member"), "An anonymous Group must have at least one member.");
+                        Add(XapiErrorCodes.GroupMemberMissing, path.Property("member"), "An anonymous Group must have at least one member.");
                     }
 
-                    var membersPath = JsonPath.Property(path, "member");
+                    var membersPath = path.Property("member");
                     for (var i = 0; i < group.Members.Count; i++)
                     {
-                        Actor(group.Members[i], JsonPath.Index(membersPath, i));
+                        Actor(group.Members[i], membersPath.Index(i));
                     }
 
                     break;
             }
         }
 
-        public void Ifi(InverseFunctionalIdentifier ifi, string path, bool atValue)
+        public void Ifi(InverseFunctionalIdentifier ifi, JsonPathRef path, bool atValue)
         {
             switch (ifi)
             {
                 case Mbox mbox when !XapiFormats.IsMbox(mbox.Value):
-                    Add(XapiErrorCodes.Mbox, atValue ? path : JsonPath.Property(path, "mbox"), $"\"{mbox.Value}\" is not a mailto: IRI with an e-mail address.");
+                    Add(XapiErrorCodes.Mbox, atValue ? path : path.Property("mbox"), $"\"{mbox.Value}\" is not a mailto: IRI with an e-mail address.");
                     break;
                 case MboxSha1Sum sha1 when !XapiFormats.IsSha1Hex(sha1.Value):
-                    Add(XapiErrorCodes.Sha1, atValue ? path : JsonPath.Property(path, "mbox_sha1sum"), $"\"{sha1.Value}\" is not a 40-character hexadecimal SHA-1 digest.");
+                    Add(XapiErrorCodes.Sha1, atValue ? path : path.Property("mbox_sha1sum"), $"\"{sha1.Value}\" is not a 40-character hexadecimal SHA-1 digest.");
                     break;
             }
         }
 
-        public void Activity(Activity activity, string path)
+        public void Activity(Activity activity, JsonPathRef path)
         {
             if (activity.Definition is { } definition)
             {
-                Definition(definition, JsonPath.Property(path, "definition"));
+                Definition(definition, path.Property("definition"));
             }
         }
 
-        private void StatementObject(StatementObject value, string path)
+        private void StatementObject(StatementObject value, JsonPathRef path)
         {
             switch (value)
             {
@@ -207,10 +209,10 @@ public static class StatementValidator
             }
         }
 
-        private void SubStatement(SubStatement sub, string path)
+        private void SubStatement(SubStatement sub, JsonPathRef path)
         {
-            Actor(sub.Actor, JsonPath.Property(path, "actor"));
-            var objectPath = JsonPath.Property(path, "object");
+            Actor(sub.Actor, path.Property("actor"));
+            var objectPath = path.Property("object");
             if (sub.Object is SubStatement)
             {
                 Add(XapiErrorCodes.SubStatementNested, objectPath, "A SubStatement cannot have a SubStatement as its object.");
@@ -220,12 +222,12 @@ public static class StatementValidator
                 StatementObject(sub.Object, objectPath);
             }
 
-            Result(sub.Result, JsonPath.Property(path, "result"));
-            Context(sub.Context, JsonPath.Property(path, "context"), sub.Object is Activity);
-            Attachments(sub.Attachments, JsonPath.Property(path, "attachments"));
+            Result(sub.Result, path.Property("result"));
+            Context(sub.Context, path.Property("context"), sub.Object is Activity);
+            Attachments(sub.Attachments, path.Property("attachments"));
         }
 
-        private void Authority(Actor authority, string path)
+        private void Authority(Actor authority, JsonPathRef path)
         {
             Actor(authority, path);
 
@@ -236,52 +238,50 @@ public static class StatementValidator
             }
         }
 
-        private void Definition(ActivityDefinition definition, string path)
+        private void Definition(ActivityDefinition definition, JsonPathRef path)
         {
-            OptionalIri(definition.Type, JsonPath.Property(path, "type"));
-            OptionalIri(definition.MoreInfo, JsonPath.Property(path, "moreInfo"));
-
-            var lists = new (string Name, XapiList<InteractionComponent>? Items)[]
-            {
-                ("choices", definition.Choices),
-                ("scale", definition.Scale),
-                ("source", definition.Source),
-                ("target", definition.Target),
-                ("steps", definition.Steps),
-            };
+            OptionalIri(definition.Type, path.Property("type"));
+            OptionalIri(definition.MoreInfo, path.Property("moreInfo"));
 
             if (definition.InteractionType is not { } type)
             {
-                if (definition.CorrectResponsesPattern is not null || lists.Any(l => l.Items is not null))
+                if (definition.CorrectResponsesPattern is not null || definition.Choices is not null || definition.Scale is not null ||
+                    definition.Source is not null || definition.Target is not null || definition.Steps is not null)
                 {
-                    Add(XapiErrorCodes.InteractionTypeMissing, JsonPath.Property(path, "interactionType"), "Interaction properties require an \"interactionType\".");
+                    Add(XapiErrorCodes.InteractionTypeMissing, path.Property("interactionType"), "Interaction properties require an \"interactionType\".");
                 }
             }
             else if ((uint)type > (uint)InteractionType.Other)
             {
-                Add(XapiErrorCodes.InteractionType, JsonPath.Property(path, "interactionType"), $"{(int)type} is not an InteractionType value.");
+                Add(XapiErrorCodes.InteractionType, path.Property("interactionType"), $"{(int)type} is not an InteractionType value.");
             }
 
-            foreach (var (name, items) in lists)
+            Components(definition, path, "choices", definition.Choices);
+            Components(definition, path, "scale", definition.Scale);
+            Components(definition, path, "source", definition.Source);
+            Components(definition, path, "target", definition.Target);
+            Components(definition, path, "steps", definition.Steps);
+        }
+
+        private void Components(ActivityDefinition definition, JsonPathRef path, string name, XapiList<InteractionComponent>? items)
+        {
+            if (items is null)
             {
-                if (items is null)
-                {
-                    continue;
-                }
+                return;
+            }
 
-                var listPath = JsonPath.Property(path, name);
-                if (definition.InteractionType is { } interactionType && !Allows(interactionType, name))
-                {
-                    Add(XapiErrorCodes.InteractionComponentsNotAllowed, listPath, $"\"{name}\" is not used with the interaction type {interactionType}.");
-                }
+            var listPath = path.Property(name);
+            if (definition.InteractionType is { } interactionType && !Allows(interactionType, name))
+            {
+                Add(XapiErrorCodes.InteractionComponentsNotAllowed, listPath, $"\"{name}\" is not used with the interaction type {interactionType}.");
+            }
 
-                var ids = new HashSet<string>(StringComparer.Ordinal);
-                for (var i = 0; i < items.Count; i++)
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (!ids.Add(items[i].Id))
                 {
-                    if (!ids.Add(items[i].Id))
-                    {
-                        Add(XapiErrorCodes.InteractionComponentDuplicate, JsonPath.Property(JsonPath.Index(listPath, i), "id"), $"The component id \"{items[i].Id}\" is used more than once in \"{name}\".");
-                    }
+                    Add(XapiErrorCodes.InteractionComponentDuplicate, listPath.Index(i).Property("id"), $"The component id \"{items[i].Id}\" is used more than once in \"{name}\".");
                 }
             }
         }
@@ -296,46 +296,48 @@ public static class StatementValidator
                 _ => false,
             };
 
-        private void Result(Result? result, string path)
+        private void Result(Result? result, JsonPathRef path)
         {
             if (result?.Score is not { } score)
             {
                 return;
             }
 
-            var scorePath = JsonPath.Property(path, "score");
-            var finite = true;
-            foreach (var (name, value) in new[] { ("scaled", score.Scaled), ("raw", score.Raw), ("min", score.Min), ("max", score.Max) })
-            {
-                if (value is { } number && (double.IsNaN(number) || double.IsInfinity(number)))
-                {
-                    finite = false;
-                    Add(XapiErrorCodes.ScoreNotFinite, JsonPath.Property(scorePath, name), "A score must be a finite number.");
-                }
-            }
-
-            if (!finite)
+            var scorePath = path.Property("score");
+            // & rather than &&, so every non-finite number is reported
+            if (!(Finite(score.Scaled, "scaled") & Finite(score.Raw, "raw") & Finite(score.Min, "min") & Finite(score.Max, "max")))
             {
                 return;
             }
 
             if (score.Scaled is { } scaled && (scaled < -1 || scaled > 1))
             {
-                Add(XapiErrorCodes.ScoreScaled, JsonPath.Property(scorePath, "scaled"), $"\"scaled\" must be between -1 and 1, not {scaled}.");
+                Add(XapiErrorCodes.ScoreScaled, scorePath.Property("scaled"), $"\"scaled\" must be between -1 and 1, not {scaled}.");
             }
 
             if (score.Min is { } min && score.Max is { } max && min >= max)
             {
-                Add(XapiErrorCodes.ScoreMinMax, JsonPath.Property(scorePath, "min"), $"\"min\" ({min}) must be less than \"max\" ({max}).");
+                Add(XapiErrorCodes.ScoreMinMax, scorePath.Property("min"), $"\"min\" ({min}) must be less than \"max\" ({max}).");
             }
 
             if (score.Raw is { } raw && ((score.Min is { } lower && raw < lower) || (score.Max is { } upper && raw > upper)))
             {
-                Add(XapiErrorCodes.ScoreRaw, JsonPath.Property(scorePath, "raw"), $"\"raw\" ({raw}) must be between \"min\" and \"max\".");
+                Add(XapiErrorCodes.ScoreRaw, scorePath.Property("raw"), $"\"raw\" ({raw}) must be between \"min\" and \"max\".");
+            }
+
+            bool Finite(double? value, string name)
+            {
+                if (value is { } number && (double.IsNaN(number) || double.IsInfinity(number)))
+                {
+                    Add(XapiErrorCodes.ScoreNotFinite, scorePath.Property(name), "A score must be a finite number.");
+                    return false;
+                }
+
+                return true;
             }
         }
 
-        private void Context(Context? context, string path, bool objectIsActivity)
+        private void Context(Context? context, JsonPathRef path, bool objectIsActivity)
         {
             if (context is null)
             {
@@ -345,27 +347,27 @@ public static class StatementValidator
             // xAPI 1.0.3 Data 2.4.6; not in 9274.1.1 but enforced by the 2.0 CTS (issue #278), so applied to both versions.
             if (context.Revision is not null && !objectIsActivity)
             {
-                Add(XapiErrorCodes.ContextRevision, JsonPath.Property(path, "revision"), "\"revision\" is only allowed when the object is an Activity.");
+                Add(XapiErrorCodes.ContextRevision, path.Property("revision"), "\"revision\" is only allowed when the object is an Activity.");
             }
 
             if (context.Platform is not null && !objectIsActivity)
             {
-                Add(XapiErrorCodes.ContextPlatform, JsonPath.Property(path, "platform"), "\"platform\" is only allowed when the object is an Activity.");
+                Add(XapiErrorCodes.ContextPlatform, path.Property("platform"), "\"platform\" is only allowed when the object is an Activity.");
             }
 
             if (context.Language is { } language && !XapiFormats.IsLanguageTag(language))
             {
-                Add(XapiErrorCodes.LanguageTag, JsonPath.Property(path, "language"), $"\"{language}\" is not a well-formed RFC 5646 language tag.");
+                Add(XapiErrorCodes.LanguageTag, path.Property("language"), $"\"{language}\" is not a well-formed RFC 5646 language tag.");
             }
 
             if (context.Instructor is { } instructor)
             {
-                Actor(instructor, JsonPath.Property(path, "instructor"));
+                Actor(instructor, path.Property("instructor"));
             }
 
             if (context.Team is { } team)
             {
-                Actor(team, JsonPath.Property(path, "team"));
+                Actor(team, path.Property("team"));
             }
 
             ContextAgents(context, path);
@@ -373,17 +375,17 @@ public static class StatementValidator
 
             if (context.ContextActivities is { } activities)
             {
-                var activitiesPath = JsonPath.Property(path, "contextActivities");
-                ActivityList(activities.Parent, JsonPath.Property(activitiesPath, "parent"));
-                ActivityList(activities.Grouping, JsonPath.Property(activitiesPath, "grouping"));
-                ActivityList(activities.Category, JsonPath.Property(activitiesPath, "category"));
-                ActivityList(activities.Other, JsonPath.Property(activitiesPath, "other"));
+                var activitiesPath = path.Property("contextActivities");
+                ActivityList(activities.Parent, activitiesPath.Property("parent"));
+                ActivityList(activities.Grouping, activitiesPath.Property("grouping"));
+                ActivityList(activities.Category, activitiesPath.Property("category"));
+                ActivityList(activities.Other, activitiesPath.Property("other"));
             }
         }
 
-        private void ContextAgents(Context context, string path)
+        private void ContextAgents(Context context, JsonPathRef path)
         {
-            var listPath = JsonPath.Property(path, "contextAgents");
+            var listPath = path.Property("contextAgents");
             if (!version.IsV2 && !context.ContextAgents.IsEmpty)
             {
                 Add(XapiErrorCodes.ContextVersion, listPath, "\"contextAgents\" is not defined in xAPI 1.0.3.");
@@ -391,15 +393,15 @@ public static class StatementValidator
 
             for (var i = 0; i < context.ContextAgents.Count; i++)
             {
-                var itemPath = JsonPath.Index(listPath, i);
-                Actor(context.ContextAgents[i].Agent, JsonPath.Property(itemPath, "agent"));
-                IriList(context.ContextAgents[i].RelevantTypes, JsonPath.Property(itemPath, "relevantTypes"));
+                var itemPath = listPath.Index(i);
+                Actor(context.ContextAgents[i].Agent, itemPath.Property("agent"));
+                IriList(context.ContextAgents[i].RelevantTypes, itemPath.Property("relevantTypes"));
             }
         }
 
-        private void ContextGroups(Context context, string path)
+        private void ContextGroups(Context context, JsonPathRef path)
         {
-            var listPath = JsonPath.Property(path, "contextGroups");
+            var listPath = path.Property("contextGroups");
             if (!version.IsV2 && !context.ContextGroups.IsEmpty)
             {
                 Add(XapiErrorCodes.ContextVersion, listPath, "\"contextGroups\" is not defined in xAPI 1.0.3.");
@@ -407,54 +409,54 @@ public static class StatementValidator
 
             for (var i = 0; i < context.ContextGroups.Count; i++)
             {
-                var itemPath = JsonPath.Index(listPath, i);
-                Actor(context.ContextGroups[i].Group, JsonPath.Property(itemPath, "group"));
-                IriList(context.ContextGroups[i].RelevantTypes, JsonPath.Property(itemPath, "relevantTypes"));
+                var itemPath = listPath.Index(i);
+                Actor(context.ContextGroups[i].Group, itemPath.Property("group"));
+                IriList(context.ContextGroups[i].RelevantTypes, itemPath.Property("relevantTypes"));
             }
         }
 
-        private void ActivityList(XapiList<Activity> activities, string path)
+        private void ActivityList(XapiList<Activity> activities, JsonPathRef path)
         {
             for (var i = 0; i < activities.Count; i++)
             {
-                Activity(activities[i], JsonPath.Index(path, i));
+                Activity(activities[i], path.Index(i));
             }
         }
 
-        private void Attachments(XapiList<Attachment> attachments, string path)
+        private void Attachments(XapiList<Attachment> attachments, JsonPathRef path)
         {
             for (var i = 0; i < attachments.Count; i++)
             {
                 var attachment = attachments[i];
-                var itemPath = JsonPath.Index(path, i);
+                var itemPath = path.Index(i);
                 if (!XapiFormats.IsMediaType(attachment.ContentType))
                 {
-                    Add(XapiErrorCodes.MediaType, JsonPath.Property(itemPath, "contentType"), $"\"{attachment.ContentType}\" is not an Internet media type.");
+                    Add(XapiErrorCodes.MediaType, itemPath.Property("contentType"), $"\"{attachment.ContentType}\" is not an Internet media type.");
                 }
 
                 if (attachment.Length < 0)
                 {
-                    Add(XapiErrorCodes.AttachmentLength, JsonPath.Property(itemPath, "length"), "\"length\" must not be negative.");
+                    Add(XapiErrorCodes.AttachmentLength, itemPath.Property("length"), "\"length\" must not be negative.");
                 }
 
                 if (!XapiFormats.IsSha2Hex(attachment.Sha2))
                 {
-                    Add(XapiErrorCodes.Sha2, JsonPath.Property(itemPath, "sha2"), $"\"{attachment.Sha2}\" is not a hexadecimal SHA-2 digest.");
+                    Add(XapiErrorCodes.Sha2, itemPath.Property("sha2"), $"\"{attachment.Sha2}\" is not a hexadecimal SHA-2 digest.");
                 }
 
-                OptionalIri(attachment.FileUrl, JsonPath.Property(itemPath, "fileUrl"));
+                OptionalIri(attachment.FileUrl, itemPath.Property("fileUrl"));
             }
         }
 
-        private void IriList(XapiList<Iri> values, string path)
+        private void IriList(XapiList<Iri> values, JsonPathRef path)
         {
             for (var i = 0; i < values.Count; i++)
             {
-                OptionalIri(values[i], JsonPath.Index(path, i));
+                OptionalIri(values[i], path.Index(i));
             }
         }
 
-        private void OptionalIri(Iri? value, string path)
+        private void OptionalIri(Iri? value, JsonPathRef path)
         {
             if (value is { IsEmpty: true })
             {

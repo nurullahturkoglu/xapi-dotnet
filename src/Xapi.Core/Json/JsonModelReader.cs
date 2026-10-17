@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using Xapi.Internal;
 
@@ -10,44 +12,42 @@ namespace Xapi.Json;
 /// </summary>
 internal sealed class JsonModelReader
 {
-    private static readonly string[] StatementProperties =
-        ["id", "actor", "verb", "object", "result", "context", "timestamp", "stored", "authority", "version", "attachments"];
+    private static readonly PropertySet StatementProperties =
+        new(["id", "actor", "verb", "object", "result", "context", "timestamp", "stored", "authority", "version", "attachments"]);
 
-    private static readonly string[] SubStatementProperties =
-        ["objectType", "actor", "verb", "object", "result", "context", "timestamp", "attachments"];
+    private static readonly PropertySet SubStatementProperties =
+        new(["objectType", "actor", "verb", "object", "result", "context", "timestamp", "attachments"]);
 
-    private static readonly string[] AgentProperties = ["objectType", "name", "mbox", "mbox_sha1sum", "openid", "account"];
-    private static readonly string[] GroupProperties = ["objectType", "name", "member", "mbox", "mbox_sha1sum", "openid", "account"];
-    private static readonly string[] AccountProperties = ["homePage", "name"];
-    private static readonly string[] VerbProperties = ["id", "display"];
-    private static readonly string[] ActivityProperties = ["objectType", "id", "definition"];
+    private static readonly PropertySet AgentProperties = new(["objectType", "name", "mbox", "mbox_sha1sum", "openid", "account"]);
+    private static readonly PropertySet GroupProperties = new(["objectType", "name", "member", "mbox", "mbox_sha1sum", "openid", "account"]);
+    private static readonly PropertySet AccountProperties = new(["homePage", "name"]);
+    private static readonly PropertySet VerbProperties = new(["id", "display"]);
+    private static readonly PropertySet ActivityProperties = new(["objectType", "id", "definition"]);
 
-    private static readonly string[] DefinitionProperties =
+    private static readonly PropertySet DefinitionProperties = new(
     [
         "name", "description", "type", "moreInfo", "interactionType", "correctResponsesPattern",
         "choices", "scale", "source", "target", "steps", "extensions",
-    ];
+    ]);
 
-    private static readonly string[] ComponentProperties = ["id", "description"];
-    private static readonly string[] StatementRefProperties = ["objectType", "id"];
-    private static readonly string[] ResultProperties = ["score", "success", "completion", "response", "duration", "extensions"];
-    private static readonly string[] ScoreProperties = ["scaled", "raw", "min", "max"];
+    private static readonly PropertySet ComponentProperties = new(["id", "description"]);
+    private static readonly PropertySet StatementRefProperties = new(["objectType", "id"]);
+    private static readonly PropertySet ResultProperties = new(["score", "success", "completion", "response", "duration", "extensions"]);
+    private static readonly PropertySet ScoreProperties = new(["scaled", "raw", "min", "max"]);
 
-    private static readonly string[] ContextProperties =
-    [
-        "registration", "instructor", "team", "contextActivities", "revision", "platform", "language", "statement", "extensions",
-    ];
+    private static readonly PropertySet ContextProperties = new(
+        ["registration", "instructor", "team", "contextActivities", "revision", "platform", "language", "statement", "extensions"],
+        laterVersion: ["contextAgents", "contextGroups"]);
 
-    private static readonly string[] ContextV2Properties = ["contextAgents", "contextGroups"];
-    private static readonly string[] ContextActivitiesProperties = ["parent", "grouping", "category", "other"];
-    private static readonly string[] ContextAgentProperties = ["objectType", "agent", "relevantTypes"];
-    private static readonly string[] ContextGroupProperties = ["objectType", "group", "relevantTypes"];
+    private static readonly PropertySet ContextActivitiesProperties = new(["parent", "grouping", "category", "other"]);
+    private static readonly PropertySet ContextAgentProperties = new(["objectType", "agent", "relevantTypes"]);
+    private static readonly PropertySet ContextGroupProperties = new(["objectType", "group", "relevantTypes"]);
 
-    private static readonly string[] AttachmentProperties =
-        ["usageType", "display", "description", "contentType", "length", "sha2", "fileUrl"];
+    private static readonly PropertySet AttachmentProperties =
+        new(["usageType", "display", "description", "contentType", "length", "sha2", "fileUrl"]);
 
-    private static readonly string[] PersonProperties = ["objectType", "name", "mbox", "mbox_sha1sum", "openid", "account"];
-    private static readonly string[] AboutProperties = ["version", "extensions"];
+    private static readonly PropertySet PersonProperties = new(["objectType", "name", "mbox", "mbox_sha1sum", "openid", "account"]);
+    private static readonly PropertySet AboutProperties = new(["version", "extensions"]);
 
     private readonly XapiVersion _version;
     private readonly bool _strict;
@@ -70,11 +70,13 @@ internal sealed class JsonModelReader
 
     public XapiVersion Version => _version;
 
-    public Statement? ReadStatement(JsonElement element, string path)
+    /// <summary>The path <c>$</c>, from which the paths in <see cref="Errors"/> are built.</summary>
+    public JsonPathRef Root { get; } = new JsonPathStack().Root;
+
+    public Statement? ReadStatement(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, StatementProperties);
-        if (p is null)
+        if (ReadObject(element, path, StatementProperties) is not { } p)
         {
             return null;
         }
@@ -109,13 +111,12 @@ internal sealed class JsonModelReader
         };
     }
 
-    public Actor? ReadActorRoot(JsonElement element, string path) => ReadActor(element, path, ActorRole.Any);
+    public Actor? ReadActorRoot(JsonElement element, JsonPathRef path) => ReadActor(element, path, ActorRole.Any);
 
-    public Activity? ReadActivity(JsonElement element, string path)
+    public Activity? ReadActivity(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ActivityProperties);
-        if (p is null)
+        if (ReadObject(element, path, ActivityProperties) is not { } p)
         {
             return null;
         }
@@ -135,11 +136,10 @@ internal sealed class JsonModelReader
         return new Activity(id.Value) { Definition = definition };
     }
 
-    public Person? ReadPerson(JsonElement element, string path)
+    public Person? ReadPerson(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, PersonProperties);
-        if (p is null)
+        if (ReadObject(element, path, PersonProperties) is not { } p)
         {
             return null;
         }
@@ -173,11 +173,10 @@ internal sealed class JsonModelReader
         };
     }
 
-    public About? ReadAbout(JsonElement element, string path)
+    public About? ReadAbout(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, AboutProperties);
-        if (p is null)
+        if (ReadObject(element, path, AboutProperties) is not { } p)
         {
             return null;
         }
@@ -192,7 +191,7 @@ internal sealed class JsonModelReader
         return new About(versions) { Extensions = extensions };
     }
 
-    private Actor? ReadActor(JsonElement element, string path, ActorRole role)
+    private Actor? ReadActor(JsonElement element, JsonPathRef path, ActorRole role)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -204,7 +203,7 @@ internal sealed class JsonModelReader
         switch (objectType)
         {
             case null when role == ActorRole.GroupOnly:
-                AddError(XapiErrorCodes.ObjectType, JsonPath.Property(path, "objectType"), "A Group requires \"objectType\": \"Group\".");
+                AddError(XapiErrorCodes.ObjectType, path.Property("objectType"), "A Group requires \"objectType\": \"Group\".");
                 return null;
             case "Group" when role == ActorRole.Member:
                 AddError(XapiErrorCodes.GroupMemberNotAgent, path, "A Group member must be an Agent, not a Group.");
@@ -220,16 +219,15 @@ internal sealed class JsonModelReader
                     ActorRole.GroupOnly => "\"Group\"",
                     _ => "\"Agent\" or \"Group\"",
                 };
-                AddError(XapiErrorCodes.ObjectType, JsonPath.Property(path, "objectType"), $"\"objectType\" must be {expected} here.");
+                AddError(XapiErrorCodes.ObjectType, path.Property("objectType"), $"\"objectType\" must be {expected} here.");
                 return null;
         }
     }
 
-    private Agent? ReadAgent(JsonElement element, string path)
+    private Agent? ReadAgent(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, AgentProperties);
-        if (p is null)
+        if (ReadObject(element, path, AgentProperties) is not { } p)
         {
             return null;
         }
@@ -249,11 +247,10 @@ internal sealed class JsonModelReader
         return new Agent(ifi) { Name = name };
     }
 
-    private Group? ReadGroup(JsonElement element, string path)
+    private Group? ReadGroup(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, GroupProperties);
-        if (p is null)
+        if (ReadObject(element, path, GroupProperties) is not { } p)
         {
             return null;
         }
@@ -277,36 +274,37 @@ internal sealed class JsonModelReader
         return group with { Name = name };
     }
 
-    private InverseFunctionalIdentifier? ReadIfi(PropertyBag p, string path, bool required)
+    private InverseFunctionalIdentifier? ReadIfi(PropertyBag p, JsonPathRef path, bool required)
     {
-        var found = new List<InverseFunctionalIdentifier?>();
+        var count = 0;
+        InverseFunctionalIdentifier? first = null;
         if (p.TryGet("mbox", out var e))
         {
-            found.Add(ReadString(e, p.PathOf("mbox")) is { } s ? new Mbox(s) : null);
+            Found(ReadString(e, p.PathOf("mbox")) is { } s ? new Mbox(s) : null);
         }
 
         if (p.TryGet("mbox_sha1sum", out e))
         {
-            found.Add(ReadString(e, p.PathOf("mbox_sha1sum")) is { } s ? new MboxSha1Sum(s) : null);
+            Found(ReadString(e, p.PathOf("mbox_sha1sum")) is { } s ? new MboxSha1Sum(s) : null);
         }
 
         if (p.TryGet("openid", out e))
         {
-            found.Add(ReadIri(e, p.PathOf("openid")) is { } iri ? new OpenId(iri) : null);
+            Found(ReadIri(e, p.PathOf("openid")) is { } iri ? new OpenId(iri) : null);
         }
 
         if (p.TryGet("account", out e))
         {
-            found.Add(ReadAccount(e, p.PathOf("account")));
+            Found(ReadAccount(e, p.PathOf("account")));
         }
 
-        if (found.Count > 1)
+        if (count > 1)
         {
             AddError(XapiErrorCodes.IfiMultiple, path, "Only one of \"mbox\", \"mbox_sha1sum\", \"openid\" and \"account\" may be used.");
             return null;
         }
 
-        if (found.Count == 0)
+        if (count == 0)
         {
             if (required)
             {
@@ -316,14 +314,21 @@ internal sealed class JsonModelReader
             return null;
         }
 
-        return found[0];
+        return first;
+
+        void Found(InverseFunctionalIdentifier? ifi)
+        {
+            if (count++ == 0)
+            {
+                first = ifi;
+            }
+        }
     }
 
-    private Account? ReadAccount(JsonElement element, string path)
+    private Account? ReadAccount(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, AccountProperties);
-        if (p is null)
+        if (ReadObject(element, path, AccountProperties) is not { } p)
         {
             return null;
         }
@@ -338,11 +343,10 @@ internal sealed class JsonModelReader
         return new Account(homePage.Value, name);
     }
 
-    private Verb? ReadVerb(JsonElement element, string path)
+    private Verb? ReadVerb(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, VerbProperties);
-        if (p is null)
+        if (ReadObject(element, path, VerbProperties) is not { } p)
         {
             return null;
         }
@@ -357,7 +361,7 @@ internal sealed class JsonModelReader
         return new Verb(id.Value) { Display = display };
     }
 
-    private StatementObject? ReadStatementObject(JsonElement element, string path, bool inSubStatement)
+    private StatementObject? ReadStatementObject(JsonElement element, JsonPathRef path, bool inSubStatement)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -381,17 +385,16 @@ internal sealed class JsonModelReader
             default:
                 AddError(
                     XapiErrorCodes.ObjectType,
-                    JsonPath.Property(path, "objectType"),
+                    path.Property("objectType"),
                     "\"objectType\" must be \"Activity\", \"Agent\", \"Group\", \"StatementRef\" or \"SubStatement\".");
                 return null;
         }
     }
 
-    private StatementRef? ReadStatementRef(JsonElement element, string path, bool objectTypeRequired)
+    private StatementRef? ReadStatementRef(JsonElement element, JsonPathRef path, bool objectTypeRequired)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, StatementRefProperties);
-        if (p is null)
+        if (ReadObject(element, path, StatementRefProperties) is not { } p)
         {
             return null;
         }
@@ -414,11 +417,10 @@ internal sealed class JsonModelReader
         return new StatementRef(id.Value);
     }
 
-    private SubStatement? ReadSubStatement(JsonElement element, string path)
+    private SubStatement? ReadSubStatement(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, SubStatementProperties);
-        if (p is null)
+        if (ReadObject(element, path, SubStatementProperties) is not { } p)
         {
             return null;
         }
@@ -444,11 +446,10 @@ internal sealed class JsonModelReader
         };
     }
 
-    private ActivityDefinition? ReadDefinition(JsonElement element, string path)
+    private ActivityDefinition? ReadDefinition(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, DefinitionProperties);
-        if (p is null)
+        if (ReadObject(element, path, DefinitionProperties) is not { } p)
         {
             return null;
         }
@@ -472,7 +473,7 @@ internal sealed class JsonModelReader
         return Errors.Count > start ? null : definition;
     }
 
-    private InteractionType? ReadInteractionType(JsonElement element, string path)
+    private InteractionType? ReadInteractionType(JsonElement element, JsonPathRef path)
     {
         if (ReadString(element, path) is not { } text)
         {
@@ -491,11 +492,10 @@ internal sealed class JsonModelReader
         return null;
     }
 
-    private InteractionComponent? ReadComponent(JsonElement element, string path)
+    private InteractionComponent? ReadComponent(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ComponentProperties);
-        if (p is null)
+        if (ReadObject(element, path, ComponentProperties) is not { } p)
         {
             return null;
         }
@@ -510,11 +510,10 @@ internal sealed class JsonModelReader
         return new InteractionComponent(id) { Description = description };
     }
 
-    private Result? ReadResult(JsonElement element, string path)
+    private Result? ReadResult(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ResultProperties);
-        if (p is null)
+        if (ReadObject(element, path, ResultProperties) is not { } p)
         {
             return null;
         }
@@ -532,11 +531,10 @@ internal sealed class JsonModelReader
         return Errors.Count > start ? null : result;
     }
 
-    private Score? ReadScore(JsonElement element, string path)
+    private Score? ReadScore(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ScoreProperties);
-        if (p is null)
+        if (ReadObject(element, path, ScoreProperties) is not { } p)
         {
             return null;
         }
@@ -552,11 +550,10 @@ internal sealed class JsonModelReader
         return Errors.Count > start ? null : score;
     }
 
-    private Context? ReadContext(JsonElement element, string path)
+    private Context? ReadContext(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ContextProperties, ContextV2Properties);
-        if (p is null)
+        if (ReadObject(element, path, ContextProperties) is not { } p)
         {
             return null;
         }
@@ -579,11 +576,10 @@ internal sealed class JsonModelReader
         return Errors.Count > start ? null : context;
     }
 
-    private ContextActivities? ReadContextActivities(JsonElement element, string path)
+    private ContextActivities? ReadContextActivities(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ContextActivitiesProperties);
-        if (p is null)
+        if (ReadObject(element, path, ContextActivitiesProperties) is not { } p)
         {
             return null;
         }
@@ -599,7 +595,7 @@ internal sealed class JsonModelReader
         return Errors.Count > start ? null : activities;
     }
 
-    private XapiList<Activity>? ReadActivityOrArray(JsonElement element, string path)
+    private XapiList<Activity>? ReadActivityOrArray(JsonElement element, JsonPathRef path)
     {
         // 4.1.6.1/4.2.4.2: a single Activity object is accepted and returned as an array of one.
         if (element.ValueKind == JsonValueKind.Object)
@@ -610,11 +606,10 @@ internal sealed class JsonModelReader
         return ReadArray(element, path, ReadActivity);
     }
 
-    private ContextAgent? ReadContextAgent(JsonElement element, string path)
+    private ContextAgent? ReadContextAgent(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ContextAgentProperties);
-        if (p is null)
+        if (ReadObject(element, path, ContextAgentProperties) is not { } p)
         {
             return null;
         }
@@ -638,11 +633,10 @@ internal sealed class JsonModelReader
         return new ContextAgent(agent) { RelevantTypes = relevantTypes! };
     }
 
-    private ContextGroup? ReadContextGroup(JsonElement element, string path)
+    private ContextGroup? ReadContextGroup(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, ContextGroupProperties);
-        if (p is null)
+        if (ReadObject(element, path, ContextGroupProperties) is not { } p)
         {
             return null;
         }
@@ -666,7 +660,7 @@ internal sealed class JsonModelReader
         return new ContextGroup(group) { RelevantTypes = relevantTypes! };
     }
 
-    private XapiList<Iri>? ReadRelevantTypes(JsonElement element, string path)
+    private XapiList<Iri>? ReadRelevantTypes(JsonElement element, JsonPathRef path)
     {
         var list = ReadStructArray(element, path, ReadIri);
         if (list is { IsEmpty: true })
@@ -678,11 +672,10 @@ internal sealed class JsonModelReader
         return list;
     }
 
-    private Attachment? ReadAttachment(JsonElement element, string path)
+    private Attachment? ReadAttachment(JsonElement element, JsonPathRef path)
     {
         var start = Errors.Count;
-        var p = ReadObject(element, path, AttachmentProperties);
-        if (p is null)
+        if (ReadObject(element, path, AttachmentProperties) is not { } p)
         {
             return null;
         }
@@ -706,7 +699,7 @@ internal sealed class JsonModelReader
         };
     }
 
-    private LanguageMap? ReadLanguageMap(JsonElement element, string path)
+    private LanguageMap? ReadLanguageMap(JsonElement element, JsonPathRef path)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -716,10 +709,11 @@ internal sealed class JsonModelReader
 
         var start = Errors.Count;
         var entries = new List<KeyValuePair<string, string>>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new SeenNames(StringComparer.OrdinalIgnoreCase);
         foreach (var property in element.EnumerateObject())
         {
-            var itemPath = JsonPath.Property(path, property.Name);
+            var name = property.Name;
+            var itemPath = path.Property(name);
             if (property.Value.ValueKind == JsonValueKind.Null)
             {
                 NullError(itemPath);
@@ -727,21 +721,21 @@ internal sealed class JsonModelReader
             }
 
             var value = ReadString(property.Value, itemPath);
-            if (!XapiFormats.IsLanguageTag(property.Name))
+            if (!XapiFormats.IsLanguageTag(name))
             {
                 if (_strict)
                 {
-                    AddError(XapiErrorCodes.LanguageTag, itemPath, $"\"{property.Name}\" is not a well-formed RFC 5646 language tag.");
+                    AddError(XapiErrorCodes.LanguageTag, itemPath, $"\"{name}\" is not a well-formed RFC 5646 language tag.");
                 }
 
                 continue;
             }
 
-            if (!seen.Add(property.Name))
+            if (!seen.Add(name))
             {
                 if (_strict)
                 {
-                    AddError(XapiErrorCodes.PropertyDuplicate, itemPath, $"The language tag \"{property.Name}\" appears more than once (tags are case-insensitive).");
+                    AddError(XapiErrorCodes.PropertyDuplicate, itemPath, $"The language tag \"{name}\" appears more than once (tags are case-insensitive).");
                 }
 
                 continue;
@@ -749,14 +743,14 @@ internal sealed class JsonModelReader
 
             if (value is not null)
             {
-                entries.Add(new KeyValuePair<string, string>(property.Name, value));
+                entries.Add(new KeyValuePair<string, string>(name, value));
             }
         }
 
         return Errors.Count > start ? null : new LanguageMap(entries);
     }
 
-    private Extensions? ReadExtensions(JsonElement element, string path)
+    private Extensions? ReadExtensions(JsonElement element, JsonPathRef path)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -766,24 +760,25 @@ internal sealed class JsonModelReader
 
         var start = Errors.Count;
         var entries = new List<KeyValuePair<Iri, JsonElement>>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var seen = new SeenNames(StringComparer.Ordinal);
         foreach (var property in element.EnumerateObject())
         {
-            var itemPath = JsonPath.Property(path, property.Name);
-            if (!seen.Add(property.Name))
+            var name = property.Name;
+            var itemPath = path.Property(name);
+            if (!seen.Add(name))
             {
                 if (_strict)
                 {
-                    AddError(XapiErrorCodes.PropertyDuplicate, itemPath, $"The extension \"{property.Name}\" appears more than once.");
+                    AddError(XapiErrorCodes.PropertyDuplicate, itemPath, $"The extension \"{name}\" appears more than once.");
                 }
 
                 continue;
             }
 
-            if (!Iri.TryParse(property.Name, out var key))
+            if (!Iri.TryParse(name, out var key))
             {
                 // 4.2.7: an extension key that is not an IRI is rejected; values are never judged.
-                AddError(XapiErrorCodes.Iri, itemPath, $"The extension key \"{property.Name}\" is not an absolute IRI.");
+                AddError(XapiErrorCodes.Iri, itemPath, $"The extension key \"{name}\" is not an absolute IRI.");
                 continue;
             }
 
@@ -798,18 +793,19 @@ internal sealed class JsonModelReader
         return Errors.Count > start ? null : new Extensions(entries);
     }
 
-    private void CheckDuplicateKeys(JsonElement element, string path)
+    private void CheckDuplicateKeys(JsonElement element, JsonPathRef path)
     {
         switch (element.ValueKind)
         {
             case JsonValueKind.Object:
-                var seen = new HashSet<string>(StringComparer.Ordinal);
+                var seen = new SeenNames(StringComparer.Ordinal);
                 foreach (var property in element.EnumerateObject())
                 {
-                    var itemPath = JsonPath.Property(path, property.Name);
-                    if (!seen.Add(property.Name))
+                    var name = property.Name;
+                    var itemPath = path.Property(name);
+                    if (!seen.Add(name))
                     {
-                        AddError(XapiErrorCodes.PropertyDuplicate, itemPath, $"The property \"{property.Name}\" appears more than once.");
+                        AddError(XapiErrorCodes.PropertyDuplicate, itemPath, $"The property \"{name}\" appears more than once.");
                     }
 
                     CheckDuplicateKeys(property.Value, itemPath);
@@ -820,14 +816,14 @@ internal sealed class JsonModelReader
                 var index = 0;
                 foreach (var item in element.EnumerateArray())
                 {
-                    CheckDuplicateKeys(item, JsonPath.Index(path, index++));
+                    CheckDuplicateKeys(item, path.Index(index++));
                 }
 
                 break;
         }
     }
 
-    private XapiList<T>? ReadArray<T>(JsonElement element, string path, Func<JsonElement, string, T?> readItem)
+    private XapiList<T>? ReadArray<T>(JsonElement element, JsonPathRef path, Func<JsonElement, JsonPathRef, T?> readItem)
     {
         if (element.ValueKind != JsonValueKind.Array)
         {
@@ -836,11 +832,13 @@ internal sealed class JsonModelReader
         }
 
         var start = Errors.Count;
-        var items = new List<T>();
+        var length = element.GetArrayLength();
+        var items = length == 0 ? [] : new T[length];
+        var count = 0;
         var index = 0;
         foreach (var item in element.EnumerateArray())
         {
-            var itemPath = JsonPath.Index(path, index++);
+            var itemPath = path.Index(index++);
             if (item.ValueKind == JsonValueKind.Null)
             {
                 NullError(itemPath);
@@ -849,14 +847,14 @@ internal sealed class JsonModelReader
 
             if (readItem(item, itemPath) is { } value)
             {
-                items.Add(value);
+                items[count++] = value;
             }
         }
 
-        return Errors.Count > start ? null : XapiList.CreateRange(items);
+        return Errors.Count > start ? null : ToList(items, count);
     }
 
-    private XapiList<T>? ReadStructArray<T>(JsonElement element, string path, Func<JsonElement, string, T?> readItem)
+    private XapiList<T>? ReadStructArray<T>(JsonElement element, JsonPathRef path, Func<JsonElement, JsonPathRef, T?> readItem)
         where T : struct
     {
         if (element.ValueKind != JsonValueKind.Array)
@@ -866,11 +864,13 @@ internal sealed class JsonModelReader
         }
 
         var start = Errors.Count;
-        var items = new List<T>();
+        var length = element.GetArrayLength();
+        var items = length == 0 ? [] : new T[length];
+        var count = 0;
         var index = 0;
         foreach (var item in element.EnumerateArray())
         {
-            var itemPath = JsonPath.Index(path, index++);
+            var itemPath = path.Index(index++);
             if (item.ValueKind == JsonValueKind.Null)
             {
                 NullError(itemPath);
@@ -879,14 +879,29 @@ internal sealed class JsonModelReader
 
             if (readItem(item, itemPath) is { } value)
             {
-                items.Add(value);
+                items[count++] = value;
             }
         }
 
-        return Errors.Count > start ? null : XapiList.CreateRange(items);
+        return Errors.Count > start ? null : ToList(items, count);
     }
 
-    private string? ReadString(JsonElement element, string path)
+    private static XapiList<T> ToList<T>(T[] items, int count)
+    {
+        if (count == 0)
+        {
+            return XapiList<T>.Empty;
+        }
+
+        if (count < items.Length)
+        {
+            Array.Resize(ref items, count);
+        }
+
+        return new XapiList<T>(items);
+    }
+
+    private string? ReadString(JsonElement element, JsonPathRef path)
     {
         if (element.ValueKind != JsonValueKind.String)
         {
@@ -897,7 +912,7 @@ internal sealed class JsonModelReader
         return element.GetString();
     }
 
-    private bool? ReadBoolean(JsonElement element, string path)
+    private bool? ReadBoolean(JsonElement element, JsonPathRef path)
     {
         switch (element.ValueKind)
         {
@@ -911,7 +926,7 @@ internal sealed class JsonModelReader
         }
     }
 
-    private double? ReadNumber(JsonElement element, string path)
+    private double? ReadNumber(JsonElement element, JsonPathRef path)
     {
         if (element.ValueKind != JsonValueKind.Number)
         {
@@ -928,7 +943,7 @@ internal sealed class JsonModelReader
         return value;
     }
 
-    private long? ReadInteger(JsonElement element, string path)
+    private long? ReadInteger(JsonElement element, JsonPathRef path)
     {
         if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt64(out var value))
         {
@@ -939,7 +954,7 @@ internal sealed class JsonModelReader
         return value;
     }
 
-    private Iri? ReadIri(JsonElement element, string path)
+    private Iri? ReadIri(JsonElement element, JsonPathRef path)
     {
         if (ReadString(element, path) is not { } text)
         {
@@ -955,7 +970,7 @@ internal sealed class JsonModelReader
         return null;
     }
 
-    private Guid? ReadUuid(JsonElement element, string path)
+    private Guid? ReadUuid(JsonElement element, JsonPathRef path)
     {
         if (ReadString(element, path) is not { } text)
         {
@@ -971,7 +986,7 @@ internal sealed class JsonModelReader
         return null;
     }
 
-    private DateTimeOffset? ReadTimestamp(JsonElement element, string path)
+    private DateTimeOffset? ReadTimestamp(JsonElement element, JsonPathRef path)
     {
         if (ReadString(element, path) is not { } text)
         {
@@ -988,7 +1003,7 @@ internal sealed class JsonModelReader
         return null;
     }
 
-    private XapiDuration? ReadDuration(JsonElement element, string path)
+    private XapiDuration? ReadDuration(JsonElement element, JsonPathRef path)
     {
         if (ReadString(element, path) is not { } text)
         {
@@ -1004,8 +1019,13 @@ internal sealed class JsonModelReader
         return null;
     }
 
-    private void ExpectObjectType(JsonElement element, string path, string expected)
+    private void ExpectObjectType(JsonElement element, JsonPathRef path, string expected)
     {
+        if (element.ValueKind == JsonValueKind.String && element.ValueEquals(expected))
+        {
+            return;
+        }
+
         if (ReadString(element, path) is { } text && text != expected)
         {
             AddError(XapiErrorCodes.ObjectType, path, $"\"objectType\" must be \"{expected}\" here, not \"{text}\".");
@@ -1016,16 +1036,28 @@ internal sealed class JsonModelReader
     {
         foreach (var property in element.EnumerateObject())
         {
-            if (property.NameEquals("objectType"))
+            if (property.NameEquals("objectType"u8))
             {
-                return property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : null;
+                var value = property.Value;
+                if (value.ValueKind != JsonValueKind.String)
+                {
+                    return null;
+                }
+
+                // The usual values, without allocating a string for them
+                return value.ValueEquals("Agent"u8) ? "Agent"
+                    : value.ValueEquals("Activity"u8) ? "Activity"
+                    : value.ValueEquals("Group"u8) ? "Group"
+                    : value.ValueEquals("StatementRef"u8) ? "StatementRef"
+                    : value.ValueEquals("SubStatement"u8) ? "SubStatement"
+                    : value.GetString();
             }
         }
 
         return null;
     }
 
-    private PropertyBag? ReadObject(JsonElement element, string path, string[] known, string[]? laterVersion = null)
+    private PropertyBag? ReadObject(JsonElement element, JsonPathRef path, PropertySet properties)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -1033,67 +1065,69 @@ internal sealed class JsonModelReader
             return null;
         }
 
-        laterVersion ??= [];
-        var bag = new PropertyBag(path, known, laterVersion);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var values = new JsonElement[properties.Count];
+        var seen = 0;
+        HashSet<string>? otherNames = null;
         foreach (var property in element.EnumerateObject())
         {
-            var name = property.Name;
-            var propertyPath = JsonPath.Property(path, name);
-            if (!seen.Add(name))
+            var index = properties.IndexOf(property);
+            if (index < 0)
             {
+                // Lenient mode ignores other properties, repeated or not
                 if (_strict)
                 {
-                    AddError(XapiErrorCodes.PropertyDuplicate, propertyPath, $"The property \"{name}\" appears more than once.");
+                    otherNames ??= new HashSet<string>(StringComparer.Ordinal);
+                    OtherProperty(property.Name, path, properties, otherNames);
                 }
 
                 continue;
             }
 
-            var index = Array.IndexOf(known, name);
-            if (index < 0)
-            {
-                var later = Array.IndexOf(laterVersion, name);
-                if (later >= 0)
-                {
-                    if (_strict && !_version.IsV2)
-                    {
-                        AddError(XapiErrorCodes.PropertyVersion, propertyPath, $"\"{name}\" is not defined in xAPI {_version.HeaderValue}.");
-                        continue;
-                    }
-
-                    index = known.Length + later;
-                }
-            }
-
-            if (index < 0)
+            var name = properties[index];
+            var bit = 1 << index;
+            if ((seen & bit) != 0)
             {
                 if (_strict)
                 {
-                    var caseMatch = known.Concat(laterVersion).FirstOrDefault(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
-                    if (caseMatch is not null)
-                    {
-                        AddError(XapiErrorCodes.PropertyCase, propertyPath, $"\"{name}\" must be spelled \"{caseMatch}\".");
-                    }
-                    else
-                    {
-                        AddError(XapiErrorCodes.PropertyUnknown, propertyPath, $"\"{name}\" is not allowed here.");
-                    }
+                    AddError(XapiErrorCodes.PropertyDuplicate, path.Property(name), $"The property \"{name}\" appears more than once.");
                 }
 
+                continue;
+            }
+
+            seen |= bit;
+            if (index >= properties.KnownCount && _strict && !_version.IsV2)
+            {
+                AddError(XapiErrorCodes.PropertyVersion, path.Property(name), $"\"{name}\" is not defined in xAPI {_version.HeaderValue}.");
                 continue;
             }
 
             if (property.Value.ValueKind == JsonValueKind.Null)
             {
-                NullError(propertyPath);
+                NullError(path.Property(name));
                 continue;
             }
 
-            bag.Set(index, property.Value);
+            values[index] = property.Value;
         }
 
-        return bag;
+        return new PropertyBag(path, properties, values);
+    }
+
+    private void OtherProperty(string name, JsonPathRef path, PropertySet properties, HashSet<string> seen)
+    {
+        if (!seen.Add(name))
+        {
+            AddError(XapiErrorCodes.PropertyDuplicate, path.Property(name), $"The property \"{name}\" appears more than once.");
+        }
+        else if (properties.FindIgnoringCase(name) is { } caseMatch)
+        {
+            AddError(XapiErrorCodes.PropertyCase, path.Property(name), $"\"{name}\" must be spelled \"{caseMatch}\".");
+        }
+        else
+        {
+            AddError(XapiErrorCodes.PropertyUnknown, path.Property(name), $"\"{name}\" is not allowed here.");
+        }
     }
 
     private T? Required<T>(PropertyBag bag, string name)
@@ -1102,7 +1136,7 @@ internal sealed class JsonModelReader
         return default;
     }
 
-    private void NullError(string path)
+    private void NullError(JsonPathRef path)
     {
         if (_strict)
         {
@@ -1110,29 +1144,130 @@ internal sealed class JsonModelReader
         }
     }
 
-    private void TypeError(string path, string expected) =>
+    private void TypeError(JsonPathRef path, string expected) =>
         AddError(XapiErrorCodes.JsonType, path, $"Expected {expected}.");
 
-    private void AddError(string code, string path, string message) => Errors.Add(new XapiError(code, path, message));
+    private void AddError(string code, JsonPathRef path, string message) => Errors.Add(new XapiError(code, path.ToString(), message));
 
-    private sealed class PropertyBag(string path, string[] known, string[] laterVersion)
+    /// <summary>The properties an object may have, in the order of their slots in a <see cref="PropertyBag"/>.</summary>
+    private sealed class PropertySet
     {
-        private readonly JsonElement[] _values = new JsonElement[known.Length + laterVersion.Length];
+        private readonly string[] _names;
+        private readonly byte[][] _utf8Names;
 
-        public void Set(int index, JsonElement value) => _values[index] = value;
+        public PropertySet(string[] known, string[]? laterVersion = null)
+        {
+            _names = [.. known, .. laterVersion ?? []];
+            if (_names.Length > 31)
+            {
+                throw new ArgumentException("ReadObject tracks properties in an int.", nameof(known));
+            }
+
+            _utf8Names = Array.ConvertAll(_names, Encoding.UTF8.GetBytes);
+            KnownCount = known.Length;
+        }
+
+        /// <summary>The properties before this index are defined in every version; the rest only in 2.0.</summary>
+        public int KnownCount { get; }
+
+        public int Count => _names.Length;
+
+        public string this[int index] => _names[index];
+
+        public int IndexOf(string name) => Array.IndexOf(_names, name);
+
+        // Compares the name as it is in the JSON text, so known names never become strings. A name with an
+        // escape sequence is unescaped first.
+        public int IndexOf(JsonProperty property)
+        {
+            var raw = JsonMarshal.GetRawUtf8PropertyName(property);
+            if (raw.IndexOf((byte)'\\') >= 0)
+            {
+                return IndexOf(property.Name);
+            }
+
+            for (var i = 0; i < _utf8Names.Length; i++)
+            {
+                if (raw.SequenceEqual(_utf8Names[i]))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public string? FindIgnoringCase(string name) =>
+            Array.Find(_names, n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private readonly struct PropertyBag
+    {
+        private readonly JsonPathRef _path;
+        private readonly PropertySet _properties;
+        private readonly JsonElement[] _values;
+
+        public PropertyBag(JsonPathRef path, PropertySet properties, JsonElement[] values)
+        {
+            _path = path;
+            _properties = properties;
+            _values = values;
+        }
 
         public bool TryGet(string name, out JsonElement value)
         {
-            var index = Array.IndexOf(known, name);
-            if (index < 0)
-            {
-                index = known.Length + Array.IndexOf(laterVersion, name);
-            }
-
-            value = _values[index];
+            value = _values[_properties.IndexOf(name)];
             return value.ValueKind != JsonValueKind.Undefined;
         }
 
-        public string PathOf(string name) => JsonPath.Property(path, name);
+        public JsonPathRef PathOf(string name) => _path.Property(name);
+    }
+
+    /// <summary>
+    /// The member names seen so far in one JSON object. Most objects have a few members, so the first four are
+    /// compared directly and a hash set is only made for larger objects.
+    /// </summary>
+    private struct SeenNames(StringComparer comparer)
+    {
+        private string? _first;
+        private string? _second;
+        private string? _third;
+        private string? _fourth;
+        private HashSet<string>? _more;
+
+        /// <summary>Adds a name.</summary>
+        /// <returns><see langword="false"/> when the name was already seen.</returns>
+        public bool Add(string name)
+        {
+            if (_more is not null)
+            {
+                return _more.Add(name);
+            }
+
+            if (!TryTake(ref _first, name, comparer, out var added) &&
+                !TryTake(ref _second, name, comparer, out added) &&
+                !TryTake(ref _third, name, comparer, out added) &&
+                !TryTake(ref _fourth, name, comparer, out added))
+            {
+                _more = new HashSet<string>(comparer) { _first!, _second!, _third!, _fourth! };
+                added = _more.Add(name);
+            }
+
+            return added;
+        }
+
+        // Decides the result when the slot is empty (take it) or holds the same name; otherwise moves on.
+        private static bool TryTake(ref string? slot, string name, StringComparer comparer, out bool added)
+        {
+            if (slot is null)
+            {
+                slot = name;
+                added = true;
+                return true;
+            }
+
+            added = false;
+            return comparer.Equals(slot, name);
+        }
     }
 }

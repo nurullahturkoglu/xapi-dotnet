@@ -85,7 +85,7 @@ public static class XapiJson
     /// <param name="mode">How strictly to read.</param>
     /// <returns>The Actor, or every error found.</returns>
     public static XapiParseResult<Actor> ParseActor(ReadOnlySpan<byte> utf8Json, XapiVersion version, XapiReadMode mode = XapiReadMode.Strict) =>
-        Parse(utf8Json, version, mode, (reader, root) => Validated(reader, reader.ReadActorRoot(root, JsonPath.Root), mode, StatementValidator.ValidateActor));
+        Parse(utf8Json, version, mode, (reader, root) => Validated(reader, reader.ReadActorRoot(root, reader.Root), mode, StatementValidator.ValidateActor));
 
     /// <summary>Reads an Agent or Group.</summary>
     /// <param name="json">JSON text.</param>
@@ -101,7 +101,7 @@ public static class XapiJson
     /// <param name="mode">How strictly to read.</param>
     /// <returns>The Activity, or every error found.</returns>
     public static XapiParseResult<Activity> ParseActivity(ReadOnlySpan<byte> utf8Json, XapiVersion version, XapiReadMode mode = XapiReadMode.Strict) =>
-        Parse(utf8Json, version, mode, (reader, root) => Validated(reader, reader.ReadActivity(root, JsonPath.Root), mode, StatementValidator.ValidateActivity));
+        Parse(utf8Json, version, mode, (reader, root) => Validated(reader, reader.ReadActivity(root, reader.Root), mode, StatementValidator.ValidateActivity));
 
     /// <summary>Reads an Activity.</summary>
     /// <param name="json">JSON text.</param>
@@ -117,7 +117,7 @@ public static class XapiJson
     /// <param name="mode">How strictly to read.</param>
     /// <returns>The Person, or every error found.</returns>
     public static XapiParseResult<Person> ParsePerson(ReadOnlySpan<byte> utf8Json, XapiVersion version, XapiReadMode mode = XapiReadMode.Strict) =>
-        Parse(utf8Json, version, mode, (reader, root) => Validated(reader, reader.ReadPerson(root, JsonPath.Root), mode, StatementValidator.ValidatePerson));
+        Parse(utf8Json, version, mode, (reader, root) => Validated(reader, reader.ReadPerson(root, reader.Root), mode, StatementValidator.ValidatePerson));
 
     /// <summary>Reads a Person object.</summary>
     /// <param name="json">JSON text.</param>
@@ -133,7 +133,7 @@ public static class XapiJson
     /// <param name="mode">How strictly to read. Use <see cref="XapiReadMode.Lenient"/> for responses of unknown LRSs.</param>
     /// <returns>The About object, or every error found.</returns>
     public static XapiParseResult<About> ParseAbout(ReadOnlySpan<byte> utf8Json, XapiVersion version, XapiReadMode mode = XapiReadMode.Strict) =>
-        Parse(utf8Json, version, mode, (reader, root) => reader.ReadAbout(root, JsonPath.Root));
+        Parse(utf8Json, version, mode, (reader, root) => reader.ReadAbout(root, reader.Root));
 
     /// <summary>Reads an About object.</summary>
     /// <param name="json">JSON text.</param>
@@ -274,14 +274,14 @@ public static class XapiJson
     private delegate T? ReadRoot<T>(JsonModelReader reader, JsonElement root);
 
     private static Statement? ReadStatement(JsonModelReader reader, JsonElement root, XapiReadMode mode) =>
-        Validated(reader, reader.ReadStatement(root, JsonPath.Root), mode, StatementValidator.Validate);
+        Validated(reader, reader.ReadStatement(root, reader.Root), mode, StatementValidator.Validate);
 
     private static XapiList<Statement>? ReadStatements(JsonModelReader reader, JsonElement root, XapiReadMode mode)
     {
         XapiList<Statement>? statements;
         if (root.ValueKind == JsonValueKind.Object)
         {
-            statements = reader.ReadStatement(root, JsonPath.Root) is { } single ? XapiList.Create(single) : null;
+            statements = reader.ReadStatement(root, reader.Root) is { } single ? XapiList.Create(single) : null;
         }
         else if (root.ValueKind == JsonValueKind.Array)
         {
@@ -290,7 +290,7 @@ public static class XapiJson
             var index = 0;
             foreach (var item in root.EnumerateArray())
             {
-                if (reader.ReadStatement(item, JsonPath.Index(JsonPath.Root, index++)) is { } statement)
+                if (reader.ReadStatement(item, reader.Root.Index(index++)) is { } statement)
                 {
                     items.Add(statement);
                 }

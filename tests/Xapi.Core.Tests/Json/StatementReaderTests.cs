@@ -363,4 +363,44 @@ public class StatementReaderTests
     [Fact]
     public void Property_names_that_are_not_identifiers_use_bracket_paths() =>
         AssertSingleError(Parse(Minimal(s => s["my-prop"] = 1)), XapiErrorCodes.PropertyUnknown, "$['my-prop']");
+
+    [Fact]
+    public void Escaped_property_names_are_read_like_plain_ones()
+    {
+        const string Json = """
+            {"\u0061ctor":{"mbox":"mailto:a@example.com"},"verb":{"id":"http://example.com/v"},
+             "object":{"id":"http://example.com/a"},"\u006fbject":{"id":"http://example.com/b"}}
+            """;
+        AssertSingleError(Parse(Json), XapiErrorCodes.PropertyDuplicate, "$.object");
+        Assert.IsType<Agent>(Parse(Json, mode: XapiReadMode.Lenient).GetValueOrThrow().Actor);
+    }
+
+    [Fact]
+    public void A_repeated_unknown_property_is_reported_as_unknown_and_then_as_a_duplicate()
+    {
+        var json = MinimalStatement.TrimEnd().TrimEnd('}') + """, "foo": 1, "foo": 2}""";
+        Assert.Equal(
+            [$"$.foo {XapiErrorCodes.PropertyUnknown}", $"$.foo {XapiErrorCodes.PropertyDuplicate}"],
+            Parse(json).Errors.Select(e => $"{e.Path} {e.Code}"));
+        Assert.True(Parse(json, mode: XapiReadMode.Lenient).IsSuccess);
+    }
+
+    [Fact]
+    public void Duplicates_are_found_in_language_maps_and_extensions_with_many_entries()
+    {
+        const string Json = """
+            {"actor":{"mbox":"mailto:a@example.com"},
+             "verb":{"id":"http://example.com/v","display":{"en":"a","fr":"b","de":"c","es":"d","it":"e","EN":"f"}},
+             "object":{"id":"http://example.com/a"},
+             "result":{"extensions":{"http://example.com/1":1,"http://example.com/2":2,"http://example.com/3":3,"http://example.com/4":4,
+               "http://example.com/5":{"a":1,"b":2,"c":3,"d":4,"e":5,"a":6},"http://example.com/2":7}}}
+            """;
+        Assert.Equal(
+            [
+                $"$.verb.display.EN {XapiErrorCodes.PropertyDuplicate}",
+                $"$.result.extensions['http://example.com/5'].a {XapiErrorCodes.PropertyDuplicate}",
+                $"$.result.extensions['http://example.com/2'] {XapiErrorCodes.PropertyDuplicate}",
+            ],
+            Parse(Json).Errors.Select(e => $"{e.Path} {e.Code}"));
+    }
 }
