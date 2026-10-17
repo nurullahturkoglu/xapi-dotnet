@@ -299,6 +299,7 @@ namespace Xapi
         public string Code { get; init; }
         public string Message { get; init; }
         public string Path { get; init; }
+        public void Deconstruct(out string Code, out string Path, out string Message) { }
         public override string ToString() { }
     }
     public static class XapiErrorCodes

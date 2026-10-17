@@ -82,9 +82,12 @@ version pinned in `.config/dotnet-tools.json`), and remove the last one with `en
 ## Public API snapshots
 
 Every shipped assembly has an approved snapshot of its public API in
-`tests/Xapi.PublicApi.Tests/ApiSnapshots/<Assembly>.approved.txt`. If your change adds, removes or changes
-a public member, the test `Public_API_matches_the_approved_snapshot` fails and writes
-`<Assembly>.received.txt` next to the approved file. To accept the change:
+`tests/Xapi.PublicApi.Tests/ApiSnapshots/<Assembly>.approved.txt`, taken from the `net10.0` build. The
+`netstandard2.0` builds of `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` have their own,
+`<Assembly>.netstandard2.0.approved.txt`. If your change adds, removes or changes a public member, the test
+`Public_API_matches_the_approved_snapshot` (or `NetStandard_public_API_matches_the_approved_snapshot`) fails
+and writes `<Assembly>.received.txt` (or `<Assembly>.netstandard2.0.received.txt`) next to the approved file.
+To accept the change:
 
 1. Run `dotnet test --project tests/Xapi.PublicApi.Tests`.
 2. Compare the received and approved files and check that every difference is intended.
@@ -92,7 +95,9 @@ a public member, the test `Public_API_matches_the_approved_snapshot` fails and w
 
 The approved file is part of the diff, so reviewers see API changes directly. Do not commit
 `*.received.txt` files. When a new package is added, add a row for its assembly to `PublicApiTests`; the
-first run fails and writes the received file, which you review and rename to `.approved.txt`.
+first run fails and writes the received file, which you review and rename to `.approved.txt`. A package that
+also targets `netstandard2.0` needs a row in the `netstandard2.0` test too, and a `netstandard2.0` project
+reference in `Xapi.PublicApi.Tests.csproj`.
 
 ## Package tests
 
