@@ -5,6 +5,7 @@
     <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <RootNamespace>Xapi.Client</RootNamespace>
     <Description>Experience API (xAPI 2.0, IEEE 9274.1.1, and 1.0.3) client for .NET: Statements with attachments, State and profile documents with ETag preconditions, Agents, Activities and About over HttpClient, with version negotiation. Works on .NET Framework, Unity and modern .NET.</Description>
+    <PackageTags>$(PackageTags);client;httpclient;unity</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -20,7 +20,9 @@
     <PackageProjectUrl>https://github.com/nurullahturkoglu/xapi-dotnet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/nurullahturkoglu/xapi-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>xapi;experience-api;tincan;lrs;learning-record-store;elearning;ieee-9274</PackageTags>
+    <!-- Shared tags; each package adds its own with $(PackageTags);... -->
+    <PackageTags>xapi;experience-api;tincan;elearning;ieee-9274</PackageTags>
+    <PackageReleaseNotes>https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>

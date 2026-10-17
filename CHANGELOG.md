@@ -38,6 +38,7 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs.Sqlite` and `Xapi.Lrs.PostgreSql` depend on the exact version of `Xapi.Lrs` they were built with (`[x.y.z]`), because they use its experimental storage types.
 - `Xapi.Lrs`: the storage API marked `XAPI0001` stays experimental after 1.0 until it is declared stable, and is not covered by semantic versioning until then. The `XAPI0001` error links to [Experimental storage API](docs/lrs.md#experimental-storage-api).
 - `Xapi.Lrs`: setting `MaxDocumentBytes` below 1 throws `ArgumentOutOfRangeException`, like the other size limits.
+- Each package has its own NuGet tags on top of the shared ones (`lrs` and `learning-record-store` only on the LRS packages), and the package release notes link to this changelog.
 - `Xapi.Lrs`: the options are validated when the host starts (`ValidateOnStart`). A host with no credentials and no `AuthenticationScheme`, an empty or built-in (`XapiBasic`) scheme name, an empty `ScopeClaimType` or a default `AuthorityHomePage` now fails to start with an `OptionsValidationException` that lists every problem, instead of starting with settings under which requests cannot be authenticated.
 
 ### Fixed
