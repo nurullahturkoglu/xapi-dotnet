@@ -90,6 +90,12 @@ namespace Xapi.Client.Outbox
         public OutboxDeliveredEventArgs(System.Collections.Generic.IReadOnlyList<System.Guid> statementIds) { }
         public System.Collections.Generic.IReadOnlyList<System.Guid> StatementIds { get; }
     }
+    public static class OutboxDiagnostics
+    {
+        public const string StatementsDeadLettered = "xapi.client.outbox.statements.dead_lettered";
+        public const string StatementsPending = "xapi.client.outbox.statements.pending";
+        public const string StatementsRetried = "xapi.client.outbox.statements.retried";
+    }
     public sealed record OutboxEntry : System.IEquatable<Xapi.Client.Outbox.OutboxEntry>
     {
         public OutboxEntry(Xapi.Statement statement, System.DateTimeOffset enqueuedAt) { }

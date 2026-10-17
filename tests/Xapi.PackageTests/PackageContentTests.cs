@@ -149,7 +149,11 @@ public class PackageContentTests
         Assert.Equal(expectsExtensions, declared.ContainsKey("Microsoft.Extensions.Http"));
         if (!expectsExtensions)
         {
-            Assert.DoesNotContain(declared.Keys, id => id.StartsWith("Microsoft.Extensions.", StringComparison.Ordinal));
+            // Unity and .NET Framework apps ship each of these as a DLL. System.Text.Json is listed because central
+            // transitive pinning pins the version Xapi.Core brings; DiagnosticSource is for Meter (ADR-014).
+            Assert.Equal(
+                ["Microsoft.Bcl.AsyncInterfaces", "System.Diagnostics.DiagnosticSource", "System.Text.Json", "Xapi.Core"],
+                declared.Keys.Order(StringComparer.Ordinal));
         }
     }
 

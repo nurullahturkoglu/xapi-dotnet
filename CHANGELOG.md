@@ -31,6 +31,7 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: `XapiLrsOptions.Bind(configuration)` reads the options from a configuration section, credentials included (`Lrs:Credentials:0:Key`, `:Secret`, `:Scopes:0`). Scopes are xAPI or `XapiScope` names; an incomplete credential, an unknown scope or a value out of range fails with the configuration path in the message and never the secret. `samples/LrsHost` reads its options this way, so it accepts more than one credential. See [Options from configuration](docs/lrs.md#options-from-configuration).
 - `Xapi.Lrs`: metrics on the `Xapi.Lrs` meter (`xapi.lrs.request.duration`, `xapi.lrs.errors`, `xapi.lrs.statements.stored`) and activities on the `Xapi.Lrs` activity source for storing and querying statements and writing documents, with `System.Diagnostics` and no OpenTelemetry dependency. Tags never carry agents, IRIs, ids or credential keys. The names are constants of `XapiLrsDiagnostics`. See [Metrics and traces](docs/lrs.md#metrics-and-traces).
 - `Xapi.Lrs`: `AddXapiLrsHealthCheck()` reports whether the database can be reached and is migrated. `samples/LrsHost` serves it at `/health`.
+- `Xapi.Client` and `Xapi.Client.Outbox`: metrics on the `Xapi.Client` meter: statements sent, retried and dead-lettered, and the statements pending in outboxes. The netstandard2.0 build of `Xapi.Client` now depends on `System.Diagnostics.DiagnosticSource`.
 
 ### Changed
 

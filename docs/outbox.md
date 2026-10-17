@@ -94,6 +94,29 @@ Dead letters stay in the store with the statement, the reason, the status code, 
 `RequeueDeadLetterAsync` and `RequeueAllDeadLettersAsync` move them back to the end of the queue with no
 attempts, and `RemoveDeadLetterAsync` deletes one. They do not count towards `MaxQueueSize`.
 
+## Metrics
+
+The outbox reports on the client's `Xapi.Client` meter (`XapiClientDiagnostics.MeterName`), next to
+`xapi.client.statements.sent`, which counts what it delivers. The names are constants of `OutboxDiagnostics`.
+
+| Instrument | Type | Unit | Tags |
+| --- | --- | --- | --- |
+| `xapi.client.outbox.statements.retried` | Counter | `{statement}` | `error.type` |
+| `xapi.client.outbox.statements.dead_lettered` | Counter | `{statement}` | `xapi.outbox.dead_letter.reason` |
+| `xapi.client.outbox.statements.pending` | Observable up-down counter | `{statement}` | none |
+
+`retried` counts the statements of a send that failed with a transient error and stay queued for the next
+attempt; `error.type` is the LRS's status code (`429`, `503`) or the exception's full type name
+(`System.Net.Http.HttpRequestException`). A statement that reaches `MaxAttempts` is counted as dead-lettered
+instead. `xapi.outbox.dead_letter.reason` is `rejected`, `too_large`, `conflict` or `max_attempts_exceeded`.
+
+`pending` is the number of statements waiting to be delivered, dead letters not included, summed over the live
+outboxes on the meter. It is an up-down counter rather than a gauge because the counts of several outboxes add
+up. It is read from the store when the metrics are collected; a custom store whose `GetPendingCountAsync` does
+not complete synchronously counts as 0. An outbox from `AddXapiOutbox` gets its meter from the host's
+`IMeterFactory`; one created with `new StatementOutbox(...)` reports on a meter shared by the process until it
+is disposed.
+
 ## Options
 
 | Option | Default | Meaning |

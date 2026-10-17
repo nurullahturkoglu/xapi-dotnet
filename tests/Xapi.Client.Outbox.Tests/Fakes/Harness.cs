@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Time.Testing;
+using Xapi.Client.Outbox.Internal;
 
 namespace Xapi.Client.Outbox.Tests.Fakes;
 
@@ -28,7 +29,7 @@ internal sealed class Harness : IAsyncDisposable
 
     public XapiClient Client { get; }
 
-    public static Harness Create(Action<OutboxOptions>? configure = null, IOutboxStore? store = null, FakeLrs? lrs = null, XapiVersion? version = null)
+    public static Harness Create(Action<OutboxOptions>? configure = null, IOutboxStore? store = null, FakeLrs? lrs = null, XapiVersion? version = null, OutboxMetrics? metrics = null)
     {
         lrs ??= new FakeLrs();
         var time = new FakeTimeProvider(Start);
@@ -41,7 +42,8 @@ internal sealed class Harness : IAsyncDisposable
         var options = new OutboxOptions { TimeProvider = time };
         configure?.Invoke(options);
         store ??= new InMemoryOutboxStore();
-        return new Harness(lrs, store, time, new StatementOutbox(client, store, options), client);
+        var outbox = metrics is null ? new StatementOutbox(client, store, options) : new StatementOutbox(() => client, store, options, metrics);
+        return new Harness(lrs, store, time, outbox, client);
     }
 
     public async Task<List<Guid>> EnqueueAsync(int count, int first = 1)
