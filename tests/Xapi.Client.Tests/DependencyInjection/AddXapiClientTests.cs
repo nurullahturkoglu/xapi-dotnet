@@ -1,8 +1,10 @@
+using System.Diagnostics.Metrics;
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
 using Xapi.Client.Tests.Fakes;
 using Xapi.Client.Tests.TestData;
+using Xapi.Testing;
 using static Xapi.Client.Tests.Fakes.TestToken;
 
 namespace Xapi.Client.Tests.DependencyInjection;
@@ -77,5 +79,30 @@ public class AddXapiClientTests
 
         Assert.Null(activity);
         Assert.Equal(2, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Resolved_clients_report_on_a_meter_from_the_hosts_meter_factory()
+    {
+        var handler = new FakeHandler();
+        handler.Respond(HttpStatusCode.NoContent);
+        handler.Respond(HttpStatusCode.NoContent);
+        var services = new ServiceCollection();
+        services.AddMetrics();
+        services.AddXapiClient(o =>
+        {
+            o.Endpoint = new Uri(TestClient.Endpoint);
+            o.Version = XapiVersion.V2_0_0;
+        }).HttpClient.ConfigurePrimaryHttpMessageHandler(() => handler);
+        using var provider = services.BuildServiceProvider();
+        var meterFactory = provider.GetRequiredService<IMeterFactory>();
+        using var metrics = new MetricRecorder(i => ReferenceEquals(i.Meter.Scope, meterFactory));
+
+        await provider.GetRequiredService<IXapiClient>().SaveStatementAsync(Samples.Statement(Samples.Id(1)), cancellationToken: Ct);
+        await provider.GetRequiredService<IXapiClient>().SaveStatementAsync(Samples.Statement(Samples.Id(2)), cancellationToken: Ct);
+
+        var sent = metrics.Of(XapiClientDiagnostics.StatementsSent);
+        Assert.Equal(2, sent.Count);
+        Assert.All(sent, m => Assert.Equal(XapiClientDiagnostics.MeterName, m.Meter));
     }
 }

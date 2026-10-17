@@ -47,6 +47,7 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
     private readonly SemaphoreSlim _enqueueGate = new(1, 1);
     private readonly SemaphoreSlim _flushGate = new(1, 1);
     private readonly CancellationTokenSource _disposed = new();
+    private readonly OutboxMetrics _metrics;
 #if NET9_0_OR_GREATER
     private readonly Lock _stateGate = new();
 #else
@@ -75,7 +76,7 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
     }
 
     /// <summary>Creates an outbox that asks <paramref name="clientFactory"/> for a client at the start of every flush.</summary>
-    internal StatementOutbox(Func<IXapiClient> clientFactory, IOutboxStore store, OutboxOptions? options)
+    internal StatementOutbox(Func<IXapiClient> clientFactory, IOutboxStore store, OutboxOptions? options, OutboxMetrics? metrics = null)
     {
         _clientFactory = Guard.NotNull(clientFactory);
         _store = Guard.NotNull(store);
@@ -107,6 +108,8 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
         _maxRetryDelay = options.MaxRetryDelay;
         _maxAttempts = options.MaxAttempts;
         _ids = new UuidV7Generator(_time.GetUtcNow);
+        _metrics = metrics ?? OutboxMetrics.Shared;
+        _metrics.Add(this);
     }
 
     /// <summary>Raised after Statements were delivered, or found already stored and equivalent at the LRS.</summary>
@@ -325,6 +328,7 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
         }
 
         _disposed.Cancel();
+        _metrics.Remove(this);
         if (Volatile.Read(ref _loop) is { } loop)
         {
             await loop.ConfigureAwait(false);
@@ -335,7 +339,37 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
     /// Tells the background loop started with <see cref="RunAsync"/> to stop, without waiting for it. Prefer
     /// <see cref="DisposeAsync"/>, which waits. The store and the client are not disposed.
     /// </summary>
-    public void Dispose() => _disposed.Cancel();
+    public void Dispose()
+    {
+        _disposed.Cancel();
+        _metrics.Remove(this);
+    }
+
+    /// <summary>
+    /// For the pending-count instrument, which is read synchronously: the store's count when it has it at hand, as
+    /// the built-in stores do, and 0 otherwise.
+    /// </summary>
+    internal int PendingCountOrZero()
+    {
+        try
+        {
+            var count = _store.GetPendingCountAsync(CancellationToken.None);
+            if (count.IsCompletedSuccessfully)
+            {
+                return count.Result;
+            }
+
+            // Not waited for; observed so that a failure is not reported as unobserved
+            _ = count.AsTask().ContinueWith(static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            return 0;
+        }
+#pragma warning disable CA1031 // A store that fails (or was disposed) must not break the metrics collection
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+            return 0;
+        }
+    }
 
     private static Func<IXapiClient> ConstantFactory(IXapiClient client) => () => client;
 

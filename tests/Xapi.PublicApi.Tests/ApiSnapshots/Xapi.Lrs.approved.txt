@@ -11,6 +11,10 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         Microsoft.Extensions.DependencyInjection.IServiceCollection Services { get; }
     }
+    public static class XapiLrsHealthChecksBuilderExtensions
+    {
+        public static Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder AddXapiLrsHealthCheck(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder builder, string name = "xapi-lrs", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = default, System.Collections.Generic.IEnumerable<string>? tags = null, System.TimeSpan? timeout = default) { }
+    }
     public static class XapiLrsServiceCollectionExtensions
     {
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder AddXapiLrs(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Xapi.Lrs.XapiLrsOptions>? configure = null) { }
@@ -212,6 +216,17 @@ namespace Xapi.Lrs
     public static class XapiLrsAuthenticationDefaults
     {
         public const string AuthenticationScheme = "XapiBasic";
+    }
+    public static class XapiLrsDiagnostics
+    {
+        public const string ActivitySourceName = "Xapi.Lrs";
+        public const string Errors = "xapi.lrs.errors";
+        public const string MeterName = "Xapi.Lrs";
+        public const string QueryStatementsActivity = "xapi.lrs.statements.query";
+        public const string RequestDuration = "xapi.lrs.request.duration";
+        public const string StatementsStored = "xapi.lrs.statements.stored";
+        public const string StoreStatementsActivity = "xapi.lrs.statements.store";
+        public const string WriteDocumentActivity = "xapi.lrs.documents.write";
     }
     public sealed class XapiLrsOptions
     {

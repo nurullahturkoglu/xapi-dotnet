@@ -1,3 +1,5 @@
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Xapi.Client;
 using Xapi.Client.Internal;
@@ -49,11 +51,15 @@ public static class XapiClientServiceCollectionExtensions
 
         services.AddOptions<XapiClientOptions>().Configure(configure);
         services.AddSingleton(static _ => new VersionNegotiation());
+        services.TryAddSingleton(static provider => provider.GetService<IMeterFactory>() is { } meterFactory
+            ? new ClientMetrics(meterFactory.Create(XapiClientDiagnostics.MeterName))
+            : ClientMetrics.Shared);
         var httpClient = services.AddHttpClient(HttpClientName);
         httpClient.AddTypedClient(static (http, provider) => new XapiClient(
                 http,
                 provider.GetRequiredService<IOptions<XapiClientOptions>>().Value,
-                provider.GetRequiredService<VersionNegotiation>()));
+                provider.GetRequiredService<VersionNegotiation>(),
+                provider.GetRequiredService<ClientMetrics>()));
         services.AddTransient<IXapiClient>(static provider => provider.GetRequiredService<XapiClient>());
 
         return new Builder(services, httpClient);

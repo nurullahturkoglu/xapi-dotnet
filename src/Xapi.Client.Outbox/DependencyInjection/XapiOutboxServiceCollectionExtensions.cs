@@ -1,8 +1,10 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Xapi.Client;
 using Xapi.Client.Outbox;
+using Xapi.Client.Outbox.Internal;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -68,7 +70,10 @@ public static class XapiOutboxServiceCollectionExtensions
         services.TryAddSingleton(static provider => new StatementOutbox(
             provider.GetRequiredService<IXapiClient>,
             provider.GetRequiredService<IOutboxStore>(),
-            provider.GetRequiredService<IOptions<OutboxOptions>>().Value));
+            provider.GetRequiredService<IOptions<OutboxOptions>>().Value,
+            provider.GetService<IMeterFactory>() is { } meterFactory
+                ? new OutboxMetrics(meterFactory.Create(XapiClientDiagnostics.MeterName))
+                : null));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, StatementOutboxService>());
         return services;
     }

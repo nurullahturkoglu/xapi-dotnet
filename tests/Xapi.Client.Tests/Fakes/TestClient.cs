@@ -1,10 +1,12 @@
+using Xapi.Client.Internal;
+
 namespace Xapi.Client.Tests.Fakes;
 
 internal static class TestClient
 {
     public const string Endpoint = "https://lrs.example.com/xapi/";
 
-    public static (XapiClient Client, FakeHandler Handler) Create(XapiVersion? version = null, Action<XapiClientOptions>? configure = null)
+    public static (XapiClient Client, FakeHandler Handler) Create(XapiVersion? version = null, Action<XapiClientOptions>? configure = null, ClientMetrics? metrics = null)
     {
         var handler = new FakeHandler();
         var options = new XapiClientOptions
@@ -14,6 +16,6 @@ internal static class TestClient
             Credentials = XapiCredentials.Basic("key", "secret"),
         };
         configure?.Invoke(options);
-        return (new XapiClient(new HttpClient(handler), options), handler);
+        return (new XapiClient(new HttpClient(handler), options, null, metrics), handler);
     }
 }

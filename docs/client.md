@@ -283,3 +283,21 @@ catch (HttpRequestException)
 
 Error messages name the method and path of the request but not its query string, because agent parameters
 can hold personal data.
+
+## Metrics
+
+The client counts the statements it delivers on the `Xapi.Client` meter. It uses `System.Diagnostics.Metrics`,
+which on netstandard2.0 comes from the `System.Diagnostics.DiagnosticSource` package. To export the count with
+the OpenTelemetry .NET SDK, add `.WithMetrics(m => m.AddMeter(XapiClientDiagnostics.MeterName))` on
+`AddOpenTelemetry()`. The outbox reports on the same meter; [outbox.md](outbox.md#metrics) lists its
+instruments.
+
+| Instrument | Type | Unit | Tags |
+| --- | --- | --- | --- |
+| `xapi.client.statements.sent` | Counter | `{statement}` | `xapi.version` (`2.0.0` or `1.0.3`) |
+
+It counts the statements of `SaveStatementAsync` and `SaveStatementsAsync` calls the LRS accepted. Failed calls
+are not counted; `HttpClient`'s own `http.client.request.duration` (meter `System.Net.Http`) measures every
+request with its status. A client created with `AddXapiClient` gets its meter from the host's `IMeterFactory`; one
+created with `new XapiClient(...)` reports on a meter shared by the process. The names are constants of
+`XapiClientDiagnostics`.

@@ -8,6 +8,7 @@ using Xapi.Json;
 using Xapi.Lrs.Security;
 using Xapi.Lrs.Statements;
 using Xapi.Lrs.Storage;
+using Xapi.Lrs.Telemetry;
 
 namespace Xapi.Lrs.Http;
 
@@ -225,7 +226,21 @@ internal static class StatementEndpoints
             filter = filter with { AuthorityKey = request.Caller.AuthorityKey };
         }
 
-        var page = await store.QueryAsync(filter, http.RequestAborted).ConfigureAwait(false);
+        StatementPage page;
+        using (var activity = XapiLrsActivities.StartQueryStatements(request.Version))
+        {
+            try
+            {
+                page = await store.QueryAsync(filter, http.RequestAborted).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (XapiLrsActivities.Failed(activity, exception))
+            {
+                throw;
+            }
+
+            activity?.SetTag(XapiTags.StatementCount, page.Statements.Count);
+        }
+
         var statements = await StatementRendering.RenderAsync(page.Statements, query.Format, AcceptLanguages(http.Request), store, http.RequestAborted).ConfigureAwait(false);
 
         // 1.0.3 (Data 2.5) has "more" as an empty string on the last page; 2.0 allows that too

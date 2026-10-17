@@ -188,6 +188,7 @@ public sealed partial class StatementOutbox
         };
         await _store.MoveToDeadLettersAsync(deadLetter, CancellationToken.None).ConfigureAwait(false);
         counts.DeadLettered++;
+        _metrics.DeadLettered(reason);
         if (http is not null && reason != OutboxDeadLetterReason.MaxAttemptsExceeded)
         {
             Reachable();
@@ -200,10 +201,12 @@ public sealed partial class StatementOutbox
     {
         var message = Describe(error);
         await _store.RecordFailedAttemptAsync(entries.Select(e => e.StatementId).ToList(), message, CancellationToken.None).ConfigureAwait(false);
+        var retried = entries.Count;
         if (_maxAttempts is { } maxAttempts)
         {
             foreach (var entry in entries.Where(e => e.Attempts + 1 >= maxAttempts))
             {
+                retried--;
                 await DeadLetterAsync(
                     entry with { Attempts = entry.Attempts + 1 },
                     OutboxDeadLetterReason.MaxAttemptsExceeded,
@@ -213,6 +216,7 @@ public sealed partial class StatementOutbox
             }
         }
 
+        _metrics.Retried(retried, error);
         ScheduleRetry(message, (error as XapiHttpException)?.RetryAfter);
     }
 

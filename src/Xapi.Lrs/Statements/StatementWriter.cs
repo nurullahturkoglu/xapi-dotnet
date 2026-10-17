@@ -1,12 +1,13 @@
 using Xapi.Json;
 using Xapi.Lrs.Security;
 using Xapi.Lrs.Storage;
+using Xapi.Lrs.Telemetry;
 
 namespace Xapi.Lrs.Statements;
 
 // Fills in what the LRS sets on every statement it stores (IEEE 9274.1.1, 4.2.4.2) and hands the batch to the
 // store.
-internal sealed class StatementWriter(IStatementStore store, StatementWriteTracker tracker)
+internal sealed class StatementWriter(IStatementStore store, StatementWriteTracker tracker, XapiLrsMetrics metrics)
 {
     private readonly UuidV7Generator _keys = UuidV7Generator.Shared;
 
@@ -25,7 +26,26 @@ internal sealed class StatementWriter(IStatementStore store, StatementWriteTrack
             records.Add(Prepare(statements[i], attachments?[i] ?? [], version, caller));
         }
 
-        var result = await store.StoreAsync(records, Scopes.CanDefine(caller.Scopes), cancellationToken).ConfigureAwait(false);
+        StatementStoreResult result;
+        using (var activity = XapiLrsActivities.StartStoreStatements(records.Count, version))
+        {
+            try
+            {
+                result = await store.StoreAsync(records, Scopes.CanDefine(caller.Scopes), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (XapiLrsActivities.Failed(activity, exception))
+            {
+                throw;
+            }
+
+            activity?.SetTag(XapiTags.StatementConflict, result.IsConflict);
+        }
+
+        if (!result.IsConflict)
+        {
+            metrics.StatementsStored(records.Count, version);
+        }
+
         return (result, records.ConvertAll(r => r.Id));
     }
 

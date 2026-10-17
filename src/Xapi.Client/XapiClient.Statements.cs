@@ -28,13 +28,20 @@ public sealed partial class XapiClient
             var query = new QueryBuilder().Add("statementId", id);
             using var putResponse = await SendAsync(HttpMethod.Put, StatementsResource, query, content, null, version, cancellationToken).ConfigureAwait(false);
             await EnsureSuccessAsync(putResponse, cancellationToken).ConfigureAwait(false);
+            _metrics.StatementsSent(1, version);
             return id;
         }
 
         using var response = await SendAsync(HttpMethod.Post, StatementsResource, null, content, null, version, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
         var ids = await ReadIdsAsync(response, cancellationToken).ConfigureAwait(false);
-        return ids.Count == 1 ? ids[0] : throw Unusable(response, null, $"returned {ids.Count} Statement ids for one Statement");
+        if (ids.Count != 1)
+        {
+            throw Unusable(response, null, $"returned {ids.Count} Statement ids for one Statement");
+        }
+
+        _metrics.StatementsSent(1, version);
+        return ids[0];
     }
 
     /// <inheritdoc/>
@@ -64,17 +71,18 @@ public sealed partial class XapiClient
         using var response = await SendAsync(HttpMethod.Post, StatementsResource, null, content, null, version, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
         var ids = await ReadIdsAsync(response, cancellationToken).ConfigureAwait(false);
-        if (ids.Count == statements.Count)
+        if (ids.Count != statements.Count)
         {
-            return ids;
+            // Some LRSs (lrsql among them) leave out the ids of Statements they already had, for example when a
+            // batch is sent again after a lost response. When every Statement carries its id, those ids are the answer.
+            var sent = statements.Select(s => s.Id).ToList();
+            ids = sent.TrueForAll(id => id is not null) && ids.All(id => sent.Contains(id))
+                ? sent.ConvertAll(id => id!.Value)
+                : throw Unusable(response, null, $"returned {ids.Count} Statement ids for {statements.Count} Statements");
         }
 
-        // Some LRSs (lrsql among them) leave out the ids of Statements they already had, for example when a batch
-        // is sent again after a lost response. When every Statement carries its id, those ids are the answer.
-        var sent = statements.Select(s => s.Id).ToList();
-        return sent.TrueForAll(id => id is not null) && ids.All(id => sent.Contains(id))
-            ? sent.ConvertAll(id => id!.Value)
-            : throw Unusable(response, null, $"returned {ids.Count} Statement ids for {statements.Count} Statements");
+        _metrics.StatementsSent(statements.Count, version);
+        return ids;
     }
 
     /// <inheritdoc/>

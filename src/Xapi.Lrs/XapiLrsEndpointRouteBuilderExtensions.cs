@@ -6,6 +6,7 @@ using Xapi.Lrs;
 using Xapi.Lrs.Http;
 using Xapi.Lrs.Hosting;
 using Xapi.Lrs.Storage;
+using Xapi.Lrs.Telemetry;
 
 namespace Microsoft.AspNetCore.Builder;
 
@@ -35,20 +36,20 @@ public static class XapiLrsEndpointRouteBuilderExtensions
 
         string[] read = [HttpMethods.Get, HttpMethods.Head];
         group.MapMethods("/about", read, AboutEndpoint.Get)
-            .WithMetadata(new XapiEndpointMetadata(XapiAccess.Anonymous, VersionHeaderRequired: false, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata("about", XapiAccess.Anonymous, VersionHeaderRequired: false, IsStatementResource: false));
         group.MapPut("/statements", StatementEndpoints.PutAsync)
-            .WithMetadata(new XapiEndpointMetadata(XapiAccess.StatementsWrite, VersionHeaderRequired: true, IsStatementResource: true));
+            .WithMetadata(new XapiEndpointMetadata("statements", XapiAccess.StatementsWrite, VersionHeaderRequired: true, IsStatementResource: true));
         group.MapPost("/statements", StatementEndpoints.PostAsync)
-            .WithMetadata(new XapiEndpointMetadata(XapiAccess.StatementsWrite, VersionHeaderRequired: true, IsStatementResource: true));
+            .WithMetadata(new XapiEndpointMetadata("statements", XapiAccess.StatementsWrite, VersionHeaderRequired: true, IsStatementResource: true));
         group.MapMethods("/statements", read, StatementEndpoints.GetAsync)
-            .WithMetadata(new XapiEndpointMetadata(XapiAccess.StatementsRead, VersionHeaderRequired: true, IsStatementResource: true));
+            .WithMetadata(new XapiEndpointMetadata("statements", XapiAccess.StatementsRead, VersionHeaderRequired: true, IsStatementResource: true));
 
         // The scope list (xAPI 1.0.3 Communication 4.2) names no scope for these two; they describe the Agents and
         // Activities that profile documents are about, so they are read like profiles (profile, all/read, all).
         group.MapMethods("/agents", read, AgentsEndpoint.GetAsync)
-            .WithMetadata(new XapiEndpointMetadata(XapiAccess.ProfileRead, VersionHeaderRequired: true, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata("agents", XapiAccess.ProfileRead, VersionHeaderRequired: true, IsStatementResource: false));
         group.MapMethods("/activities", read, ActivitiesEndpoint.GetAsync)
-            .WithMetadata(new XapiEndpointMetadata(XapiAccess.ProfileRead, VersionHeaderRequired: true, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata("activities", XapiAccess.ProfileRead, VersionHeaderRequired: true, IsStatementResource: false));
 
         MapDocuments(group, "/activities/state", DocumentResource.State, XapiAccess.StateRead, XapiAccess.StateWrite);
         MapDocuments(group, "/activities/profile", DocumentResource.ActivityProfile, XapiAccess.ProfileRead, XapiAccess.ProfileWrite);
@@ -56,20 +57,21 @@ public static class XapiLrsEndpointRouteBuilderExtensions
 
         // Unknown paths and methods still get an xAPI error with the version header (4.1.7: every response)
         group.Map("/{**path}", FallbackEndpoint.Handle)
-            .WithMetadata(new XapiEndpointMetadata(XapiAccess.Authenticated, VersionHeaderRequired: true, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata(XapiTags.Other, XapiAccess.Authenticated, VersionHeaderRequired: true, IsStatementResource: false));
 
         return group;
     }
 
     private static void MapDocuments(RouteGroupBuilder group, string pattern, DocumentResource resource, XapiAccess read, XapiAccess write)
     {
+        var name = XapiTags.ResourceOf(resource);
         group.MapMethods(pattern, [HttpMethods.Get, HttpMethods.Head], (HttpContext http, IDocumentStore store) => DocumentEndpoints.GetAsync(http, store, resource))
-            .WithMetadata(new XapiEndpointMetadata(read, VersionHeaderRequired: true, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata(name, read, VersionHeaderRequired: true, IsStatementResource: false));
         group.MapPut(pattern, (HttpContext http, IDocumentStore store, IOptions<XapiLrsOptions> options) => DocumentEndpoints.PutAsync(http, store, options, resource))
-            .WithMetadata(new XapiEndpointMetadata(write, VersionHeaderRequired: true, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata(name, write, VersionHeaderRequired: true, IsStatementResource: false));
         group.MapPost(pattern, (HttpContext http, IDocumentStore store, IOptions<XapiLrsOptions> options) => DocumentEndpoints.PostAsync(http, store, options, resource))
-            .WithMetadata(new XapiEndpointMetadata(write, VersionHeaderRequired: true, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata(name, write, VersionHeaderRequired: true, IsStatementResource: false));
         group.MapDelete(pattern, (HttpContext http, IDocumentStore store) => DocumentEndpoints.DeleteAsync(http, store, resource))
-            .WithMetadata(new XapiEndpointMetadata(write, VersionHeaderRequired: true, IsStatementResource: false));
+            .WithMetadata(new XapiEndpointMetadata(name, write, VersionHeaderRequired: true, IsStatementResource: false));
     }
 }

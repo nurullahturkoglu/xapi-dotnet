@@ -36,17 +36,18 @@ public sealed partial class XapiClient : IXapiClient
     private readonly XapiCredentials? _credentials;
     private readonly bool _validateBeforeSend;
     private readonly VersionNegotiation _version;
+    private readonly ClientMetrics _metrics;
 
     /// <summary>Creates a client.</summary>
     /// <param name="httpClient">The HTTP client to send requests with.</param>
     /// <param name="options">The settings. They are copied; later changes have no effect.</param>
     /// <exception cref="ArgumentException"><see cref="XapiClientOptions.Endpoint"/> is missing or not absolute.</exception>
     public XapiClient(HttpClient httpClient, XapiClientOptions options)
-        : this(httpClient, options, null)
+        : this(httpClient, options, null, null)
     {
     }
 
-    internal XapiClient(HttpClient httpClient, XapiClientOptions options, VersionNegotiation? sharedNegotiation)
+    internal XapiClient(HttpClient httpClient, XapiClientOptions options, VersionNegotiation? sharedNegotiation, ClientMetrics? metrics)
     {
         _http = Guard.NotNull(httpClient);
         Guard.NotNull(options);
@@ -54,6 +55,7 @@ public sealed partial class XapiClient : IXapiClient
         _credentials = options.Credentials;
         _validateBeforeSend = options.ValidateBeforeSend;
         _version = options.Version is { } version ? new VersionNegotiation(version) : sharedNegotiation ?? new VersionNegotiation();
+        _metrics = metrics ?? ClientMetrics.Shared;
     }
 
     /// <inheritdoc/>

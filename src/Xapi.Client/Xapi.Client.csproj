@@ -15,6 +15,8 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <!-- IAsyncEnumerable<T> and ValueTask<T> -->
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+    <!-- Meter and its instruments (ADR-014); part of the framework from .NET 6. Its own dependencies are already here through System.Text.Json. -->
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
   </ItemGroup>
 
   <!-- The DI extension exists on net10.0 only, so Unity and .NET Framework users do not get Microsoft.Extensions.* (ADR-008) -->

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
@@ -98,6 +99,17 @@ internal static class LrsSnippets
         var app = builder.Build();
         app.UseCors();
         app.MapXapiLrs("/xapi").RequireCors("xapi");
+        // end snippet
+    }
+
+    public static void HealthCheck(WebApplicationBuilder builder)
+    {
+        // snippet: lrs-health
+        builder.Services.AddHealthChecks().AddXapiLrsHealthCheck(tags: ["ready"]);
+
+        var app = builder.Build();
+        app.MapXapiLrs("/xapi");
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
         // end snippet
     }
 

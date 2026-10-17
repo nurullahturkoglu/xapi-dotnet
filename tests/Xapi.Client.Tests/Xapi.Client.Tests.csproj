@@ -27,4 +27,9 @@
     <Using Include="System.Net.Http" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- MeterListener helper shared by the metrics tests -->
+    <Compile Include="../Shared/MetricRecorder.cs" Link="Shared/MetricRecorder.cs" />
+  </ItemGroup>
+
 </Project>

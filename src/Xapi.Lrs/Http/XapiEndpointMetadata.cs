@@ -15,7 +15,8 @@ internal enum XapiAccess
     ProfileWrite,
 }
 
-internal sealed record XapiEndpointMetadata(XapiAccess Access, bool VersionHeaderRequired, bool IsStatementResource);
+// Resource: the xapi.resource tag of the request metrics, the path under the prefix
+internal sealed record XapiEndpointMetadata(string Resource, XapiAccess Access, bool VersionHeaderRequired, bool IsStatementResource);
 
 // Per-request results of the filter, read by the handlers.
 internal sealed class XapiRequestFeature(XapiVersion version, XapiCaller? caller)

@@ -1,6 +1,8 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xapi.Client.Outbox.Tests.Fakes;
+using Xapi.Testing;
 using static Xapi.Client.Outbox.Tests.Fakes.Samples;
 
 namespace Xapi.Client.Outbox.Tests.DependencyInjection;
@@ -54,5 +56,25 @@ public sealed class AddXapiOutboxTests : IDisposable
 
         Assert.Same(store, provider.GetRequiredService<IOutboxStore>());
         Assert.NotNull(provider.GetRequiredService<StatementOutbox>());
+    }
+
+    [Fact]
+    public async Task Outbox_reports_on_a_meter_from_the_hosts_meter_factory()
+    {
+        var services = new ServiceCollection();
+        services.AddMetrics();
+        services.AddXapiClient(o => o.Endpoint = new Uri(Harness.Endpoint));
+        services.AddXapiOutbox(_ => new InMemoryOutboxStore());
+        using var provider = services.BuildServiceProvider();
+        var meterFactory = provider.GetRequiredService<IMeterFactory>();
+        using var metrics = new MetricRecorder(i => ReferenceEquals(i.Meter.Scope, meterFactory));
+        var outbox = provider.GetRequiredService<StatementOutbox>();
+
+        await outbox.EnqueueAsync(Statement(1), Ct);
+        await outbox.EnqueueAsync(Statement(2), Ct);
+
+        var pending = Assert.Single(metrics.Observe(OutboxDiagnostics.StatementsPending));
+        Assert.Equal(XapiClientDiagnostics.MeterName, pending.Meter);
+        Assert.Equal(2, pending.Value);
     }
 }

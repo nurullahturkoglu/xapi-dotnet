@@ -332,7 +332,7 @@ Requests with `X-Experience-API-Version` `2.0` or `2.0.x` are handled as xAPI 2.
 ## Logging
 
 The LRS logs when it applies migrations, unhandled exceptions (with the method and path, not the query
-string), and, at Debug level, writes retried after a concurrent write. It does not emit metrics or traces yet.
+string), and, at Debug level, writes retried after a concurrent write.
 EF Core logs under the `Microsoft.EntityFrameworkCore` categories.
 
 Query strings of LRS requests carry agents as JSON, often with an email address (`mbox`). ASP.NET Core logs
@@ -340,6 +340,73 @@ every request URL, query string included, under `Microsoft.AspNetCore.Hosting.Di
 level. Set that category to `Warning` in production, or log requests with HTTP logging and leave the query
 string out. Error responses never contain stack traces or SQL; unexpected errors are logged and answered with a
 generic 500.
+
+## Metrics and traces
+
+The LRS reports metrics on the `Xapi.Lrs` meter and traces on the `Xapi.Lrs` activity source, with
+`System.Diagnostics` and no OpenTelemetry dependency. To export them with the OpenTelemetry .NET SDK, add both
+names on `builder.Services.AddOpenTelemetry()`: `.WithMetrics(m => m.AddMeter(XapiLrsDiagnostics.MeterName))`
+and `.WithTracing(t => t.AddSource(XapiLrsDiagnostics.ActivitySourceName))`, next to the ASP.NET Core and EF Core
+instrumentation. `XapiLrsDiagnostics` holds every name on this page as a constant. The meter is created through
+the app's `IMeterFactory`. When nothing listens, the LRS records nothing and starts no activities.
+
+| Instrument | Type | Unit | Tags |
+| --- | --- | --- | --- |
+| `xapi.lrs.request.duration` | Histogram | `s` | `xapi.resource`, `http.request.method`, `http.response.status_code`, `xapi.version`, `error.type` |
+| `xapi.lrs.errors` | Counter | `{error}` | The same tags; `error.type` is always set. |
+| `xapi.lrs.statements.stored` | Counter | `{statement}` | `xapi.version` |
+
+`xapi.lrs.request.duration` is the time from the start of an LRS endpoint to the end of its response:
+authentication, version negotiation, the database and writing the body, but not middleware that runs before
+the endpoint, such as rate limiting or CORS. ASP.NET Core's own `http.server.request.duration` measures the
+whole request with the route template (`http.route`, which includes the prefix); this histogram adds what that
+one cannot know, the xAPI resource and the negotiated version, and uses the same bucket boundaries.
+
+`xapi.lrs.errors` counts the requests the LRS endpoints answered with a 4xx or 5xx status.
+`xapi.lrs.statements.stored` counts the statements of the PUT and POST requests the LRS accepted. A statement
+sent again that is equivalent to the stored one is accepted and counted again; a batch rejected with 409 is not
+counted.
+
+| Tag | Values |
+| --- | --- |
+| `xapi.resource` | `about`, `statements`, `agents`, `activities`, `activities/state`, `activities/profile`, `agents/profile`, or `_OTHER` for a path that is not an xAPI resource |
+| `http.request.method` | `GET`, `HEAD`, `PUT`, `POST`, `DELETE` and the other standard methods, or `_OTHER` |
+| `http.response.status_code` | The status code, as a number |
+| `xapi.version` | `2.0.0` or `1.0.3`, the version the request was handled with. Missing when the request was refused before a version was negotiated. |
+| `error.type` | The status code as text (`400`, `503`), or the full type name of the exception that ended the request. On the histogram only for 5xx and exceptions, as in OpenTelemetry's HTTP conventions. |
+
+The activities nest under ASP.NET Core's request activity, and EF Core's database activities nest under them:
+
+| Activity | Started for | Tags |
+| --- | --- | --- |
+| `xapi.lrs.statements.store` | Storing the statements of a PUT or POST | `xapi.version`, `xapi.statements.count`, `xapi.statements.conflict` |
+| `xapi.lrs.statements.query` | Reading a page of statements for a query or a `more` link | `xapi.version`, `xapi.statements.count` (returned) |
+| `xapi.lrs.documents.write` | A State, Activity Profile or Agent Profile PUT, POST or DELETE | `xapi.resource`, `xapi.document.operation` (`replace`, `merge` or `delete`) |
+
+An activity whose operation throws gets the status `Error` and an `error.type` tag with the exception's type
+name. No tag holds data from the request: agents, email addresses, IRIs, statement and document ids,
+registrations and credential keys never appear in a tag, and exception messages, which can quote stored values,
+are not recorded.
+
+## Health checks
+
+`AddXapiLrsHealthCheck` adds a check that the database can be reached and has every migration of the provider
+package applied:
+
+<!-- snippet: lrs-health -->
+```csharp
+builder.Services.AddHealthChecks().AddXapiLrsHealthCheck(tags: ["ready"]);
+
+var app = builder.Build();
+app.MapXapiLrs("/xapi");
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
+```
+
+A database that cannot be reached and one with migrations that are not applied both report the failure status,
+`Unhealthy` unless `failureStatus` says otherwise, because requests to the LRS fail in both cases. During a
+rolling update, instances of the new version report it until the migration step has run, so a readiness probe
+keeps them out of rotation; instances of the old version are not affected by migrations they do not know. Each
+check opens a connection and reads the migrations history table.
 
 ## Running the sample LRS in Docker
 
@@ -351,7 +418,8 @@ docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
 docker run -p 8080:8080 -e Lrs__Key=my-key -e Lrs__Secret=my-secret -v xapi-lrs-data:/data xapi-lrs
 ```
 
-The LRS is then at `http://localhost:8080/xapi`. For PostgreSQL, add `-e Lrs__Database=postgres` and
+The LRS is then at `http://localhost:8080/xapi`, and `http://localhost:8080/health` answers `Healthy` once the
+database is reachable and migrated. For PostgreSQL, add `-e Lrs__Database=postgres` and
 `-e Lrs__ConnectionString=...`. `Lrs__Key` and `Lrs__Secret` give one credential with every scope; the sample
 reads the other options and further credentials with `options.Bind`, so `-e Lrs__Credentials__0__Key=...`
 and the other keys from [Options from configuration](#options-from-configuration) work too. No image is

@@ -127,6 +127,11 @@ namespace Xapi.Client
         public System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Guid>> SaveStatementsAsync(System.Collections.Generic.IReadOnlyList<Xapi.Statement> statements, System.Collections.Generic.IReadOnlyList<Xapi.Client.AttachmentPayload>? attachments = null, System.Threading.CancellationToken cancellationToken = default) { }
         public System.Threading.Tasks.Task<System.Guid> VoidStatementAsync(System.Guid statementId, Xapi.Actor actor, System.Threading.CancellationToken cancellationToken = default) { }
     }
+    public static class XapiClientDiagnostics
+    {
+        public const string MeterName = "Xapi.Client";
+        public const string StatementsSent = "xapi.client.statements.sent";
+    }
     public sealed class XapiClientOptions
     {
         public XapiClientOptions() { }
