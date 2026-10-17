@@ -7,7 +7,7 @@ AOT.
 
 `IXapiClient` is the interface and `XapiClient` the implementation. Code that sends statements should depend
 on `IXapiClient`, so tests can point it at a fake or at the embedded LRS (see
-[samples/FakeLrsInTests](../samples/FakeLrsInTests)).
+[samples/FakeLrsInTests](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/FakeLrsInTests)).
 
 ## Creating a client
 

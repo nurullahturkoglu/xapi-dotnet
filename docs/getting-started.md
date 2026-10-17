@@ -190,14 +190,14 @@ delegated authentication, PostgreSQL, migrations and limits.
 ## Test your code against a real LRS
 
 The embedded LRS also runs inside a test process, without Docker or a network port, so code that uses
-`IXapiClient` can be tested against real LRS behaviour. [samples/FakeLrsInTests](../samples/FakeLrsInTests)
+`IXapiClient` can be tested against real LRS behaviour. [samples/FakeLrsInTests](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/FakeLrsInTests)
 shows how.
 
 ## Samples
 
 | Sample | Shows |
 | --- | --- |
-| [ConsoleClient](../samples/ConsoleClient) | Sending a statement, reading it back, and delivering one through a file outbox. Published with Native AOT in CI. |
-| [EmbedInAspNetCore](../samples/EmbedInAspNetCore) | An app with its own endpoints and an LRS under `/xapi`, with credentials from configuration. |
-| [FakeLrsInTests](../samples/FakeLrsInTests) | xUnit tests of an app's xAPI code against the embedded LRS hosted in memory. |
-| [LrsHost](../samples/LrsHost) | A standalone LRS on SQLite or PostgreSQL; the target of the conformance runs. |
+| [ConsoleClient](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/ConsoleClient) | Sending a statement, reading it back, and delivering one through a file outbox. Published with Native AOT in CI. |
+| [EmbedInAspNetCore](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/EmbedInAspNetCore) | An app with its own endpoints and an LRS under `/xapi`, with credentials from configuration. |
+| [FakeLrsInTests](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/FakeLrsInTests) | xUnit tests of an app's xAPI code against the embedded LRS hosted in memory. |
+| [LrsHost](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/LrsHost) | A standalone LRS on SQLite or PostgreSQL; the target of the conformance runs. |

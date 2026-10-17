@@ -1,0 +1,25 @@
+- name: Guides
+  items:
+    - name: Getting started
+      href: getting-started.md
+    - name: Client
+      href: client.md
+    - name: Outbox
+      href: outbox.md
+    - name: LRS
+      href: lrs.md
+    - name: Signed statements
+      href: signatures.md
+    - name: xAPI versions
+      href: versions.md
+    - name: Migrating from TinCan.NET
+      href: migrating-from-tincan.md
+    - name: Conformance
+      href: conformance.md
+- name: API reference
+  href: api/
+  topicUid: Xapi
+- name: Design decisions
+  href: adr/
+- name: GitHub
+  href: https://github.com/nurullahturkoglu/xapi-dotnet
