@@ -15,16 +15,18 @@ internal sealed record StatementQueryRequest(StatementFilter Filter, StatementFo
 // Reads the query parameters of GET /statements, and writes and reads the "more" value of a StatementResult.
 //
 // "more" is <path>/statements?more=<token>. The token is the base64url-encoded query string of the query with
-// the page size it ran with and the storage key of the last statement returned (ADR-020). The next page runs
-// the same filters below (or above, when ascending) that key, so pages stay stable when statements are stored
-// in between, without state on the server. The token is opaque to clients but not secret or signed: it can
-// only express a query the caller could send anyway, and scope restrictions come from the request's
-// credentials, not from the token.
+// the page size it ran with and the store's continuation token for the end of the page (ADR-0020, ADR-0021).
+// The next page runs the same filters from there, so pages stay stable when statements are stored in between,
+// without state on the server. The token is opaque to clients but not secret or signed: it can only express a
+// query the caller could send anyway, and scope restrictions come from the request's credentials, not from the
+// token. A continuation token the store cannot read is rejected by the store and answered with 400.
 internal static class StatementQueryReader
 {
     public const string MoreParameter = "more";
 
-    // Only inside "more" tokens
+    public const string ForeignMoreMessage = "The more value is not one this LRS returned.";
+
+    // Only inside "more" tokens: the store's continuation token
     private const string AfterParameter = "after";
 
     private static readonly HashSet<string> TokenParameters = new(StringComparer.Ordinal)
@@ -109,15 +111,15 @@ internal static class StatementQueryReader
             Limit = limit,
         };
 
-        if (parameters.TryGetValue(AfterParameter, out var afterText))
+        if (parameters.TryGetValue(AfterParameter, out var continuation))
         {
-            if (!RequestReading.TryParseUuid(afterText, out var after))
+            if (continuation.Length == 0)
             {
-                error = "The more value is not one this LRS returned.";
+                error = ForeignMoreMessage;
                 return false;
             }
 
-            filter = filter with { After = after };
+            filter = filter with { ContinuationToken = continuation };
         }
 
         request = new StatementQueryRequest(filter, format, attachments, parameters);
@@ -127,12 +129,12 @@ internal static class StatementQueryReader
 
     // The relative IRL of the next page: the request's own path (path base included), so it resolves against
     // whatever URL the client used to reach the LRS.
-    public static string MoreUrl(HttpRequest httpRequest, StatementQueryRequest query, Guid continuation)
+    public static string MoreUrl(HttpRequest httpRequest, StatementQueryRequest query, string continuationToken)
     {
         var pairs = query.Parameters
             .Where(p => p.Key is not ("limit" or AfterParameter))
             .Append(new("limit", query.Filter.Limit.ToString(CultureInfo.InvariantCulture)))
-            .Append(new(AfterParameter, continuation.ToString("D")));
+            .Append(new(AfterParameter, continuationToken));
         var text = QueryString.Create(pairs!).Value![1..];
         return $"{httpRequest.PathBase}{httpRequest.Path}?{MoreParameter}={Base64Url.EncodeToString(Encoding.UTF8.GetBytes(text))}";
     }

@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Xapi.Json;
@@ -61,7 +62,7 @@ internal sealed partial class EfStatementStore(
 
             return row is null
                 ? null
-                : new StoredStatement(row.StatementId, row.Stored, row.Version, row.IsVoided, row.AuthorityKey, row.Payload);
+                : new StoredStatement(row.StatementId, row.Stored, row.Version, row.IsVoided, row.AuthorityKey, Utf8(row.Payload));
         }
     }
 
@@ -69,6 +70,13 @@ internal sealed partial class EfStatementStore(
     {
         ArgumentNullException.ThrowIfNull(filter);
         ArgumentOutOfRangeException.ThrowIfLessThan(filter.Limit, 1);
+        Guid? after = null;
+        if (filter.ContinuationToken is { } token)
+        {
+            after = StatementKeys.TryReadContinuationToken(token, out var key)
+                ? key
+                : throw new ArgumentException("The continuation token is not one this store returned.", nameof(filter));
+        }
 
         var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (context.ConfigureAwait(false))
@@ -77,7 +85,7 @@ internal sealed partial class EfStatementStore(
             var take = filter.Limit + 1;
 
             // Time and paging bounds apply to the returned statement, not to the statements it targets
-            var bounds = KeyBounds(filter);
+            var bounds = KeyBounds(filter, after);
 
             // IEEE 9274.1.1, 4.1.6.1 "Voided Statements": never returned by a query
             var visible = Within(context.Statements.AsNoTracking().Where(s => !s.IsVoided), s => s.Pk, bounds);
@@ -107,8 +115,8 @@ internal sealed partial class EfStatementStore(
                 rows.RemoveAt(rows.Count - 1);
             }
 
-            var statements = rows.ConvertAll(r => new StoredStatement(r.StatementId, r.Stored, r.Version, r.IsVoided, r.AuthorityKey, r.Payload));
-            return new StatementPage(statements, more ? rows[^1].Pk : null);
+            var statements = rows.ConvertAll(r => new StoredStatement(r.StatementId, r.Stored, r.Version, r.IsVoided, r.AuthorityKey, Utf8(r.Payload)));
+            return new StatementPage(statements, more ? StatementKeys.ToContinuationToken(rows[^1].Pk) : null);
         }
     }
 
@@ -366,7 +374,7 @@ internal sealed partial class EfStatementStore(
     }
 
     // since, until and the previous page, as conditions on a storage key
-    private static List<Expression<Func<Guid, bool>>> KeyBounds(StatementFilter filter)
+    private static List<Expression<Func<Guid, bool>>> KeyBounds(StatementFilter filter, Guid? after)
     {
         var bounds = new List<Expression<Func<Guid, bool>>>();
         if (filter.Since is { } since)
@@ -381,9 +389,9 @@ internal sealed partial class EfStatementStore(
             bounds.Add(k => k.CompareTo(end) < 0);
         }
 
-        if (filter.After is { } after)
+        if (after is { } last)
         {
-            bounds.Add(filter.Ascending ? k => k.CompareTo(after) > 0 : k => k.CompareTo(after) < 0);
+            bounds.Add(filter.Ascending ? k => k.CompareTo(last) > 0 : k => k.CompareTo(last) < 0);
         }
 
         return bounds;
@@ -461,6 +469,10 @@ internal sealed partial class EfStatementStore(
         }
     }
 
+    // The payload column is TEXT (ADR-0011), which both providers read and write as a string, so the statement
+    // JSON is converted between UTF-8 and a string once, here, on its way into and out of the database
+    private static ReadOnlyMemory<byte> Utf8(string payload) => Encoding.UTF8.GetBytes(payload);
+
     private static Statement ReadStored(string payload)
     {
         // Stored payloads were validated on the way in; 2.0.0 reading accepts everything 1.0.3 does.
@@ -488,7 +500,7 @@ internal sealed partial class EfStatementStore(
                 RefStatementId = (statement.Object as StatementRef)?.Id,
                 Version = statement.Version ?? "",
                 AuthorityKey = record.AuthorityKey,
-                Payload = record.Json,
+                Payload = Encoding.UTF8.GetString(record.Utf8Json.Span),
             });
 
             foreach (var (usage, ifi, type) in index.ActorLinks)

@@ -12,7 +12,7 @@ namespace Xapi.Lrs.Http;
 // attachment in memory however many the statements carry. The lengths are known from the store, so the
 // response still has a Content-Length, and HEAD reads no attachment data at all.
 internal sealed class MultipartResponse(
-    string json,
+    ReadOnlyMemory<byte> json,
     IReadOnlyList<AttachmentSummary> attachments,
     IStatementStore store,
     DateTimeOffset? lastModified) : IResult
@@ -23,14 +23,13 @@ internal sealed class MultipartResponse(
         var response = httpContext.Response;
         var cancellationToken = httpContext.RequestAborted;
 
-        var jsonBytes = Encoding.UTF8.GetBytes(json);
         string boundary;
         do
         {
             // Random, so attachment data, stored before the boundary existed, cannot be made to contain it
             boundary = "xapi-" + RandomNumberGenerator.GetHexString(32, lowercase: true);
         }
-        while (jsonBytes.AsSpan().IndexOf(Encoding.ASCII.GetBytes("--" + boundary)) >= 0);
+        while (json.Span.IndexOf(Encoding.ASCII.GetBytes("--" + boundary)) >= 0);
 
         var delimiter = Encoding.ASCII.GetBytes("--" + boundary);
         var first = Encoding.ASCII.GetBytes($"--{boundary}\r\nContent-Type: application/json\r\n\r\n");
@@ -47,14 +46,14 @@ internal sealed class MultipartResponse(
 
         // No quotes and one space: some clients (the conformance suite among them) split the header by hand
         response.ContentType = $"multipart/mixed; boundary={boundary}";
-        response.ContentLength = first.Length + jsonBytes.Length + headers.Sum(h => (long)h.Length) + attachments.Sum(a => a.Length) + last.Length;
+        response.ContentLength = first.Length + json.Length + headers.Sum(h => (long)h.Length) + attachments.Sum(a => a.Length) + last.Length;
         if (HttpMethods.IsHead(httpContext.Request.Method))
         {
             return;
         }
 
         await response.Body.WriteAsync(first, cancellationToken).ConfigureAwait(false);
-        await response.Body.WriteAsync(jsonBytes, cancellationToken).ConfigureAwait(false);
+        await response.Body.WriteAsync(json, cancellationToken).ConfigureAwait(false);
         for (var i = 0; i < attachments.Count; i++)
         {
             var summary = attachments[i];

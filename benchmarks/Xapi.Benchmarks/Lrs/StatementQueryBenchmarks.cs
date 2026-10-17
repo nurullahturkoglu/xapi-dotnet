@@ -9,8 +9,9 @@ namespace Xapi.Benchmarks.Lrs;
 // related_agents (one statement in 500). The last two are where a query that walks the statements newest first
 // and tests each one would read most of the table. With StatementRefPercent = 10, every tenth statement is an
 // instructor's comment whose object is a StatementRef to the statement before it, so the matches through
-// StatementRefs have 1,000 or 10,000 rows to look at; none of them match these filters, and the other statements
-// and their matches are the same as without them.
+// StatementRefs have 1,000 or 10,000 rows to look at; with 1, every hundredth, so 100 or 1,000 rows. None of them
+// match these filters, and the other statements and their matches are the same as without them, so the
+// difference to StatementRefPercent = 0 is the cost of resolving StatementRefs when the query runs.
 [MemoryDiagnoser]
 public class StatementQueryBenchmarks
 {
@@ -30,7 +31,7 @@ public class StatementQueryBenchmarks
     [Params(10_000, 100_000)]
     public int Stored { get; set; }
 
-    [Params(0, 10)]
+    [Params(0, 1, 10)]
     public int StatementRefPercent { get; set; }
 
     [GlobalSetup]

@@ -54,10 +54,11 @@ public sealed record StatementFilter
     public int Limit { get; init; } = 100;
 
     /// <summary>
-    /// Continue after this storage key: <see cref="StatementPage.Continuation"/> of the previous page of the
-    /// same query, or <see langword="null"/> for the first page.
+    /// Continue after the previous page of the same query: its <see cref="StatementPage.ContinuationToken"/>, or
+    /// <see langword="null"/> for the first page. The token reaches the store from a client, so a store rejects
+    /// one it cannot read (see <see cref="IStatementStore.QueryAsync"/>).
     /// </summary>
-    public Guid? After { get; init; }
+    public string? ContinuationToken { get; init; }
 
     /// <summary>
     /// Only statements stored with this authority, see <see cref="StatementRecord.AuthorityKey"/>. Used for the
