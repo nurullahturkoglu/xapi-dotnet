@@ -7,7 +7,7 @@ namespace Xapi.Lrs.Storage;
 /// <see cref="IStatementStore.GetAttachmentSummariesAsync"/>; the data itself is read with
 /// <see cref="IStatementStore.GetAttachmentContentAsync"/>.
 /// </summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class AttachmentSummary
 {
     /// <summary>Creates a summary.</summary>

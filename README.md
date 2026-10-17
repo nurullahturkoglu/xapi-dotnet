@@ -123,8 +123,10 @@ reference, built from `main`.
 
 Versions follow [Semantic Versioning](https://semver.org). During 0.x, minor versions can contain breaking
 changes; [CHANGELOG.md](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/CHANGELOG.md) lists them under "Breaking". Previews are published as
-`-preview.N`. The storage interfaces of `Xapi.Lrs` are marked experimental (`XAPI0001`) and may change in any
-release before 1.0. Version 1.0.0 requires both conformance batteries to pass on both databases.
+`-preview.N`. The storage interfaces of `Xapi.Lrs` are marked experimental (`XAPI0001`): they are not covered
+by Semantic Versioning, also after 1.0, and may change in any release until they are declared stable (see
+[Experimental storage API](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/lrs.md#experimental-storage-api)).
+Version 1.0.0 requires both conformance batteries to pass on both databases.
 
 ## Contributing, security, license
 

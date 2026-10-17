@@ -6,7 +6,7 @@ namespace Xapi.Lrs.Storage;
 /// The raw data of an Attachment, received as a part of a <c>multipart/mixed</c> statement request and stored
 /// once per SHA-2 however many statements refer to it (IEEE 9274.1.1, 4.1.3).
 /// </summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class AttachmentContent
 {
     /// <summary>Creates attachment content.</summary>

@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Xapi.Lrs.Storage;
 
 /// <summary>Storage configuration for provider packages and custom stores.</summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public static class XapiLrsBuilderStorageExtensions
 {
     /// <summary>Sets the database the LRS stores data in, replacing an earlier choice.</summary>

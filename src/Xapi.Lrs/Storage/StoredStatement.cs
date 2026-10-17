@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Xapi.Lrs.Storage;
 
 /// <summary>A statement read back from an <see cref="IStatementStore"/>.</summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class StoredStatement
 {
     /// <summary>Creates a stored statement.</summary>

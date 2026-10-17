@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Xapi.Lrs.Storage;
 
 /// <summary>Stores and reads statements. The default implementation uses <see cref="XapiLrsDbContext"/>.</summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public interface IStatementStore
 {
     /// <summary>

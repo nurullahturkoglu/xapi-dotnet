@@ -315,9 +315,19 @@ The LRS is then at `http://localhost:8080/xapi`. For PostgreSQL, add `-e Lrs__Da
 
 ## Experimental storage API
 
-The storage interfaces are public so that the provider packages and custom stores can use them, but they are
-marked `[Experimental("XAPI0001")]` and are not covered by semantic versioning before 1.0. Using them is a
-compile error until `XAPI0001` is suppressed. They are `IStatementStore`, `IDocumentStore`,
-`XapiLrsDatabaseProvider`, `XapiLrsDbContext`, the types they use, and the builder methods
-`UseStatementStore<TStore>`, `UseDocumentStore<TStore>` and `UseDatabaseProvider`. They will be reviewed, and
-may change, before they are declared stable.
+The storage interfaces are public so that the provider packages and custom stores can use them. They are
+`IStatementStore`, `IDocumentStore`, `XapiLrsDatabaseProvider`, `XapiLrsDbContext`, the types they use, and the
+builder methods `UseStatementStore<TStore>`, `UseDocumentStore<TStore>` and `UseDatabaseProvider`. All of them
+are marked `[Experimental("XAPI0001")]`.
+
+They are not covered by semantic versioning, before or after 1.0: any release, minor and patch releases
+included, can change or remove them. They stay experimental past 1.0 until they are declared stable, one at a
+time, in the changelog. The rest of the LRS API, including `AddXapiLrs`, `MapXapiLrs`, `XapiLrsOptions`,
+`MigrateXapiLrsDatabaseAsync`, `UseSqlite` and `UsePostgreSql`, follows semantic versioning as usual. An app
+that only uses those never sees `XAPI0001`.
+
+Code that uses an experimental type gets the compile error `XAPI0001`. Suppressing it, with
+`<NoWarn>$(NoWarn);XAPI0001</NoWarn>` in the project file or `#pragma warning disable XAPI0001` around the code,
+accepts that the code may have to change when `Xapi.Lrs` is updated. `Xapi.Lrs.Sqlite` and
+`Xapi.Lrs.PostgreSql` use these types themselves, so they are released together with `Xapi.Lrs` and depend on
+exactly the same version of it.
