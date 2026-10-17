@@ -9,27 +9,12 @@ listed under a "Breaking" heading.
 
 ## [Unreleased]
 
-### Breaking
+## [0.1.0-preview.1] - 2026-10-17
 
-- `Xapi.Client`: the `IXapiClient` interface is gone. `XapiClient` is no longer sealed; its service methods are virtual and a protected parameterless constructor creates a test double that sends nothing (methods it does not override throw `InvalidOperationException`). Depend on `XapiClient`, and fake it by deriving from it. `AddXapiClient` registers only `XapiClient`. See [ADR-0008](docs/adr/0008-http-client.md).
-- `Xapi.Client`: exception constructors take the message first: `XapiHttpException(message, statusCode, responseBody, retryAfter, innerException)`, `XapiConflictException(message, responseBody)` and `XapiPreconditionFailedException(message, responseBody)`.
-- `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox`: `XapiError`, `ActivityProfileKey`, `AgentProfileKey`, `StateKey`, `AttachmentPayload`, `SignedStatement`, `StatementResult`, `XapiDocument` and `FileOutboxRecovery` are no longer positional records. Their constructors take camelCase parameters in the same order, and they have no `Deconstruct`.
-- `Xapi.Client`: `AttachmentPayload.Sha2` is stored in lowercase, so equality compares it ordinally.
-- `Xapi.Client.Outbox`: `IOutboxStore` is now the abstract class `OutboxStore`; a custom store derives from it and overrides the same ten methods. `StatementOutbox` takes an `XapiClient` and an `OutboxStore`.
-- `Xapi.Client.Outbox`: `FileOutboxStore` has no public constructor; open it with `await FileOutboxStore.OpenAsync(directory)`, which reads the journal asynchronously.
-- `Xapi.Client.Outbox`: `AddXapiOutbox` on `IServiceCollection` is replaced by `AddOutbox` on the builder that `AddXapiClient` returns: `services.AddXapiClient(o => ...).AddOutbox("data/xapi-outbox")`.
-- `Xapi.Lrs`: `XapiCredential` and `XapiCredentialList` are renamed `XapiLrsCredential` and `XapiLrsCredentialList`. A credential is a plain options class with settable `Key` and `Secret` and a `Scopes` list, and the list is a `Collection<XapiLrsCredential>`, so the configuration binder, reflection-based or source-generated, can fill both. `Authority` is no longer a property: a credential with its own authority is created in code with `Credentials.Add(key, secret, authority, scopes)` or the matching constructor, and credentials from configuration get the default account authority. `Credentials.Add` no longer checks the credential; the checks run when the host starts.
-- `Xapi.Lrs`: the `XapiScope` enum is replaced by `XapiScopes`, whose constants are the xAPI scope names (`XapiScopes.StatementsWrite` is `"statements/write"`): `options.Credentials.Add("my-app", secret, XapiScopes.All)`.
-- `Xapi.Lrs`: `XapiLrsOptions.Bind(configuration)` is removed. Use `services.AddXapiLrs(configuration.GetSection("Lrs"), options => ...)`, which binds the section with the configuration binder and stops the host on a key that is not an option, or `services.Configure<XapiLrsOptions>(section)`. In configuration, `Scopes` is an array of xAPI scope names; enum names and space-separated lists are no longer accepted, and empty values are no longer skipped.
-- `Xapi.Lrs`: `XapiLrsOptions.AuthorityHomePage` is a `Uri` instead of an `Iri`.
-- `Xapi.Lrs`: the size and count limits of `XapiLrsOptions` no longer throw when set out of range; startup validation reports them instead.
-- `samples/LrsHost`: the sample's own settings moved from the `Lrs` section to `LrsHost` (`LrsHost:Key`, `LrsHost:Secret`, `LrsHost:Database`, `LrsHost:ConnectionString`, and `LrsHost__Key` and so on in the Docker image), because `Lrs` is now bound to `XapiLrsOptions` and rejects other keys.
-- `Xapi.Lrs` (experimental storage API, `XAPI0001`): `StatementFilter.After` and `StatementPage.Continuation` (`Guid?`, the storage key) are replaced by an opaque `string? ContinuationToken` on both. A store throws `ArgumentException` for a token it cannot read, and the LRS answers 400. `more` URLs keep their shape.
-- `Xapi.Lrs` (experimental storage API, `XAPI0001`): `StatementRecord.Json` and `StoredStatement.Json` (`string`) are replaced by `Utf8Json` (`ReadOnlyMemory<byte>`, UTF-8 JSON), and their constructors take the UTF-8 bytes. The database schema is unchanged. See [ADR-0021](docs/adr/0021-storage-api-before-stable.md) for what else changes in this API before it is declared stable.
+The first preview of all six packages. The LRS passes both ADL conformance batteries in full on SQLite and PostgreSQL (xAPI 2.0.0: 1435 of 1435, 1.0.3: 1365 of 1365), and the solution has about 5,300 tests.
 
 ### Added
 
-- The packages have an icon, which the documentation site also uses as its logo and favicon.
 - `Xapi.Core`: immutable models for xAPI 1.0.3 and 2.0.0 (IEEE 9274.1.1), strict and lenient JSON reading with all errors reported by JSON path, JSON writing in exact, ids and canonical formats, statement and batch validation, and statement equivalence as defined by the standard. Targets netstandard2.0 and net10.0.
 - The 1,922 statement cases generated by the ADL LRS conformance test suite templates (950 for 1.0.3, 972 for 2.0.0) run as unit tests against the parser.
 - CI runs both ADL conformance batteries against lrsql to keep the conformance pipeline itself tested.
@@ -52,6 +37,7 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: `AddXapiLrsHealthCheck()` reports whether the database can be reached and is migrated. `samples/LrsHost` serves it at `/health`.
 - `Xapi.Client` and `Xapi.Client.Outbox`: metrics on the `Xapi.Client` meter: statements sent, retried and dead-lettered, and the statements pending in outboxes. The netstandard2.0 build of `Xapi.Client` now depends on `System.Diagnostics.DiagnosticSource`.
 - Releases publish the `samples/LrsHost` image to ghcr.io as `ghcr.io/nurullahturkoglu/xapi-lrs`, for linux/amd64 and linux/arm64, tagged with the version and, for releases that are not previews, `latest`, with a signed build provenance attestation. See [Running the sample LRS in Docker](docs/lrs.md#running-the-sample-lrs-in-docker).
+- The packages have an icon, which the documentation site also uses as its logo and favicon.
 
 ### Changed
 
@@ -80,4 +66,5 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: the form of an Alternate Request Syntax request, which is read before the request is authenticated, is limited to `MaxAlternateRequestBytes` (1 MiB by default) instead of the server's request body limit; larger forms get 413.
 - docs/lrs.md covers rate limiting against secret guessing, CORS for browser clients, and keeping agent email addresses out of request logs.
 
-[Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/commits/main
+[Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.1.0-preview.1...HEAD
+[0.1.0-preview.1]: https://github.com/nurullahturkoglu/xapi-dotnet/releases/tag/v0.1.0-preview.1

@@ -132,7 +132,8 @@ changes; [CHANGELOG.md](https://github.com/nurullahturkoglu/xapi-dotnet/blob/mai
 `-preview.N`. The storage interfaces of `Xapi.Lrs` are marked experimental (`XAPI0001`): they are not covered
 by Semantic Versioning, also after 1.0, and may change in any release until they are declared stable (see
 [Experimental storage API](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/lrs.md#experimental-storage-api)).
-Version 1.0.0 requires both conformance batteries to pass on both databases.
+Version 1.0.0 requires both conformance batteries to pass on both databases. What is planned for each version
+is tracked in the [milestones](https://github.com/nurullahturkoglu/xapi-dotnet/milestones).
 
 ## Contributing, security, license
 
