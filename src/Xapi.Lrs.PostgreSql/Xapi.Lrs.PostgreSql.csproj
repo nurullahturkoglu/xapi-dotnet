@@ -8,6 +8,8 @@
     <IsAotCompatible>false</IsAotCompatible>
     <!-- XAPI0001: a provider package implements the experimental storage seams of Xapi.Lrs, and its generated migrations reference XapiLrsDbContext -->
     <NoWarn>$(NoWarn);XAPI0001</NoWarn>
+    <!-- Depend on Xapi.Lrs [x.y.z]: the experimental storage types this package binds to can change in any release -->
+    <XapiExactProjectReferenceVersions>true</XapiExactProjectReferenceVersions>
     <Description>PostgreSQL storage for the Xapi.Lrs Learning Record Store: UsePostgreSql(connectionString) and migrations.</Description>
   </PropertyGroup>
 
