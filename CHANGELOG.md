@@ -23,5 +23,6 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs.Sqlite` and `Xapi.Lrs.PostgreSql`: EF Core storage with migrations (`UseSqlite`, `UsePostgreSql`, `MigrateOnStartup`). The storage extension points (`IStatementStore`, `IDocumentStore`) are marked experimental (`XAPI0001`).
 - `samples/LrsHost`: a standalone LRS on SQLite or PostgreSQL, used as the target of the conformance runs. CI runs both batteries against it on both databases. `samples/LrsHost/Dockerfile` builds it into a non-root image that stores SQLite data in `/data` and will not start without credentials; CI builds and checks the image but does not publish it.
 - Samples `EmbedInAspNetCore` and `FakeLrsInTests`, and guides in docs/ (getting started, client, LRS, versions, migrating from TinCan.NET, conformance) whose C# blocks are compiled and checked by `tests/Xapi.Documentation.Tests`.
+- `benchmarks/Xapi.Benchmarks`: BenchmarkDotNet benchmarks for statement parsing, writing, validation and equivalence, outbox enqueueing, and the LRS statement endpoints on SQLite and PostgreSQL, with measured results in [docs/benchmarks.md](docs/benchmarks.md).
 
 [Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/commits/main
