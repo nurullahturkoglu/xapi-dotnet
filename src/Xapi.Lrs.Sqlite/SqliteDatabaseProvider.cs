@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
+using SQLitePCL;
 using Xapi.Lrs.Storage;
 
 namespace Xapi.Lrs.Sqlite;
@@ -52,17 +53,20 @@ internal sealed class SqliteDatabaseProvider(string connectionString) : XapiLrsD
 
     // WAL lets readers run while a statement batch is written; the busy timeout makes a second writer wait for
     // the lock instead of failing at once. journal_mode is stored in the database file, busy_timeout is per
-    // connection.
+    // connection. A read-only connection cannot switch the journal mode of a database that is not in WAL mode yet,
+    // so it only gets the busy timeout: EF Core checks that the database exists on one (Mode=ReadOnly), and the
+    // health check would otherwise report a database without the migrations as unreachable.
     private sealed class SqlitePragmas : DbConnectionInterceptor
     {
         public static readonly SqlitePragmas Instance = new();
 
         private const string Pragmas = "PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 30000;";
+        private const string ReadOnlyPragmas = "PRAGMA busy_timeout = 30000;";
 
         public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = Pragmas;
+            command.CommandText = PragmasFor(connection);
             command.ExecuteNonQuery();
         }
 
@@ -71,10 +75,16 @@ internal sealed class SqliteDatabaseProvider(string connectionString) : XapiLrsD
             var command = connection.CreateCommand();
             await using (command.ConfigureAwait(false))
             {
-                command.CommandText = Pragmas;
+                command.CommandText = PragmasFor(connection);
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
         }
+
+        // sqlite3_db_readonly also covers a file SQLite opened read-only because it is write-protected
+        private static string PragmasFor(DbConnection connection) =>
+            connection is SqliteConnection { Handle: { } handle } && raw.sqlite3_db_readonly(handle, "main") == 1
+                ? ReadOnlyPragmas
+                : Pragmas;
     }
 }
 

@@ -36,19 +36,22 @@ public class HealthCheckTests(LrsHosts hosts)
         Assert.False(Directory.Exists(Path.GetDirectoryName(missing)));
     }
 
-    [Fact]
-    public async Task Database_with_pending_migrations_reports_the_failure_status()
+    // EF Core checks that a SQLite database exists on a read-only connection, which cannot switch the journal mode:
+    // a file that is not in WAL mode yet, such as one another tool created, must still report the missing migrations
+    [Theory]
+    [InlineData("DELETE")]
+    [InlineData("WAL")]
+    public async Task Database_with_pending_migrations_reports_the_failure_status(string journalMode)
     {
         var database = Path.Combine(Path.GetTempPath(), $"xapi-health-{Guid.NewGuid():N}.db");
         try
         {
-            // Reachable, but no migration of the LRS is applied. In WAL mode, as the LRS's connections set it: EF Core
-            // checks that the database exists on a read-only connection, which cannot switch the journal mode.
+            // Reachable, but no migration of the LRS is applied
             await using (var connection = new SqliteConnection(ConnectionString(database)))
             {
                 await connection.OpenAsync(Ct);
                 await using var create = connection.CreateCommand();
-                create.CommandText = "PRAGMA journal_mode = WAL; CREATE TABLE other (id INTEGER)";
+                create.CommandText = $"PRAGMA journal_mode = {journalMode}; CREATE TABLE other (id INTEGER)";
                 await create.ExecuteNonQueryAsync(Ct);
             }
 
@@ -62,6 +65,12 @@ public class HealthCheckTests(LrsHosts hosts)
 
             await app.Services.MigrateXapiLrsDatabaseAsync(Ct);
             Assert.Equal(HealthStatus.Healthy, (await CheckAsync(app)).Status);
+
+            await using var check = new SqliteConnection(ConnectionString(database));
+            await check.OpenAsync(Ct);
+            await using var journal = check.CreateCommand();
+            journal.CommandText = "PRAGMA journal_mode";
+            Assert.Equal("wal", (string?)await journal.ExecuteScalarAsync(Ct));
         }
         finally
         {

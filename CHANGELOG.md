@@ -47,6 +47,7 @@ listed under a "Breaking" heading.
 ### Fixed
 
 - `Xapi.Lrs.Sqlite`: a write that timed out waiting for the database lock (`SQLITE_BUSY`) is no longer retried, which made a request wait about 4 minutes before it failed.
+- `Xapi.Lrs.Sqlite`: read-only connections no longer try to switch the database to WAL mode, so the health check reports the pending migrations of a database that is not in WAL mode yet instead of reporting it unreachable.
 
 ### Security
 
