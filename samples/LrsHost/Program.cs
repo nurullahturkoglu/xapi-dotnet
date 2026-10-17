@@ -3,9 +3,10 @@
 // (--Lrs:Database=postgres):
 //   Lrs:Database          sqlite (default) or postgres
 //   Lrs:ConnectionString  defaults to Data Source=lrs.db for sqlite; required for postgres
-//   Lrs:Key, Lrs:Secret   the Basic credential, granted every scope
+//   Lrs:Key, Lrs:Secret   a Basic credential granted every scope
+//   Lrs:Credentials       more credentials, for example Lrs:Credentials:0:Key, :Secret and :Scopes:0
 //   Lrs:AuthorityHomePage the homePage of generated authorities
-using Xapi;
+// and the other XapiLrsOptions by name, for example Lrs:MaxStatementsPerPage (XapiLrsOptions.Bind).
 using Xapi.Lrs;
 
 // As PID 1 in a container the process ignores the SIGABRT that ends an unhandled exception and spins instead of
@@ -21,18 +22,23 @@ var settings = builder.Configuration.GetSection("Lrs");
 
 var key = settings["Key"];
 var secret = settings["Secret"];
-if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(secret))
+if (string.IsNullOrEmpty(key) != string.IsNullOrEmpty(secret))
 {
-    throw new InvalidOperationException("Set Lrs:Key and Lrs:Secret.");
+    throw new InvalidOperationException("Set both Lrs:Key and Lrs:Secret.");
+}
+
+if (string.IsNullOrEmpty(key) && !settings.GetSection("Credentials").Exists())
+{
+    throw new InvalidOperationException("Set Lrs:Key and Lrs:Secret, or list credentials under Lrs:Credentials.");
 }
 
 var lrs = builder.Services.AddXapiLrs(options =>
 {
     options.MigrateOnStartup = true;
-    options.Credentials.Add(key, secret, XapiScope.All);
-    if (settings["AuthorityHomePage"] is { Length: > 0 } homePage)
+    options.Bind(settings);
+    if (!string.IsNullOrEmpty(key))
     {
-        options.AuthorityHomePage = new Iri(homePage);
+        options.Credentials.Add(key, secret!, XapiScope.All);
     }
 });
 

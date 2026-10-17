@@ -33,6 +33,15 @@ internal static class LrsSnippets
         // end snippet
     }
 
+    public static void FromConfiguration(WebApplicationBuilder builder)
+    {
+        // snippet: lrs-configuration
+        builder.Services
+            .AddXapiLrs(options => options.Bind(builder.Configuration.GetSection("Lrs")))
+            .UseSqlite(builder.Configuration.GetConnectionString("Lrs")!);
+        // end snippet
+    }
+
     public static void PostgreSql(WebApplicationBuilder builder)
     {
         // snippet: lrs-postgresql

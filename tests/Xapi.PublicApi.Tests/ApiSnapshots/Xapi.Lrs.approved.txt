@@ -229,6 +229,7 @@ namespace Xapi.Lrs
         public int MaxStatementsPerPage { get; set; }
         public bool MigrateOnStartup { get; set; }
         public string ScopeClaimType { get; set; }
+        public void Bind(Microsoft.Extensions.Configuration.IConfiguration configuration) { }
     }
     public enum XapiScope
     {

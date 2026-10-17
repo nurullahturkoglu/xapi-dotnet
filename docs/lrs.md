@@ -73,6 +73,47 @@ builder.Services
 | `MaxStatementsPerPage` | 100 | The page size of statement queries when the request asks for `limit=0` or no limit; larger limits are lowered to it. |
 | `MigrateOnStartup` | `false` | Apply database migrations when the host starts. |
 
+The options are checked when the host starts. Startup stops with an `OptionsValidationException` that lists
+every problem when there are no `Credentials` and no `AuthenticationScheme` (no request could be
+authenticated), when `AuthenticationScheme` is empty or the built-in Basic scheme `XapiBasic`, when
+`ScopeClaimType` is empty, or when `AuthorityHomePage` is the default `Iri`. The size and count limits reject
+values out of range as soon as they are set.
+
+### Options from configuration
+
+`options.Bind(section)` reads the options from a configuration section, credentials included:
+
+<!-- snippet: lrs-configuration -->
+```csharp
+builder.Services
+    .AddXapiLrs(options => options.Bind(builder.Configuration.GetSection("Lrs")))
+    .UseSqlite(builder.Configuration.GetConnectionString("Lrs")!);
+```
+
+```json
+{
+  "Lrs": {
+    "AuthorityHomePage": "https://lrs.example.com/",
+    "MaxStatementsPerPage": 500,
+    "Credentials": [
+      { "Key": "course-player", "Scopes": [ "statements/write", "statements/read/mine", "state" ] },
+      { "Key": "reporting", "Scopes": [ "all/read" ] }
+    ]
+  }
+}
+```
+
+Keep the secrets out of `appsettings.json` and add them from a secret store or the environment, for example
+`Lrs__Credentials__0__Secret`. Keys are the option names. A scope is an xAPI scope name or an `XapiScope` name,
+and one `Scopes` value may hold several separated by spaces (`Lrs__Credentials__1__Scopes="all/read state"`).
+Empty values are skipped. `AuthorityFactory` and a credential's `Authority` cannot come from configuration;
+set them in code, in the same `AddXapiLrs` callback. Credentials from configuration are added to those added in
+code, and a key that appears twice fails.
+
+Use `options.Bind(section)` rather than `section.Bind(options)`. The configuration binder leaves out
+`Credentials` and `AuthorityHomePage` without an error, and `Bind` fails on a value it cannot use with a message
+that names its configuration path and never contains a secret.
+
 ## Storage
 
 | Package | Builder method | Notes |
@@ -311,7 +352,10 @@ docker run -p 8080:8080 -e Lrs__Key=my-key -e Lrs__Secret=my-secret -v xapi-lrs-
 ```
 
 The LRS is then at `http://localhost:8080/xapi`. For PostgreSQL, add `-e Lrs__Database=postgres` and
-`-e Lrs__ConnectionString=...`. No image is published yet; build it from the repository.
+`-e Lrs__ConnectionString=...`. `Lrs__Key` and `Lrs__Secret` give one credential with every scope; the sample
+reads the other options and further credentials with `options.Bind`, so `-e Lrs__Credentials__0__Key=...`
+and the other keys from [Options from configuration](#options-from-configuration) work too. No image is
+published yet; build it from the repository.
 
 ## Experimental storage API
 

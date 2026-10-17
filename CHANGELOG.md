@@ -27,6 +27,7 @@ listed under a "Breaking" heading.
 - A documentation site built with docfx from the guides and the XML docs, deployed to GitHub Pages from `main`: https://nurullahturkoglu.github.io/xapi-dotnet/
 - `Xapi.Lrs`: `MaxStatementsPerBatch` (1,000 by default) limits the statements in one POST; larger batches get 413 before they are parsed.
 - `Xapi.Lrs`: `MigrateXapiLrsDatabaseAsync()` on the app's `IServiceProvider` applies the database migrations as a separate deployment step, so migrating no longer needs the experimental `XapiLrsDbContext`.
+- `Xapi.Lrs`: `XapiLrsOptions.Bind(configuration)` reads the options from a configuration section, credentials included (`Lrs:Credentials:0:Key`, `:Secret`, `:Scopes:0`). Scopes are xAPI or `XapiScope` names; an incomplete credential, an unknown scope or a value out of range fails with the configuration path in the message and never the secret. `samples/LrsHost` reads its options this way, so it accepts more than one credential. See [Options from configuration](docs/lrs.md#options-from-configuration).
 
 ### Changed
 
@@ -36,6 +37,7 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs.Sqlite` and `Xapi.Lrs.PostgreSql` depend on the exact version of `Xapi.Lrs` they were built with (`[x.y.z]`), because they use its experimental storage types.
 - `Xapi.Lrs`: the storage API marked `XAPI0001` stays experimental after 1.0 until it is declared stable, and is not covered by semantic versioning until then. The `XAPI0001` error links to [Experimental storage API](docs/lrs.md#experimental-storage-api).
 - `Xapi.Lrs`: setting `MaxDocumentBytes` below 1 throws `ArgumentOutOfRangeException`, like the other size limits.
+- `Xapi.Lrs`: the options are validated when the host starts (`ValidateOnStart`). A host with no credentials and no `AuthenticationScheme`, an empty or built-in (`XapiBasic`) scheme name, an empty `ScopeClaimType` or a default `AuthorityHomePage` now fails to start with an `OptionsValidationException` that lists every problem, instead of starting with settings under which requests cannot be authenticated.
 
 ### Fixed
 

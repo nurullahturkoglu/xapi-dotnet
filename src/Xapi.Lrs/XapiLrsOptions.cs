@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
+using Xapi.Lrs.Hosting;
 
 namespace Xapi.Lrs;
 
@@ -162,4 +164,37 @@ public sealed class XapiLrsOptions
     /// deployments can migrate as a separate step with <c>MigrateXapiLrsDatabaseAsync</c>.
     /// </summary>
     public bool MigrateOnStartup { get; set; }
+
+    /// <summary>
+    /// Sets the options found in a configuration section, such as <c>Lrs</c> in <c>appsettings.json</c>, and adds
+    /// the credentials listed under its <c>Credentials</c> key to <see cref="Credentials"/>. Options the section
+    /// does not mention keep their values.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Option keys are the property names, for example <c>Lrs:MaxStatementsPerPage</c>. Each credential has a
+    /// <c>Key</c>, a <c>Secret</c> and one or more <c>Scopes</c>, for example <c>Lrs:Credentials:0:Key</c>,
+    /// <c>Lrs:Credentials:0:Secret</c> and <c>Lrs:Credentials:0:Scopes:0</c>. A scope is an xAPI scope name such
+    /// as <c>statements/write</c> or an <see cref="XapiScope"/> name such as <c>StatementsWrite</c>; a single
+    /// <c>Scopes</c> value may list several separated by spaces. Empty values are skipped, so an empty environment
+    /// variable leaves the option as it was.
+    /// <see cref="AuthorityFactory"/> and <see cref="XapiCredential.Authority"/> cannot be read from
+    /// configuration; set them in code.
+    /// </para>
+    /// <para>
+    /// Use this method rather than <c>ConfigurationBinder.Bind</c>, which does not read <see cref="Credentials"/>
+    /// or <see cref="AuthorityHomePage"/>. Invalid values fail with a message that names the configuration path;
+    /// secrets are never part of it.
+    /// </para>
+    /// </remarks>
+    /// <param name="configuration">The configuration section that holds the options.</param>
+    /// <exception cref="InvalidOperationException">
+    /// A value cannot be converted or is out of range, or a credential is incomplete, has an unknown scope or
+    /// repeats a key already in <see cref="Credentials"/>.
+    /// </exception>
+    public void Bind(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        XapiLrsConfigurationReader.Read(this, configuration);
+    }
 }
