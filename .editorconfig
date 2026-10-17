@@ -67,6 +67,13 @@ dotnet_diagnostic.CA1861.severity = none
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1515.severity = none
 
+# BenchmarkDotNet needs public benchmark classes with instance methods, and disposes their state in [GlobalCleanup]
+[benchmarks/**.cs]
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.CA1001.severity = none
+
 # EF Core migrations are written by dotnet-ef (eng/ef-migrations.sh) and are not edited by hand
 [src/**/Migrations/*.cs]
 generated_code = true
