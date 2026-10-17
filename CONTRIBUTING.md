@@ -212,9 +212,18 @@ Releases are made by the maintainer. The version comes from the git tag through 
    `CHANGELOG.md` has a section for it, and attests build provenance for the nupkgs. It then waits for
    approval of the `nuget` environment.
 4. Review the run and approve the `nuget` environment in GitHub. The workflow then publishes to nuget.org
-   with trusted publishing and creates a draft GitHub release with the notes from `CHANGELOG.md`.
+   with trusted publishing and creates a draft GitHub release with the notes from `CHANGELOG.md`. The same
+   approval releases the `samples/LrsHost` image: the `image` job builds it from the tagged commit for
+   linux/amd64 and linux/arm64, pushes it to `ghcr.io/nurullahturkoglu/xapi-lrs` with `GITHUB_TOKEN`, tagged
+   with the version and, unless the version is a preview, `latest`, and attests its build provenance. If only
+   that job fails, re-run it on its own; the packages are already published.
 5. Check the draft and publish it.
 
 One-time setup, done by the maintainer: a trusted publishing policy on nuget.org for this repository,
 workflow `release.yml` and environment `nuget`; a `nuget` environment in the repository settings with a
 required reviewer; and a `NUGET_USER` secret holding the nuget.org user name. No API key is stored.
+
+The first release creates the `xapi-lrs` package on ghcr.io as a private package. Once, after that release,
+open the package settings on GitHub (Packages, `xapi-lrs`, Package settings): change its visibility to
+public, and if the package page does not show this repository, connect it under "Connect repository" (the
+image's `org.opencontainers.image.source` label normally links it on its own).
