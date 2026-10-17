@@ -150,7 +150,7 @@ To run the tests locally, install Unity 6000.3.26f1 with Mac (or Windows or Linu
 start the LRS image, restore the packages and run the tests in the editor or in a player:
 
 ```bash
-docker run -d -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret ghcr.io/nurullahturkoglu/xapi-lrs
+docker run -d -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret ghcr.io/nurullahturkoglu/xapi-lrs:0.1.0-preview.1
 cd tests/Unity
 dotnet tool restore
 dotnet nugetforunity restore .
@@ -233,7 +233,8 @@ Releases are made by the maintainer. The version comes from the git tag through 
 
 1. In a pull request, rename `[Unreleased]` in `CHANGELOG.md` to `[x.y.z] - YYYY-MM-DD`, add a new empty
    `[Unreleased]` section and the comparison links, and record measured results (test counts, conformance
-   results, benchmarks where relevant). Merge it.
+   results, benchmarks where relevant). Until the first stable release there is no `latest` image, so also
+   move the `xapi-lrs:<version>` tags in the docs to the new version (`git grep 'xapi-lrs:'`). Merge it.
 2. Tag the merge commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. Previews use
    `vX.Y.Z-preview.N`.
 3. The `Release` workflow builds, tests and packs, checks that the package version matches the tag and that

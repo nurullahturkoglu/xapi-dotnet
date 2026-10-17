@@ -7,7 +7,7 @@ using Xapi.Client;
 namespace Xapi.Unity.Tests
 {
     // The LRS the tests talk to: the xapi-lrs image, started with
-    //   docker run -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret ghcr.io/nurullahturkoglu/xapi-lrs
+    //   docker run -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret ghcr.io/nurullahturkoglu/xapi-lrs:0.1.0-preview.1
     internal static class TestLrs
     {
         public static readonly HttpClient Http = new HttpClient();
