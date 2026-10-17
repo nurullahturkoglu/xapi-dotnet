@@ -161,7 +161,7 @@ builder.Services
     .AddXapiLrs(options =>
     {
         options.MigrateOnStartup = true;
-        options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All);
+        options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScopes.All);
     })
     .UseSqlite("Data Source=lrs.db");
 

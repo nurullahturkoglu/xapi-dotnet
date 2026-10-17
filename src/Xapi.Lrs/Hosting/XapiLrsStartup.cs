@@ -28,7 +28,7 @@ internal sealed class XapiLrsStartup(
         {
             try
             {
-                await credentials.SeedAsync(settings.Credentials, settings.AuthorityHomePage, cancellationToken).ConfigureAwait(false);
+                await credentials.SeedAsync(settings.Credentials, Iri.FromUri(settings.AuthorityHomePage), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (exception is DbException or DbUpdateException)
             {

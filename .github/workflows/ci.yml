@@ -247,7 +247,7 @@ jobs:
       - name: Refuses to start without credentials
         run: |
           if timeout 60 docker run --rm xapi-lrs; then
-            echo "::error::The image started without Lrs__Key and Lrs__Secret"
+            echo "::error::The image started without LrsHost__Key and LrsHost__Secret"
             exit 1
           fi
 
@@ -262,7 +262,7 @@ jobs:
             echo "::error::The LRS did not start"
             return 1
           }
-          docker run -d --name lrs -p 8080:8080 -e Lrs__Key=ci_key -e Lrs__Secret=ci_secret -v lrs-data:/data xapi-lrs
+          docker run -d --name lrs -p 8080:8080 -e LrsHost__Key=ci_key -e LrsHost__Secret=ci_secret -v lrs-data:/data xapi-lrs
           wait_for_lrs
           id=$(cat /proc/sys/kernel/random/uuid)
           statement='{"actor":{"mbox":"mailto:ci@example.com"},"verb":{"id":"http://adlnet.gov/expapi/verbs/completed"},"object":{"id":"http://example.com/ci"}}'

@@ -1,7 +1,7 @@
 # Builds samples/LrsHost into a small runtime image. Run from the repository root:
 #   docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
-#   docker run -p 8080:8080 -e Lrs__Key=... -e Lrs__Secret=... -v xapi-lrs-data:/data xapi-lrs
-# The LRS is then at http://localhost:8080/xapi. See samples/LrsHost/README.md for PostgreSQL.
+#   docker run -p 8080:8080 -e LrsHost__Key=... -e LrsHost__Secret=... -v xapi-lrs-data:/data xapi-lrs
+# The LRS is then at http://localhost:8080/xapi. See "Running the sample LRS in Docker" in docs/lrs.md for PostgreSQL.
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS build
 ARG VERSION=0.0.0
@@ -20,9 +20,9 @@ RUN mkdir /data && chown "$APP_UID" /data
 VOLUME /data
 # Empty values override the development credential in appsettings.json, so the container refuses to start
 # until real ones are given
-ENV Lrs__Key="" \
-    Lrs__Secret="" \
-    Lrs__ConnectionString="Data Source=/data/lrs.db"
+ENV LrsHost__Key="" \
+    LrsHost__Secret="" \
+    LrsHost__ConnectionString="Data Source=/data/lrs.db"
 USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "LrsHost.dll"]

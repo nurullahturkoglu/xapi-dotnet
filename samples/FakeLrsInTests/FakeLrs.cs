@@ -35,7 +35,7 @@ public sealed class FakeLrs : IAsyncLifetime
             .AddXapiLrs(options =>
             {
                 options.MigrateOnStartup = true;
-                options.Credentials.Add(Key, Secret, XapiScope.All);
+                options.Credentials.Add(Key, Secret, XapiScopes.All);
             })
             // Without pooling no connection stays open, so the folder can be deleted on every OS
             .UseSqlite(new SqliteConnectionStringBuilder { DataSource = Path.Combine(_directory, "lrs.db"), Pooling = false }.ToString());

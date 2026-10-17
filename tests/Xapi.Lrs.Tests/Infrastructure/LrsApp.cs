@@ -97,22 +97,22 @@ public sealed class LrsApp : IAsyncDisposable
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseSetting("Lrs:Database", database == TestDatabase.Sqlite ? "sqlite" : "postgres");
-            builder.UseSetting("Lrs:ConnectionString", connectionString);
-            builder.UseSetting("Lrs:Key", Credentials.All);
-            builder.UseSetting("Lrs:Secret", Credentials.SecretOf(Credentials.All));
+            builder.UseSetting("LrsHost:Database", database == TestDatabase.Sqlite ? "sqlite" : "postgres");
+            builder.UseSetting("LrsHost:ConnectionString", connectionString);
+            builder.UseSetting("LrsHost:Key", Credentials.All);
+            builder.UseSetting("LrsHost:Secret", Credentials.SecretOf(Credentials.All));
             builder.UseSetting("Lrs:AuthorityHomePage", AuthorityHomePage);
             builder.UseSetting("Logging:LogLevel:Default", "Warning");
             builder.ConfigureTestServices(services =>
             {
                 services.AddXapiLrs(options =>
                 {
-                    options.Credentials.Add(Credentials.Writer, Credentials.SecretOf(Credentials.Writer), XapiScope.StatementsWrite);
-                    options.Credentials.Add(Credentials.Reader, Credentials.SecretOf(Credentials.Reader), XapiScope.StatementsRead);
-                    options.Credentials.Add(Credentials.Mine, Credentials.SecretOf(Credentials.Mine), XapiScope.StatementsWrite, XapiScope.StatementsReadMine);
-                    options.Credentials.Add(Credentials.State, Credentials.SecretOf(Credentials.State), XapiScope.State);
-                    options.Credentials.Add(Credentials.Profile, Credentials.SecretOf(Credentials.Profile), XapiScope.Profile);
-                    options.Credentials.Add(Credentials.AllRead, Credentials.SecretOf(Credentials.AllRead), XapiScope.AllRead);
+                    options.Credentials.Add(Credentials.Writer, Credentials.SecretOf(Credentials.Writer), XapiScopes.StatementsWrite);
+                    options.Credentials.Add(Credentials.Reader, Credentials.SecretOf(Credentials.Reader), XapiScopes.StatementsRead);
+                    options.Credentials.Add(Credentials.Mine, Credentials.SecretOf(Credentials.Mine), XapiScopes.StatementsWrite, XapiScopes.StatementsReadMine);
+                    options.Credentials.Add(Credentials.State, Credentials.SecretOf(Credentials.State), XapiScopes.State);
+                    options.Credentials.Add(Credentials.Profile, Credentials.SecretOf(Credentials.Profile), XapiScopes.Profile);
+                    options.Credentials.Add(Credentials.AllRead, Credentials.SecretOf(Credentials.AllRead), XapiScopes.AllRead);
                 });
                 configure?.Invoke(services);
             });

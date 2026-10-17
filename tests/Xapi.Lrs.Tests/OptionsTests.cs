@@ -1,5 +1,4 @@
 using System.Net;
-using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
@@ -51,7 +50,7 @@ public class OptionsTests
     public void A_scheme_that_cannot_replace_basic_authentication_is_rejected(string scheme, string expected)
     {
         var options = new XapiLrsOptions { AuthenticationScheme = scheme };
-        options.Credentials.Add("key", Secret, XapiScope.All);
+        options.Credentials.Add("key", Secret, XapiScopes.All);
 
         var result = new XapiLrsOptionsValidator().Validate(Options.DefaultName, options);
 
@@ -59,32 +58,110 @@ public class OptionsTests
         Assert.Contains(expected, result.FailureMessage, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void A_default_authority_home_page_is_rejected()
+    [Theory]
+    [InlineData(null, "AuthorityHomePage is null or empty")]
+    [InlineData("lrs.example.com", "AuthorityHomePage 'lrs.example.com' is not an absolute URI")]
+    [InlineData("/credentials", "AuthorityHomePage '/credentials' is not an absolute URI")]
+    public void A_missing_or_relative_authority_home_page_is_rejected(string? homePage, string expected)
     {
-        var options = new XapiLrsOptions { AuthorityHomePage = default };
-        options.Credentials.Add("key", Secret, XapiScope.All);
+        var options = new XapiLrsOptions { AuthorityHomePage = homePage is null ? null! : new Uri(homePage, UriKind.Relative) };
+        options.Credentials.Add("key", Secret, XapiScopes.All);
 
         var result = new XapiLrsOptionsValidator().Validate(Options.DefaultName, options);
 
-        Assert.Contains("AuthorityHomePage", Assert.Single(result.Failures!), StringComparison.Ordinal);
+        Assert.Contains(expected, Assert.Single(result.Failures!), StringComparison.Ordinal);
     }
 
     [Fact]
     public void Credentials_or_a_scheme_are_enough()
     {
         var basic = new XapiLrsOptions();
-        basic.Credentials.Add("key", Secret, XapiScope.All);
+        basic.Credentials.Add("key", Secret, XapiScopes.All);
 
         Assert.True(new XapiLrsOptionsValidator().Validate(Options.DefaultName, basic).Succeeded);
         Assert.True(new XapiLrsOptionsValidator().Validate(Options.DefaultName, new XapiLrsOptions { AuthenticationScheme = "Bearer" }).Succeeded);
     }
 
-    [Fact]
-    public void Bind_reads_every_option_and_the_credentials()
+    [Theory]
+    [InlineData(nameof(XapiLrsOptions.MaxDocumentBytes), 1)]
+    [InlineData(nameof(XapiLrsOptions.MaxStatementBytes), 1)]
+    [InlineData(nameof(XapiLrsOptions.MaxAttachmentBytes), 0)]
+    [InlineData(nameof(XapiLrsOptions.MaxStatementsPerBatch), 1)]
+    [InlineData(nameof(XapiLrsOptions.MaxAlternateRequestBytes), 1)]
+    [InlineData(nameof(XapiLrsOptions.MaxStatementsPerPage), 1)]
+    public void Limits_below_their_minimum_are_rejected(string option, int minimum)
     {
         var options = new XapiLrsOptions();
-        options.Bind(Configuration(new()
+        options.Credentials.Add("key", Secret, XapiScopes.All);
+        var property = typeof(XapiLrsOptions).GetProperty(option)!;
+
+        property.SetValue(options, Convert.ChangeType(minimum, property.PropertyType, null));
+        Assert.True(new XapiLrsOptionsValidator().Validate(Options.DefaultName, options).Succeeded);
+
+        property.SetValue(options, Convert.ChangeType(minimum - 1, property.PropertyType, null));
+        var failure = Assert.Single(new XapiLrsOptionsValidator().Validate(Options.DefaultName, options).Failures!);
+        Assert.Contains($"{option} is {minimum - 1}; it must be at least {minimum}", failure, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null, Secret, XapiScopes.All, "Credentials[0] has no Key")]
+    [InlineData("", Secret, XapiScopes.All, "Credentials[0] has no Key")]
+    [InlineData("a:b", Secret, XapiScopes.All, "Credentials[0] ('a:b') has a Key with a colon")]
+    [InlineData("player", null, XapiScopes.All, "Credentials[0] ('player') has no Secret")]
+    [InlineData("player", "", XapiScopes.All, "Credentials[0] ('player') has no Secret")]
+    [InlineData("player", Secret, null, "Credentials[0] ('player') has no Scopes")]
+    [InlineData("player", Secret, "statements/writ", "Credentials[0] ('player') has an unknown scope 'statements/writ'")]
+    [InlineData("player", Secret, "Statements/Write", "unknown scope 'Statements/Write'")]
+    // The names, numbers and comma-separated combinations of the former enum: the configuration binder's enum
+    // converter would have ORed "StatementsWrite,StatementsReadMine" into StatementsRead
+    [InlineData("player", Secret, "StatementsWrite", "unknown scope 'StatementsWrite'")]
+    [InlineData("player", Secret, "StatementsWrite,StatementsReadMine", "unknown scope 'StatementsWrite,StatementsReadMine'")]
+    [InlineData("player", Secret, "8", "unknown scope '8'")]
+    [InlineData("player", Secret, "all/read state", "unknown scope 'all/read state'")]
+    [InlineData("player", Secret, "", "unknown scope ''")]
+    public void An_invalid_credential_is_rejected_without_its_secret(string? key, string? secret, string? scope, string expected)
+    {
+        var options = new XapiLrsOptions();
+        var credential = new XapiLrsCredential { Key = key, Secret = secret };
+        if (scope is not null)
+        {
+            credential.Scopes.Add(scope);
+        }
+
+        options.Credentials.Add(credential);
+
+        var result = new XapiLrsOptionsValidator().Validate(Options.DefaultName, options);
+
+        Assert.Contains(expected, Assert.Single(result.Failures!), StringComparison.Ordinal);
+        Assert.DoesNotContain(Secret, result.FailureMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Adding_a_credential_does_not_check_it_and_the_validator_lists_every_problem()
+    {
+        var options = new XapiLrsOptions();
+        options.Credentials.Add("player", Secret, XapiScopes.StatementsWrite, XapiScopes.State);
+        options.Credentials.Add("reporting", Secret, XapiScopes.AllRead);
+        options.Credentials.Add("player", Secret, XapiScopes.All);
+        options.Credentials.Add("a:b", "", "statements/writ");
+
+        var result = new XapiLrsOptionsValidator().Validate(Options.DefaultName, options);
+
+        Assert.Equal(
+            [
+                "xAPI LRS options: Credentials[2] ('player') has the same Key as Credentials[0].",
+                "xAPI LRS options: Credentials[3] ('a:b') has a Key with a colon, which Basic authentication cannot send.",
+                "xAPI LRS options: Credentials[3] ('a:b') has no Secret.",
+                "xAPI LRS options: Credentials[3] ('a:b') has an unknown scope 'statements/writ'. Use one xAPI scope name per entry, such as statements/write (see XapiScopes).",
+            ],
+            result.Failures!);
+        Assert.Throws<ArgumentNullException>(() => options.Credentials.Add(null!));
+    }
+
+    [Fact]
+    public void The_configuration_overload_binds_every_option_and_the_credentials()
+    {
+        var options = OptionsFrom(services => services.AddXapiLrs(Configuration(new()
         {
             ["Lrs:AuthenticationScheme"] = "Bearer",
             ["Lrs:ScopeClaimType"] = "scp",
@@ -100,15 +177,15 @@ public class OptionsTests
             ["Lrs:Credentials:0:Key"] = "player",
             ["Lrs:Credentials:0:Secret"] = Secret,
             ["Lrs:Credentials:0:Scopes:0"] = "statements/write",
-            ["Lrs:Credentials:0:Scopes:1"] = "State",
+            ["Lrs:Credentials:0:Scopes:1"] = "state",
             ["Lrs:Credentials:1:Key"] = "reporting",
             ["Lrs:Credentials:1:Secret"] = Secret,
-            ["Lrs:Credentials:1:Scopes"] = "all/read statements/read",
-        }));
+            ["Lrs:Credentials:1:Scopes:0"] = "all/read",
+        })));
 
         Assert.Equal("Bearer", options.AuthenticationScheme);
         Assert.Equal("scp", options.ScopeClaimType);
-        Assert.Equal(new Iri("https://lrs.example.com/"), options.AuthorityHomePage);
+        Assert.Equal(new Uri("https://lrs.example.com/"), options.AuthorityHomePage);
         Assert.False(options.EnableVersion1_0_3);
         Assert.Equal(2048, options.MaxDocumentBytes);
         Assert.Equal(4096, options.MaxStatementBytes);
@@ -121,77 +198,85 @@ public class OptionsTests
             options.Credentials,
             c =>
             {
-                Assert.Equal("player", c.Key);
-                Assert.Equal([XapiScope.StatementsWrite, XapiScope.State], c.Scopes);
+                Assert.Equal(("player", Secret), (c.Key, c.Secret));
+                Assert.Equal([XapiScopes.StatementsWrite, XapiScopes.State], c.Scopes);
             },
             c =>
             {
-                Assert.Equal("reporting", c.Key);
-                Assert.Equal([XapiScope.AllRead, XapiScope.StatementsRead], c.Scopes);
+                Assert.Equal(("reporting", Secret), (c.Key, c.Secret));
+                Assert.Equal([XapiScopes.AllRead], c.Scopes);
             });
     }
 
-    // Keeps Bind in step with the options: a new settable option must be read too, or listed here
     [Fact]
-    public void Bind_covers_every_settable_option()
+    public void The_callback_runs_after_the_section_is_bound()
     {
-        string[] notFromConfiguration = [nameof(XapiLrsOptions.AuthorityFactory)];
-        string[] read =
-        [
-            nameof(XapiLrsOptions.AuthenticationScheme), nameof(XapiLrsOptions.ScopeClaimType),
-            nameof(XapiLrsOptions.AuthorityHomePage), nameof(XapiLrsOptions.EnableVersion1_0_3),
-            nameof(XapiLrsOptions.MaxDocumentBytes), nameof(XapiLrsOptions.MaxStatementBytes),
-            nameof(XapiLrsOptions.MaxAttachmentBytes), nameof(XapiLrsOptions.MaxStatementsPerBatch),
-            nameof(XapiLrsOptions.MaxAlternateRequestBytes), nameof(XapiLrsOptions.MaxStatementsPerPage),
-            nameof(XapiLrsOptions.MigrateOnStartup),
-        ];
+        var lms = Agent.FromAccount(new Uri("https://lms.example.com/"), "lms");
 
-        var settable = typeof(XapiLrsOptions).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.SetMethod?.IsPublic == true)
-            .Select(p => p.Name)
-            .Except(notFromConfiguration);
+        var options = OptionsFrom(services => services.AddXapiLrs(
+            Configuration(new()
+            {
+                ["Lrs:MaxStatementsPerPage"] = "20",
+                ["Lrs:Credentials:0:Key"] = "player",
+                ["Lrs:Credentials:0:Secret"] = Secret,
+                ["Lrs:Credentials:0:Scopes:0"] = "all",
+            }),
+            o =>
+            {
+                o.MaxStatementsPerPage = 7;
+                o.Credentials.Add(new XapiLrsCredential("lms", Secret, XapiScopes.All) { Authority = lms });
+            }));
 
-        Assert.Equal(read.Order(StringComparer.Ordinal), settable.Order(StringComparer.Ordinal));
+        Assert.Equal(7, options.MaxStatementsPerPage);
+        Assert.Equal(["player", "lms"], options.Credentials.Select(c => c.Key));
+        Assert.Same(lms, options.Credentials[1].Authority);
     }
 
     [Fact]
-    public void Bind_skips_empty_values_and_keeps_what_was_set_in_code()
+    public void Configure_with_a_section_binds_the_options_too()
     {
-        var options = new XapiLrsOptions { MaxStatementsPerPage = 7 };
-        options.Credentials.Add("code", Secret, XapiScope.All);
-
-        options.Bind(Configuration(new()
+        var options = OptionsFrom(services =>
         {
-            ["Lrs:AuthenticationScheme"] = "",
-            ["Lrs:AuthorityHomePage"] = "",
-            ["Lrs:MaxStatementsPerPage"] = "",
-            ["Lrs:Credentials:0:Key"] = "config",
-            ["Lrs:Credentials:0:Secret"] = Secret,
-            ["Lrs:Credentials:0:Scopes:0"] = "all",
-        }));
+            services.AddXapiLrs();
+            services.Configure<XapiLrsOptions>(Configuration(new()
+            {
+                ["Lrs:AuthorityHomePage"] = "https://lrs.example.com/",
+                ["Lrs:Credentials:0:Key"] = "player",
+                ["Lrs:Credentials:0:Secret"] = Secret,
+                ["Lrs:Credentials:0:Scopes:0"] = "all",
+                ["Lrs:Unknown"] = "ignored by default",
+            }));
+        });
 
-        Assert.Null(options.AuthenticationScheme);
-        Assert.Equal(new XapiLrsOptions().AuthorityHomePage, options.AuthorityHomePage);
-        Assert.Equal(7, options.MaxStatementsPerPage);
-        Assert.Equal(["code", "config"], options.Credentials.Select(c => c.Key));
+        Assert.Equal(new Uri("https://lrs.example.com/"), options.AuthorityHomePage);
+        Assert.Equal("player", Assert.Single(options.Credentials).Key);
     }
 
     [Theory]
-    [InlineData("Lrs:Credentials:0:Secret", null, "'Lrs:Credentials:0' has no Secret")]
-    [InlineData("Lrs:Credentials:0:Key", null, "'Lrs:Credentials:0' has no Key")]
-    [InlineData("Lrs:Credentials:0:Key", "a:b", "'Lrs:Credentials:0' is invalid: A credential key cannot contain a colon")]
-    [InlineData("Lrs:Credentials:0:Scopes:0", null, "'Lrs:Credentials:0' has no Scopes")]
+    [InlineData("Lrs:Credentials:0:Secret", null, "Credentials[0] ('player') has no Secret")]
+    [InlineData("Lrs:Credentials:0:Key", null, "Credentials[0] has no Key")]
+    [InlineData("Lrs:Credentials:0:Key", "a:b", "Credentials[0] ('a:b') has a Key with a colon")]
+    [InlineData("Lrs:Credentials:0:Scopes:0", null, "Credentials[0] ('player') has no Scopes")]
     [InlineData("Lrs:Credentials:0:Scopes:0", "statements/writ", "unknown scope 'statements/writ'")]
-    // ConfigurationBinder's enum converter would OR these into StatementsRead, and accept numbers
-    [InlineData("Lrs:Credentials:0:Scopes:0", "StatementsWrite,StatementsReadMine", "unknown scope")]
+    [InlineData("Lrs:Credentials:0:Scopes:0", "StatementsWrite,StatementsReadMine", "unknown scope 'StatementsWrite,StatementsReadMine'")]
     [InlineData("Lrs:Credentials:0:Scopes:0", "8", "unknown scope '8'")]
-    [InlineData("Lrs:Credentials:0:Authority:account:name", "lms", "sets Authority")]
-    [InlineData("Lrs:Credentials:1:Key", "player", "'Lrs:Credentials:1' is invalid: A credential with key 'player' was already added")]
-    [InlineData("Lrs:MaxStatementBytes", "0", "'Lrs:MaxStatementBytes' is out of range")]
-    [InlineData("Lrs:MaxStatementsPerPage", "many", "'Lrs:MaxStatementsPerPage' is not a valid Int32")]
-    [InlineData("Lrs:EnableVersion1_0_3", "yes", "'Lrs:EnableVersion1_0_3' is not a valid Boolean")]
-    [InlineData("Lrs:AuthorityHomePage", "lrs.example.com", "'Lrs:AuthorityHomePage' is not an absolute IRI")]
-    public void Bind_rejects_invalid_values_with_the_path_and_without_the_secret(string key, string? value, string expected)
+    [InlineData("Lrs:Credentials:1:Key", "player", "Credentials[1] ('player') has the same Key as Credentials[0]")]
+    // Misspelt keys: ErrorOnUnknownConfiguration names the key, not its value
+    [InlineData("Lrs:Credentials:0:Secert", Secret, "'Secert'")]
+    [InlineData("Lrs:MaxStatementPerPage", "20", "'MaxStatementPerPage'")]
+    [InlineData("Lrs:Credentials:0:Authority:account:name", "lms", "Agent")]
+    [InlineData("Lrs:MaxStatementBytes", "0", "MaxStatementBytes is 0")]
+    [InlineData("Lrs:MaxStatementsPerPage", "many", "'Lrs:MaxStatementsPerPage'")]
+    [InlineData("Lrs:EnableVersion1_0_3", "yes", "'Lrs:EnableVersion1_0_3'")]
+    [InlineData("Lrs:AuthorityHomePage", "lrs.example.com", "AuthorityHomePage 'lrs.example.com' is not an absolute URI")]
+    // The binder does not skip an empty value, such as an empty environment variable
+    [InlineData("Lrs:MaxStatementsPerPage", "", "'Lrs:MaxStatementsPerPage'")]
+    [InlineData("Lrs:EnableVersion1_0_3", "", "'Lrs:EnableVersion1_0_3'")]
+    [InlineData("Lrs:AuthorityHomePage", "", "AuthorityHomePage is null or empty")]
+    [InlineData("Lrs:AuthenticationScheme", "", "AuthenticationScheme is empty")]
+    // A single value where the binder expects an array
+    [InlineData("Lrs:Credentials:0:Scopes", "all/read statements/read", "'Lrs:Credentials:0:Scopes'")]
+    public void Invalid_configuration_fails_with_a_message_without_the_secret(string key, string? value, string expected)
     {
         var settings = new Dictionary<string, string?>
         {
@@ -206,10 +291,54 @@ public class OptionsTests
             settings["Lrs:Credentials:1:Scopes:0"] = "all";
         }
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new XapiLrsOptions().Bind(Configuration(settings)));
+        // A missing value is a missing key: the in-memory provider would otherwise keep a null entry
+        if (value is null)
+        {
+            settings.Remove(key);
+        }
+        else if (key == "Lrs:Credentials:0:Scopes")
+        {
+            settings.Remove("Lrs:Credentials:0:Scopes:0");
+        }
 
-        Assert.Contains(expected, exception.Message, StringComparison.Ordinal);
+        // OptionsValidationException from the validator, InvalidOperationException from the binder
+        var exception = Assert.ThrowsAny<Exception>(() => OptionsFrom(services => services.AddXapiLrs(Configuration(settings))));
+
+        // The binder puts the details of a failure inside a credential in the inner exception
+        Assert.Contains(expected, exception.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain(Secret, exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_misspelt_key_stops_the_host_at_startup()
+    {
+        var database = Path.Combine(Path.GetTempPath(), $"xapi-options-{Guid.NewGuid():N}.db");
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Lrs:MigrateOnStartup"] = "true",
+            ["Lrs:MaxStatementPerPage"] = "20",
+            ["Lrs:Credentials:0:Key"] = "player",
+            ["Lrs:Credentials:0:Secret"] = Secret,
+            ["Lrs:Credentials:0:Scopes:0"] = "all",
+        });
+        builder.Services
+            .AddXapiLrs(builder.Configuration.GetSection("Lrs"))
+            .UseSqlite(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
+        await using var app = builder.Build();
+
+        try
+        {
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => app.StartAsync(TestContext.Current.CancellationToken));
+
+            Assert.Contains("'MaxStatementPerPage'", exception.Message, StringComparison.Ordinal);
+            Assert.False(File.Exists(database), "Binding fails before the database is touched.");
+        }
+        finally
+        {
+            File.Delete(database);
+        }
     }
 
     [Fact]
@@ -227,7 +356,7 @@ public class OptionsTests
             ["Lrs:Credentials:0:Scopes:0"] = "statements/read",
         });
         builder.Services
-            .AddXapiLrs(o => o.Bind(builder.Configuration.GetSection("Lrs")))
+            .AddXapiLrs(builder.Configuration.GetSection("Lrs"))
             .UseSqlite(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
         await using var app = builder.Build();
         app.MapXapiLrs("/xapi");
@@ -250,6 +379,15 @@ public class OptionsTests
             await app.StopAsync(ct);
             File.Delete(database);
         }
+    }
+
+    // Binds and validates the options as the host does when it starts
+    private static XapiLrsOptions OptionsFrom(Action<IServiceCollection> configure)
+    {
+        var services = new ServiceCollection();
+        configure(services);
+        using var provider = services.BuildServiceProvider();
+        return provider.GetRequiredService<IOptions<XapiLrsOptions>>().Value;
     }
 
     private static IConfigurationSection Configuration(Dictionary<string, string?> settings) =>

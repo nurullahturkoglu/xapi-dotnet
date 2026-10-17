@@ -121,11 +121,11 @@ jobs:
         run: |
           # MinVer needs the full history, which this shallow checkout lacks; the sample is not versioned.
           dotnet build samples/LrsHost -c Release -p:MinVerSkip=true
-          export ASPNETCORE_URLS=http://127.0.0.1:8080 Lrs__Database="$DB" Lrs__Key="$LRS_KEY" Lrs__Secret="$LRS_SECRET"
+          export ASPNETCORE_URLS=http://127.0.0.1:8080 LrsHost__Database="$DB" LrsHost__Key="$LRS_KEY" LrsHost__Secret="$LRS_SECRET"
           if [[ $DB == postgres ]]; then
-            export Lrs__ConnectionString='Host=127.0.0.1;Port=5432;Username=lrsql;Password=lrsql;Database=lrsql'
+            export LrsHost__ConnectionString='Host=127.0.0.1;Port=5432;Username=lrsql;Password=lrsql;Database=lrsql'
           else
-            export Lrs__ConnectionString="Data Source=$RUNNER_TEMP/lrs.db"
+            export LrsHost__ConnectionString="Data Source=$RUNNER_TEMP/lrs.db"
           fi
           # From the output folder, so appsettings.json (log levels) is found in the content root
           cd samples/LrsHost/bin/Release/net10.0

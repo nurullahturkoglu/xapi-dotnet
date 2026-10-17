@@ -65,7 +65,7 @@ eng/conformance/run-local.sh --target local --db sqlite --xapi 2.0.0      # our 
 
 For `--target local`, start the sample LRS first with `dotnet run --project samples/LrsHost`. It listens on
 `http://localhost:8080/xapi` with the credentials the script expects and stores data in `lrs.db` in the
-working directory. For PostgreSQL, pass `--Lrs:Database=postgres --Lrs:ConnectionString=<connection
+working directory. For PostgreSQL, pass `--LrsHost:Database=postgres --LrsHost:ConnectionString=<connection
 string>` after `--`, and use `--db postgres` so the run is gated with the PostgreSQL floor.
 
 `eng/conformance/run-local.sh --help` lists the options. The suite is pinned to a commit in

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Xapi.Lrs.Hosting;
 using Xapi.Lrs.Tests.Infrastructure;
 using static Xapi.Lrs.Tests.Infrastructure.LrsApp;
 using static Xapi.Lrs.Tests.Infrastructure.QueryApi;
@@ -198,7 +199,8 @@ public class AlternateRequestSyntaxTests(LrsHosts hosts)
         var options = new XapiLrsOptions();
 
         Assert.Equal(1024 * 1024, options.MaxAlternateRequestBytes);
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxAlternateRequestBytes = 0);
+        options.MaxAlternateRequestBytes = 0;
+        Assert.Contains("MaxAlternateRequestBytes is 0;", new XapiLrsOptionsValidator().Validate(null, options).FailureMessage, StringComparison.Ordinal);
     }
 
     [Fact]

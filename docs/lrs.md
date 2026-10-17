@@ -42,14 +42,14 @@ builder.Services
     .AddXapiLrs(options =>
     {
         options.Credentials.Add("course-player", builder.Configuration["Lrs:PlayerSecret"]!,
-            XapiScope.StatementsWrite, XapiScope.StatementsReadMine, XapiScope.State);
-        options.Credentials.Add("reporting", builder.Configuration["Lrs:ReportingSecret"]!, XapiScope.AllRead);
-        options.Credentials.Add(new XapiCredential("lms", builder.Configuration["Lrs:LmsSecret"]!, [XapiScope.All])
+            XapiScopes.StatementsWrite, XapiScopes.StatementsReadMine, XapiScopes.State);
+        options.Credentials.Add("reporting", builder.Configuration["Lrs:ReportingSecret"]!, XapiScopes.AllRead);
+        options.Credentials.Add(new XapiLrsCredential("lms", builder.Configuration["Lrs:LmsSecret"]!, XapiScopes.All)
         {
             Authority = Agent.FromAccount(new Iri("https://lms.example.com/"), "lms"),
         });
 
-        options.AuthorityHomePage = new Iri("https://lrs.example.com/");
+        options.AuthorityHomePage = new Uri("https://lrs.example.com/");
         options.MaxDocumentBytes = 256 * 1024;
         options.MaxStatementsPerPage = 500;
         options.MigrateOnStartup = true;
@@ -73,20 +73,24 @@ builder.Services
 | `MaxStatementsPerPage` | 100 | The page size of statement queries when the request asks for `limit=0` or no limit; larger limits are lowered to it. |
 | `MigrateOnStartup` | `false` | Apply database migrations when the host starts. |
 
-The options are checked when the host starts. Startup stops with an `OptionsValidationException` that lists
-every problem when there are no `Credentials` and no `AuthenticationScheme` (no request could be
-authenticated), when `AuthenticationScheme` is empty or the built-in Basic scheme `XapiBasic`, when
-`ScopeClaimType` is empty, or when `AuthorityHomePage` is the default `Iri`. The size and count limits reject
-values out of range as soon as they are set.
+The setters accept any value; the options are checked when the host starts. Startup stops with an
+`OptionsValidationException` that lists every problem when there are no `Credentials` and no
+`AuthenticationScheme` (no request could be authenticated), when `AuthenticationScheme` is empty or the
+built-in Basic scheme `XapiBasic`, when `ScopeClaimType` is empty, when `AuthorityHomePage` is not an absolute
+URI, when a size or count limit is below 1 (`MaxAttachmentBytes` below 0), or when a credential is invalid: a
+key that is missing, empty, contains a colon or appears twice, a missing or empty secret, no scopes, or a scope
+that is not one of the xAPI names in the table under [Basic credentials](#basic-credentials). The messages name a
+credential by its index and key and never contain its secret.
 
 ### Options from configuration
 
-`options.Bind(section)` reads the options from a configuration section, credentials included:
+The `AddXapiLrs` overload that takes a configuration section binds the options from it, credentials
+included:
 
 <!-- snippet: lrs-configuration -->
 ```csharp
 builder.Services
-    .AddXapiLrs(options => options.Bind(builder.Configuration.GetSection("Lrs")))
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"))
     .UseSqlite(builder.Configuration.GetConnectionString("Lrs")!);
 ```
 
@@ -104,15 +108,22 @@ builder.Services
 ```
 
 Keep the secrets out of `appsettings.json` and add them from a secret store or the environment, for example
-`Lrs__Credentials__0__Secret`. Keys are the option names. A scope is an xAPI scope name or an `XapiScope` name,
-and one `Scopes` value may hold several separated by spaces (`Lrs__Credentials__1__Scopes="all/read state"`).
-Empty values are skipped. `AuthorityFactory` and a credential's `Authority` cannot come from configuration;
-set them in code, in the same `AddXapiLrs` callback. Credentials from configuration are added to those added in
-code, and a key that appears twice fails.
+`Lrs__Credentials__0__Secret`. Keys are the option names, and a key that is not one, such as a misspelt
+`MaxStatementPerPage`, stops the host at startup. `Scopes` is an array with one xAPI scope name per entry
+(`Lrs__Credentials__1__Scopes__0=all/read`); the names are the constants of `XapiScopes`.
 
-Use `options.Bind(section)` rather than `section.Bind(options)`. The configuration binder leaves out
-`Credentials` and `AuthorityHomePage` without an error, and `Bind` fails on a value it cannot use with a message
-that names its configuration path and never contains a secret.
+Empty values, such as an empty environment variable, are not skipped. An empty number or switch fails to
+convert, with a message that names its key, and an empty `AuthorityHomePage` or text option such as
+`AuthenticationScheme` is set to null or empty, which startup then rejects. Remove a value rather than set it to
+empty to keep the default.
+
+`AuthorityFactory` and a credential's `Authority` cannot come from configuration. Set them in code, in the
+callback that the overload takes as its second argument and runs after binding the section. Credentials added
+there join those from configuration, and a key that appears twice fails at startup. The section can also be
+bound with `builder.Services.Configure<XapiLrsOptions>(section)` before or after `AddXapiLrs`; that binds the
+same way but ignores keys it does not know. In an app that turns on the configuration binding source generator
+(`EnableConfigurationBindingGenerator`), use the `AddXapiLrs` overload instead: the generator cannot handle the
+`Authority` property of a credential, an `Agent`, and the app does not compile.
 
 ## Storage
 
@@ -124,7 +135,7 @@ that names its configuration path and never contains a secret.
 <!-- snippet: lrs-postgresql -->
 ```csharp
 builder.Services
-    .AddXapiLrs(options => options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All))
+    .AddXapiLrs(options => options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScopes.All))
     .UsePostgreSql(builder.Configuration.GetConnectionString("Lrs")!);
 ```
 
@@ -175,16 +186,16 @@ reachable from the internet, so that guessing secrets is slow and cannot tie up 
 is remembered in memory for one minute; with several app instances on one database, a credential removed from
 the configuration stops working on the other instances within a minute of the restart that removed it.
 
-| `XapiScope` | xAPI scope | Allows |
+| xAPI scope | `XapiScopes` | Allows |
 | --- | --- | --- |
-| `StatementsWrite` | `statements/write` | Storing statements. |
-| `StatementsReadMine` | `statements/read/mine` | Reading statements stored with the same authority. |
-| `StatementsRead` | `statements/read` | Reading all statements. |
-| `State` | `state` | Reading and writing State documents. |
-| `Profile` | `profile` | Reading and writing Activity and Agent Profile documents, and reading the Agents and Activities Resources. |
-| `Define` | `define` | Statements stored with this scope update the LRS's Activity definitions; without it they are stored but do not change them. |
-| `AllRead` | `all/read` | Reading everything. |
-| `All` | `all` | Everything. |
+| `statements/write` | `StatementsWrite` | Storing statements. |
+| `statements/read/mine` | `StatementsReadMine` | Reading statements stored with the same authority. |
+| `statements/read` | `StatementsRead` | Reading all statements. |
+| `state` | `State` | Reading and writing State documents. |
+| `profile` | `Profile` | Reading and writing Activity and Agent Profile documents, and reading the Agents and Activities Resources. |
+| `define` | `Define` | Statements stored with this scope update the LRS's Activity definitions; without it they are stored but do not change them. |
+| `all/read` | `AllRead` | Reading everything. |
+| `all` | `All` | Everything. |
 
 The LRS sets the `authority` of every statement it stores. For a Basic credential it is an Agent with an
 account on `AuthorityHomePage` named after the key, unless the credential sets `Authority`.
@@ -203,7 +214,7 @@ builder.Services
     {
         options.AuthenticationScheme = "Bearer";
         options.ScopeClaimType = "scope";
-        options.AuthorityHomePage = new Iri("https://login.example.com/");
+        options.AuthorityHomePage = new Uri("https://login.example.com/");
     })
     .UseSqlite("Data Source=lrs.db");
 ```
@@ -415,14 +426,15 @@ SQLite data in the `/data` volume and does not start until a credential is given
 
 ```bash
 docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
-docker run -p 8080:8080 -e Lrs__Key=my-key -e Lrs__Secret=my-secret -v xapi-lrs-data:/data xapi-lrs
+docker run -p 8080:8080 -e LrsHost__Key=my-key -e LrsHost__Secret=my-secret -v xapi-lrs-data:/data xapi-lrs
 ```
 
 The LRS is then at `http://localhost:8080/xapi`, and `http://localhost:8080/health` answers `Healthy` once the
-database is reachable and migrated. For PostgreSQL, add `-e Lrs__Database=postgres` and
-`-e Lrs__ConnectionString=...`. `Lrs__Key` and `Lrs__Secret` give one credential with every scope; the sample
-reads the other options and further credentials with `options.Bind`, so `-e Lrs__Credentials__0__Key=...`
-and the other keys from [Options from configuration](#options-from-configuration) work too. No image is
+database is reachable and migrated. The sample's own settings are in the `LrsHost` section: for PostgreSQL,
+add `-e LrsHost__Database=postgres` and `-e LrsHost__ConnectionString=...`. `LrsHost__Key` and
+`LrsHost__Secret` give one credential with every scope. The `Lrs` section is bound to the LRS options, so
+`-e Lrs__AuthorityHomePage=...`, `-e Lrs__Credentials__0__Key=...` and the other keys from
+[Options from configuration](#options-from-configuration) work too. No image is
 published yet; build it from the repository.
 
 ## Experimental storage API

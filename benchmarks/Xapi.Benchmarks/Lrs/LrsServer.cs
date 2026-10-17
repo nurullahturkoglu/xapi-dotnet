@@ -49,7 +49,7 @@ public sealed class LrsServer : IAsyncDisposable
         var lrs = builder.Services.AddXapiLrs(options =>
         {
             options.MigrateOnStartup = true;
-            options.Credentials.Add(Key, Secret, XapiScope.All);
+            options.Credentials.Add(Key, Secret, XapiScopes.All);
         });
         switch (database)
         {

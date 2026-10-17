@@ -56,7 +56,8 @@ internal sealed class CredentialStore(IDbContextFactory<XapiLrsDbContext> contex
     }
 
     // Makes xapi_credential mirror the configured credentials, so removing one from the configuration revokes it.
-    public async Task SeedAsync(IReadOnlyList<XapiCredential> credentials, Iri authorityHomePage, CancellationToken cancellationToken)
+    // The credentials have passed XapiLrsOptionsValidator: keys and secrets are set and every scope is known.
+    public async Task SeedAsync(IEnumerable<XapiLrsCredential> credentials, Iri authorityHomePage, CancellationToken cancellationToken)
     {
         var context = await contextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using (context.ConfigureAwait(false))
@@ -64,14 +65,16 @@ internal sealed class CredentialStore(IDbContextFactory<XapiLrsDbContext> contex
             var rows = await context.Credentials.ToDictionaryAsync(c => c.Key, StringComparer.Ordinal, cancellationToken).ConfigureAwait(false);
             foreach (var credential in credentials)
             {
-                var authority = credential.Authority ?? Agent.FromAccount(authorityHomePage, credential.Key);
-                var scopes = string.Join(' ', credential.Scopes.Select(Scopes.Name));
+                var key = credential.Key!;
+                var secret = credential.Secret!;
+                var authority = credential.Authority ?? Agent.FromAccount(authorityHomePage, key);
+                var scopes = string.Join(' ', credential.Scopes.Distinct(StringComparer.Ordinal));
                 var authorityPayload = XapiJson.SerializeActor(authority, XapiVersion.V2_0_0);
-                if (rows.Remove(credential.Key, out var row))
+                if (rows.Remove(key, out var row))
                 {
-                    if (!SecretHasher.Verify(credential.Secret, row.SecretHash))
+                    if (!SecretHasher.Verify(secret, row.SecretHash))
                     {
-                        row.SecretHash = SecretHasher.Hash(credential.Secret);
+                        row.SecretHash = SecretHasher.Hash(secret);
                     }
 
                     row.Scopes = scopes;
@@ -81,8 +84,8 @@ internal sealed class CredentialStore(IDbContextFactory<XapiLrsDbContext> contex
                 {
                     context.Credentials.Add(new CredentialEntity
                     {
-                        Key = credential.Key,
-                        SecretHash = SecretHasher.Hash(credential.Secret),
+                        Key = key,
+                        SecretHash = SecretHasher.Hash(secret),
                         Scopes = scopes,
                         AuthorityPayload = authorityPayload,
                     });

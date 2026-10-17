@@ -95,7 +95,7 @@ public class HealthCheckTests(LrsHosts hosts)
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.Services
-            .AddXapiLrs(o => o.Credentials.Add(new XapiCredential("key", "secret", [XapiScope.All])))
+            .AddXapiLrs(o => o.Credentials.Add(new XapiLrsCredential("key", "secret", XapiScopes.All)))
             .UseSqlite(ConnectionString(database));
         health(builder.Services.AddHealthChecks());
         return builder.Build();

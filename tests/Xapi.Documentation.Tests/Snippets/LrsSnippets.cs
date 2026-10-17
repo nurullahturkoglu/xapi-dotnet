@@ -18,14 +18,14 @@ internal static class LrsSnippets
             .AddXapiLrs(options =>
             {
                 options.Credentials.Add("course-player", builder.Configuration["Lrs:PlayerSecret"]!,
-                    XapiScope.StatementsWrite, XapiScope.StatementsReadMine, XapiScope.State);
-                options.Credentials.Add("reporting", builder.Configuration["Lrs:ReportingSecret"]!, XapiScope.AllRead);
-                options.Credentials.Add(new XapiCredential("lms", builder.Configuration["Lrs:LmsSecret"]!, [XapiScope.All])
+                    XapiScopes.StatementsWrite, XapiScopes.StatementsReadMine, XapiScopes.State);
+                options.Credentials.Add("reporting", builder.Configuration["Lrs:ReportingSecret"]!, XapiScopes.AllRead);
+                options.Credentials.Add(new XapiLrsCredential("lms", builder.Configuration["Lrs:LmsSecret"]!, XapiScopes.All)
                 {
                     Authority = Agent.FromAccount(new Iri("https://lms.example.com/"), "lms"),
                 });
 
-                options.AuthorityHomePage = new Iri("https://lrs.example.com/");
+                options.AuthorityHomePage = new Uri("https://lrs.example.com/");
                 options.MaxDocumentBytes = 256 * 1024;
                 options.MaxStatementsPerPage = 500;
                 options.MigrateOnStartup = true;
@@ -38,7 +38,7 @@ internal static class LrsSnippets
     {
         // snippet: lrs-configuration
         builder.Services
-            .AddXapiLrs(options => options.Bind(builder.Configuration.GetSection("Lrs")))
+            .AddXapiLrs(builder.Configuration.GetSection("Lrs"))
             .UseSqlite(builder.Configuration.GetConnectionString("Lrs")!);
         // end snippet
     }
@@ -47,7 +47,7 @@ internal static class LrsSnippets
     {
         // snippet: lrs-postgresql
         builder.Services
-            .AddXapiLrs(options => options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All))
+            .AddXapiLrs(options => options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScopes.All))
             .UsePostgreSql(builder.Configuration.GetConnectionString("Lrs")!);
         // end snippet
     }
@@ -62,7 +62,7 @@ internal static class LrsSnippets
             {
                 options.AuthenticationScheme = "Bearer";
                 options.ScopeClaimType = "scope";
-                options.AuthorityHomePage = new Iri("https://login.example.com/");
+                options.AuthorityHomePage = new Uri("https://login.example.com/");
             })
             .UseSqlite("Data Source=lrs.db");
         // end snippet
