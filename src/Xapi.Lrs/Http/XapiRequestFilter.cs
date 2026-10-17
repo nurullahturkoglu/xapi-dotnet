@@ -29,6 +29,10 @@ internal sealed partial class XapiRequestFilter(
 
         // IEEE 9274.1.1, 4.1.7: the header is on every response, errors included
         headers[XapiHeaders.Version] = XapiVersion.V2_0_0.HeaderValue;
+
+        // Documents, attachments and error details carry client-supplied content; browsers must take the
+        // content type as given instead of sniffing HTML out of it
+        headers.XContentTypeOptions = "nosniff";
         if (metadata.IsStatementResource)
         {
             headers[XapiHeaders.ConsistentThrough] = XapiTimestamp.Format(writes.ConsistentThrough());
