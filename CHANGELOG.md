@@ -35,6 +35,7 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: `attachments=true` responses are streamed, reading the data of one attachment at a time, and HEAD reads none. `IStatementStore.GetAttachmentsAsync` is replaced by `GetAttachmentSummariesAsync` and `GetAttachmentContentAsync`.
 - `Xapi.Lrs.Sqlite` and `Xapi.Lrs.PostgreSql` depend on the exact version of `Xapi.Lrs` they were built with (`[x.y.z]`), because they use its experimental storage types.
 - `Xapi.Lrs`: the storage API marked `XAPI0001` stays experimental after 1.0 until it is declared stable, and is not covered by semantic versioning until then. The `XAPI0001` error links to [Experimental storage API](docs/lrs.md#experimental-storage-api).
+- `Xapi.Lrs`: setting `MaxDocumentBytes` below 1 throws `ArgumentOutOfRangeException`, like the other size limits.
 
 ### Fixed
 
