@@ -1,0 +1,40 @@
+- name: 0001 Product shape
+  href: 0001-product-shape.md
+- name: 0002 Target frameworks
+  href: 0002-target-frameworks.md
+- name: 0003 Serialization
+  href: 0003-serialization.md
+- name: 0004 Model shape
+  href: 0004-model-shape.md
+- name: 0005 xAPI version profiles
+  href: 0005-version-profiles.md
+- name: 0006 Validation and error model
+  href: 0006-validation-and-errors.md
+- name: 0007 Time and duration
+  href: 0007-time-and-duration.md
+- name: 0008 HTTP client
+  href: 0008-http-client.md
+- name: 0009 Outbox
+  href: 0009-outbox.md
+- name: 0010 LRS hosting
+  href: 0010-lrs-hosting.md
+- name: 0011 Storage
+  href: 0011-storage.md
+- name: 0012 Document concurrency
+  href: 0012-document-concurrency.md
+- name: 0013 Authentication
+  href: 0013-authentication.md
+- name: 0014 Observability
+  href: 0014-observability.md
+- name: 0015 Conformance gate
+  href: 0015-conformance-gate.md
+- name: 0016 Versioning and release
+  href: 0016-versioning-and-release.md
+- name: 0017 Public API tracking
+  href: 0017-public-api-tracking.md
+- name: 0018 License and attribution
+  href: 0018-license-and-attribution.md
+- name: 0019 Test infrastructure
+  href: 0019-test-infrastructure.md
+- name: 0020 Statement ordering key
+  href: 0020-statement-ordering-key.md

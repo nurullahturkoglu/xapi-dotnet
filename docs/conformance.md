@@ -32,14 +32,14 @@ when:
 - fewer tests passed than `minPassed`;
 - in strict mode, a test failed that is not on the allowlist.
 
-The thresholds are in [`eng/conformance/floor.json`](../eng/conformance/floor.json), per battery and
+The thresholds are in [`eng/conformance/floor.json`](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/eng/conformance/floor.json), per battery and
 database. They are ratchets: `minPassed` is only ever raised and `maxNeverRan` only ever lowered, in the pull
 request that makes more tests pass.
 
 The allowlists (`eng/conformance/known-failures-<version>.txt`) are empty. An entry may only be added for a
 defect in the suite itself, with a link to the upstream issue.
 
-[eng/conformance/README.md](../eng/conformance/README.md) describes the files and how to run a battery
+[eng/conformance/README.md](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/eng/conformance/README.md) describes the files and how to run a battery
 locally.
 
 ## Current results

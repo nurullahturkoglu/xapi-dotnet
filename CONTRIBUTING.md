@@ -109,6 +109,23 @@ dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion=<
 `Xapi.Core.0.0.0-preview.0.nupkg`. The project restores into `artifacts/package-tests/packages`, so delete
 `artifacts/` before packing the same version again.
 
+## Documentation site
+
+The site at https://nurullahturkoglu.github.io/xapi-dotnet/ is built with docfx from the guides in `docs/`
+and the XML documentation of the `net10.0` builds in `src/`. The configuration is `docs/docfx.json`, the
+navigation is in `docs/toc.yml` and `docs/adr/toc.yml`, and `docs/index.md` is the home page. The `Docs`
+workflow builds it on every pull request and deploys it from `main`. To build and preview it locally:
+
+```bash
+dotnet tool restore
+dotnet docfx docs/docfx.json --warningsAsErrors --serve
+```
+
+The site is written to `artifacts/docs-site` and served at http://localhost:8080. Leave out `--serve` to
+only build it. Broken links and unresolved `cref`s are warnings, and the workflow fails on any warning.
+Links from a guide to files outside `docs/` (samples, `eng/`) must be absolute GitHub URLs, because the
+site only contains `docs/`. A new guide also needs an entry in `docs/toc.yml`.
+
 ## Coding conventions
 
 - One public type per file. Every public member has XML documentation (missing docs fail the build).

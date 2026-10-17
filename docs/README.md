@@ -15,6 +15,11 @@
 The C# blocks in these guides and in the README are compiled and checked by `tests/Xapi.Documentation.Tests`
 (except in `outbox.md`, `signatures.md` and the TinCan.NET side of the migration guide).
 
+The same guides, with the API reference, are published as the
+[documentation site](https://nurullahturkoglu.github.io/xapi-dotnet/). `docfx.json`, `index.md` (its home
+page), the `toc.yml` files and `api-notes/` are its configuration; see
+[CONTRIBUTING.md](../CONTRIBUTING.md#documentation-site).
+
 ## Architecture decision records
 
 | ADR | Decision |
