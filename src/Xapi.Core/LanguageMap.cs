@@ -55,6 +55,27 @@ public sealed class LanguageMap : IReadOnlyDictionary<string, string>, IEquatabl
         _lookup = lookup;
     }
 
+    /// <summary>
+    /// Creates a map from the first <paramref name="count"/> entries without checking them again: the caller has
+    /// already checked that the tags are well-formed and distinct and that no value is null. Takes ownership of
+    /// <paramref name="entries"/>.
+    /// </summary>
+    internal static LanguageMap FromChecked(KeyValuePair<string, string>[] entries, int count)
+    {
+        if (count < entries.Length)
+        {
+            Array.Resize(ref entries, count);
+        }
+
+        var lookup = new Dictionary<string, string>(count, StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in entries)
+        {
+            lookup.Add(entry.Key, entry.Value);
+        }
+
+        return new LanguageMap(entries, lookup);
+    }
+
     /// <summary>The empty language map.</summary>
     public static LanguageMap Empty { get; } = new([], new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
 

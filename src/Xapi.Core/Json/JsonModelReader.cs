@@ -52,6 +52,11 @@ internal sealed class JsonModelReader
     private readonly XapiVersion _version;
     private readonly bool _strict;
 
+    // The value slots of the objects being read, one set per path depth. Reading is depth first, so the objects
+    // still in use are ancestors of the one being read and sit at smaller depths.
+    private ValueSlots?[] _slots = new ValueSlots?[8];
+    private long _objects;
+
     public JsonModelReader(XapiVersion version, XapiReadMode mode)
     {
         _version = version;
@@ -708,7 +713,8 @@ internal sealed class JsonModelReader
         }
 
         var start = Errors.Count;
-        var entries = new List<KeyValuePair<string, string>>();
+        var entries = new KeyValuePair<string, string>[element.GetPropertyCount()];
+        var count = 0;
         var seen = new SeenNames(StringComparer.OrdinalIgnoreCase);
         foreach (var property in element.EnumerateObject())
         {
@@ -743,11 +749,11 @@ internal sealed class JsonModelReader
 
             if (value is not null)
             {
-                entries.Add(new KeyValuePair<string, string>(name, value));
+                entries[count++] = new KeyValuePair<string, string>(name, value);
             }
         }
 
-        return Errors.Count > start ? null : new LanguageMap(entries);
+        return Errors.Count > start ? null : LanguageMap.FromChecked(entries, count);
     }
 
     private Extensions? ReadExtensions(JsonElement element, JsonPathRef path)
@@ -1065,7 +1071,14 @@ internal sealed class JsonModelReader
             return null;
         }
 
-        var values = new JsonElement[properties.Count];
+        var depth = path.Depth;
+        if (depth >= _slots.Length)
+        {
+            Array.Resize(ref _slots, depth * 2);
+        }
+
+        var slots = _slots[depth] ??= new ValueSlots();
+        var values = slots.Take(properties.Count, ++_objects);
         var seen = 0;
         HashSet<string>? otherNames = null;
         foreach (var property in element.EnumerateObject())
@@ -1111,7 +1124,7 @@ internal sealed class JsonModelReader
             values[index] = property.Value;
         }
 
-        return new PropertyBag(path, properties, values);
+        return new PropertyBag(path, properties, slots, _objects);
     }
 
     private void OtherProperty(string name, JsonPathRef path, PropertySet properties, HashSet<string> seen)
@@ -1205,22 +1218,49 @@ internal sealed class JsonModelReader
     {
         private readonly JsonPathRef _path;
         private readonly PropertySet _properties;
-        private readonly JsonElement[] _values;
+        private readonly ValueSlots _slots;
+        private readonly long _owner;
 
-        public PropertyBag(JsonPathRef path, PropertySet properties, JsonElement[] values)
+        public PropertyBag(JsonPathRef path, PropertySet properties, ValueSlots slots, long owner)
         {
             _path = path;
             _properties = properties;
-            _values = values;
+            _slots = slots;
+            _owner = owner;
         }
 
         public bool TryGet(string name, out JsonElement value)
         {
-            value = _values[_properties.IndexOf(name)];
+            value = _slots.Get(_owner, _properties.IndexOf(name));
             return value.ValueKind != JsonValueKind.Undefined;
         }
 
         public JsonPathRef PathOf(string name) => _path.Property(name);
+    }
+
+    private sealed class ValueSlots
+    {
+        // The largest PropertySet has 12 properties
+        private JsonElement[] _values = new JsonElement[12];
+        private long _owner;
+
+        public JsonElement[] Take(int count, long owner)
+        {
+            if (_values.Length < count)
+            {
+                _values = new JsonElement[count];
+            }
+            else
+            {
+                Array.Clear(_values, 0, count);
+            }
+
+            _owner = owner;
+            return _values;
+        }
+
+        public JsonElement Get(long owner, int index) =>
+            owner == _owner ? _values[index] : throw new InvalidOperationException("An object's values were read after the reader reused them.");
     }
 
     /// <summary>
