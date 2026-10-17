@@ -6,9 +6,9 @@
 Experience API (xAPI 2.0 / IEEE 9274.1.1, and 1.0.3) for .NET: models and validation, an async LRS client
 with a durable outbox, and a Learning Record Store you can embed in an ASP.NET Core app.
 
-**Status: preview.** `0.1.0-preview.1` is on [NuGet](https://www.nuget.org/packages?q=Xapi.&prerelease=true) and
+**Status: 0.x.** `0.2.0` is on [NuGet](https://www.nuget.org/packages?q=Xapi.) and
 the LRS image is on [ghcr.io](https://github.com/nurullahturkoglu/xapi-dotnet/pkgs/container/xapi-lrs). The API can
-change between previews; the [1.0 milestone](https://github.com/nurullahturkoglu/xapi-dotnet/milestone/2) lists
+change between minor versions until 1.0; the [1.0 milestone](https://github.com/nurullahturkoglu/xapi-dotnet/milestone/2) lists
 what is left. Documentation: https://nurullahturkoglu.github.io/xapi-dotnet/
 
 The 2.0 standard is IEEE 9274.1.1-2023, also adopted as ISO/IEC/IEEE 39274-1-1:2025.
@@ -34,7 +34,7 @@ IL2CPP players and in WebGL, where requests go through `UnityWebRequestHandler` 
 ## Quick start: send a statement
 
 ```bash
-dotnet add package Xapi.Client --prerelease
+dotnet add package Xapi.Client
 ```
 
 With `using Xapi;` and `using Xapi.Client;`:

@@ -6,7 +6,7 @@ Activities and About. The client negotiates the xAPI version with the LRS and va
 sends them.
 
 ```bash
-dotnet add package Xapi.Client --prerelease
+dotnet add package Xapi.Client
 ```
 
 ## Usage

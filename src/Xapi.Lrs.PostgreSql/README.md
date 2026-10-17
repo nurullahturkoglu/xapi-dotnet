@@ -4,7 +4,7 @@ PostgreSQL storage for the `Xapi.Lrs` Learning Record Store (xAPI 2.0, IEEE 9274
 `UsePostgreSql` and migrations. Use it when several app instances share one database.
 
 ```bash
-dotnet add package Xapi.Lrs.PostgreSql --prerelease
+dotnet add package Xapi.Lrs.PostgreSql
 ```
 
 ## Usage
