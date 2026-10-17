@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xapi.Lrs.Storage;
 using Xapi.Lrs.Tests.Infrastructure;
+using static Xapi.Lrs.Tests.Infrastructure.DocumentApi;
 using static Xapi.Lrs.Tests.Infrastructure.LrsApp;
 using static Xapi.Lrs.Tests.Infrastructure.StatementApi;
 
@@ -209,6 +210,31 @@ public class StorageTests(LrsHosts hosts)
         Assert.Equal(1, await context.StatementActivities.CountAsync(ct));
         Assert.Equal(1, await context.Activities.CountAsync(ct));
         Assert.Empty(await context.StatementRefs.ToListAsync(ct));
+    }
+
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task Values_too_long_for_a_database_index_get_400_not_500(TestDatabase database)
+    {
+        // PostgreSQL rejects index rows over about 2.7 KB; SQLite has no such limit. Random text, because
+        // PostgreSQL compresses index values that compress well.
+        var client = (await hosts.SharedAsync(database)).Client();
+        var text = string.Concat(Enumerable.Range(0, 125).Select(_ => Guid.NewGuid().ToString("N")));
+        var expected = database == TestDatabase.PostgreSql ? HttpStatusCode.BadRequest : HttpStatusCode.OK;
+
+        using (var activity = await client.PostStatementsAsync(Statement(activity: "http://example.com/" + text)))
+        {
+            Assert.Equal(expected, activity.StatusCode);
+        }
+
+        using (var mbox = await client.PostStatementsAsync(Statement(mbox: $"mailto:{text}@example.com")))
+        {
+            Assert.Equal(expected, mbox.StatusCode);
+        }
+
+        using var document = await client.PutDocAsync(DocTarget.New(DocumentResource.State).WithId(text), "x", "text/plain", ifNoneMatch: "*");
+        Assert.Equal(database == TestDatabase.PostgreSql ? HttpStatusCode.BadRequest : HttpStatusCode.NoContent, document.StatusCode);
+        Assert.Equal("2.0.0", Header(document, "X-Experience-API-Version"));
     }
 
     // Wraps the configured provider and fails SaveChanges once it holds the activity row of FailingIri.

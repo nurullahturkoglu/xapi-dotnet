@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -98,11 +99,31 @@ internal sealed partial class XapiRequestFilter(
             // Body too large (413) or a broken request stream, reported by the server while reading the body
             return XapiResults.Problem(exception.StatusCode, exception.Message);
         }
+        catch (Exception exception) when (IsProgramLimit(exception) && !http.Response.HasStarted)
+        {
+            // PostgreSQL cannot index a value of more than about 2.7 KB, so a very long IRI, agent identifier or
+            // document id fails the write. That is the client's input, not a server error.
+            return XapiResults.Problem(StatusCodes.Status400BadRequest, "A value in the request, such as an IRI, an agent identifier or a document id, is too long for this LRS to store.");
+        }
         catch (Exception exception) when (exception is not OperationCanceledException && !http.Response.HasStarted)
         {
             LogUnhandled(logger, exception, http.Request.Method, http.Request.Path);
             return XapiResults.Problem(StatusCodes.Status500InternalServerError, "The LRS could not process the request.");
         }
+    }
+
+    // SQLSTATE class 54, "program limit exceeded" (PostgreSQL 54000 for an index row over the btree maximum)
+    private static bool IsProgramLimit(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is DbException { SqlState: { } state } && state.StartsWith("54", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private string SupportedVersions => options.Value.EnableVersion1_0_3 ? "2.0.x or 1.0.x" : "2.0.x";
