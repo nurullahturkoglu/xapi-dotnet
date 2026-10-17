@@ -9,12 +9,12 @@ dotnet add package Xapi.Lrs.PostgreSql --prerelease
 
 ## Usage
 
-In `Program.cs`, with `using Xapi.Lrs;`:
+In `Program.cs`:
 
 <!-- snippet: lrs-postgresql -->
 ```csharp
 builder.Services
-    .AddXapiLrs(options => options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All))
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"))
     .UsePostgreSql(builder.Configuration.GetConnectionString("Lrs")!);
 ```
 

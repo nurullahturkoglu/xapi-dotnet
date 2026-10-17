@@ -10,24 +10,24 @@ dotnet add package Xapi.Lrs.Sqlite --prerelease
 
 ## Usage
 
-In `Program.cs`, with `using Xapi.Lrs;`:
+In `Program.cs`:
 
 <!-- snippet: host-lrs -->
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddXapiLrs(options =>
-    {
-        options.MigrateOnStartup = true;
-        options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All);
-    })
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"), options => options.MigrateOnStartup = true)
     .UseSqlite("Data Source=lrs.db");
 
 var app = builder.Build();
 app.MapXapiLrs("/xapi");
 app.Run();
 ```
+
+The credentials come from the `Lrs` section of the configuration, for example
+`"Lrs": { "Credentials": [ { "Key": "my-app", "Scopes": [ "all" ] } ] }` in `appsettings.json` with the secret in
+user secrets or `Lrs__Credentials__0__Secret`.
 
 ## Target frameworks
 
