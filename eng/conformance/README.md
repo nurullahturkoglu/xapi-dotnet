@@ -66,7 +66,7 @@ Remove an entry in the same pull request that makes the test pass. lrsql passes 
 
 `floor.json` is keyed by target, database and battery. `total` is the number of tests at the pinned suite commit and changes only when the commit changes. `minPassed` is a ratchet: it is only ever raised, and CI fails when the passed count drops below it.
 
-The `xapi-dotnet` rows have `strict: false`, so failures are reported but only a drop below `minPassed`, a short run or more than `maxNeverRan` tests that never ran fail the job. `maxNeverRan` is a ratchet in the other direction: it is only ever lowered, and the gate prints a note when it can be. It is 0 for every row once the LRS implements all resources. When a pull request makes more tests pass, set `minPassed` to the new passed count in the same pull request; the gate prints a note when it can be raised. Once a battery passes completely, set `minPassed` to `total` and `strict` to `true`.
+Every row, `xapi-dotnet` included, has `minPassed` equal to `total`, `maxNeverRan` 0 and `strict: true` since the LRS passed both batteries completely on 17 Oct 2026. Any failed test outside the allowlist, any test that did not run and any change in the test count fails the job. A known failure may only be allowlisted with a link to an upstream suite issue.
 
 ## Updating the pinned suite commit
 
