@@ -1,6 +1,6 @@
 {
     "name": "Xapi.Unity.Tests",
-    "references": [ "UnityEngine.TestRunner" ],
+    "references": [ "UnityEngine.TestRunner", "UnityEditor.TestRunner", "Xapi.Unity" ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "overrideReferences": true,

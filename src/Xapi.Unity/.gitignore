@@ -1,0 +1,2 @@
+# The repository's .gitignore is for .NET projects; Unity packages keep their .meta files.
+!*.meta

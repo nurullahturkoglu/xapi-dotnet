@@ -1,14 +1,16 @@
 # Unity
 
-`Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` use their `netstandard2.0` builds in Unity. This page says
-what has been tested, how to install the packages, and what to watch for.
+`Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` use their `netstandard2.0` builds in Unity. WebGL players
+also need `UnityWebRequestHandler` from the Unity package in `src/Xapi.Unity`. This page says what has been
+tested, how to install the packages, and what to watch for.
 
 ## What is tested
 
 The tests in [tests/Unity](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/tests/Unity) read,
 validate and write statements, generate UUIDv7 ids, send statements to an LRS and read them back, sign a
 statement with RSA and send it as multipart/mixed, check the 401 for wrong credentials, and queue statements in
-a `FileOutboxStore` while the LRS cannot be reached, then deliver them after the store is reopened.
+a `FileOutboxStore` while the LRS cannot be reached, then deliver them after the store is reopened. The client
+and outbox tests run with `HttpClientHandler` and with `UnityWebRequestHandler`.
 
 | Where | Scripting backend | Result |
 | --- | --- | --- |
@@ -16,12 +18,15 @@ a `FileOutboxStore` while the LRS cannot be reached, then deliver them after the
 | macOS player, Apple silicon | IL2CPP, Managed Stripping Level High | Passed |
 | Editor (play mode), Linux (CI) | Mono | Passed |
 | Linux player, x86-64 (CI) | IL2CPP | Passed |
-| WebGL | IL2CPP | Not tested yet |
+| WebGL, headless Chromium (local) | IL2CPP | Passed with `UnityWebRequestHandler` |
 | Android, iOS | IL2CPP | Not tested yet |
 
 Tested with Unity 6.3 LTS (6000.3.26f1), API Compatibility Level .NET Standard 2.1 (the default),
-NuGetForUnity 4.5.0 and the packages at 0.1.0-preview.1 from nuget.org. CI runs the Linux rows on every change to
-the three packages, with packages packed from the commit.
+NuGetForUnity 4.5.0 and the packages at 0.1.0-preview.1 from nuget.org. The WebGL row used packages packed from
+the repository, because the `FileOutboxStore` of 0.1.0-preview.1 never finishes opening an existing store in
+WebGL. CI runs the Linux rows on every change
+to the packages, with packages packed from the commit. WebGL runs locally for now
+([CONTRIBUTING.md](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/CONTRIBUTING.md#unity-tests)).
 
 The packages do not use reflection, so they need no `link.xml`: the player tests pass with the highest stripping
 level.
@@ -111,7 +116,36 @@ public class XapiTracker : MonoBehaviour
 
 ## WebGL
 
-Browsers do not give WebAssembly sockets, and `HttpClient` is not expected to work in a WebGL player. This is
-not tested yet. [ADR-0008](adr/0008-http-client.md) records the plan: an `HttpMessageHandler` that sends
-through `UnityWebRequest`, or a transport abstraction if a handler is not enough. Until then, use the packages
-on desktop and mobile players, and not in WebGL builds.
+Browsers do not give WebAssembly sockets, so `HttpClient` with its default handler sends nothing in a WebGL
+player: the request never starts and the task never completes. `UnityWebRequestHandler` sends the requests with
+`UnityWebRequest`, which hands them to the browser. It ships from version 0.2.0 on. Install it from this
+repository with the Package Manager (**Add package from git URL**), or in `Packages/manifest.json`:
+
+```json
+{
+  "dependencies": {
+    "io.github.nurullahturkoglu.xapi.unity": "https://github.com/nurullahturkoglu/xapi-dotnet.git?path=/src/Xapi.Unity#v0.2.0"
+  }
+}
+```
+
+Then give the client an `HttpClient` that uses it. Create the handler on the main thread, for example in
+`Awake`:
+
+```csharp
+http = new HttpClient(new UnityWebRequestHandler());
+```
+
+It works on the other platforms too, so one `HttpClient` can serve every build. Requests sent from another
+thread are posted to the main thread, which therefore must not block waiting for them.
+
+The LRS has to allow the page's origin with CORS, because the browser checks it. The `xapi-lrs` image does that
+with `LrsHost__AllowedOrigins` ([lrs.md](lrs.md)).
+
+A WebGL player has one thread and no thread pool. In the tests, `Task.Delay` and `Task.Run` never completed
+there. That changes how the outbox is used:
+
+- Do not start `RunAsync`, which waits with timers. Call `FlushAsync` from a coroutine instead, for example
+  every few seconds and after enqueueing.
+- The tests reopen a `FileOutboxStore` under `Application.temporaryCachePath` within one page. Whether a queue
+  under `Application.persistentDataPath` survives a page reload has not been tested.

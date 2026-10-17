@@ -57,6 +57,12 @@ jobs:
             echo "::error::No Xapi.Core.$version.nupkg. Packed: $(ls artifacts/packages)"
             exit 1
           fi
+          # The Unity package is installed from git, so its version is in its package.json
+          unity=$(jq -r .version src/Xapi.Unity/package.json)
+          if [ "$unity" != "$version" ]; then
+            echo "::error::src/Xapi.Unity/package.json has version $unity, the tag $version"
+            exit 1
+          fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Package tests

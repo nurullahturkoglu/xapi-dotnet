@@ -11,6 +11,7 @@ on:
       - src/Xapi.Core/**
       - src/Xapi.Client/**
       - src/Xapi.Client.Outbox/**
+      - src/Xapi.Unity/**
       - tests/Unity/**
       - Directory.Build.props
       - Directory.Build.targets
@@ -23,6 +24,7 @@ on:
       - src/Xapi.Core/**
       - src/Xapi.Client/**
       - src/Xapi.Client.Outbox/**
+      - src/Xapi.Unity/**
       - tests/Unity/**
       - Directory.Build.props
       - Directory.Build.targets

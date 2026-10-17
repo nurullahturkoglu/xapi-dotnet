@@ -246,8 +246,6 @@ without a precondition still work as before; Activity and Agent Profile PUTs nee
 - The `extended` query parameters and the raw `auth` header string of `RemoteLRS`. Use a `DelegatingHandler`.
 - Newtonsoft.Json types. Code that passes `JObject` around has to convert, for example by serializing to a
   string and parsing it with `System.Text.Json`.
-- Tested Unity WebGL support. The packages pass their tests in Unity IL2CPP players, but not yet in WebGL
-  ([unity.md](unity.md)).
 
 xapi-dotnet adds xAPI 2.0, attachments (`multipart/mixed`), signed statements
 ([signatures.md](signatures.md)), document merge (POST), the Agents and Activities

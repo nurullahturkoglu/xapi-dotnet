@@ -23,6 +23,14 @@
         "com.unity.modules.jsonserialize": "1.0.0"
       }
     },
+    "io.github.nurullahturkoglu.xapi.unity": {
+      "version": "file:../../../src/Xapi.Unity",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.modules.unitywebrequest": "1.0.0"
+      }
+    },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
       "depth": 0,

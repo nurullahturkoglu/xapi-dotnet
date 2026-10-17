@@ -141,16 +141,19 @@ shows on the package page. Keep it short, and mark its C# blocks as snippets lik
 ## Unity tests
 
 `tests/Unity` is a Unity 6.3 project whose play mode tests use `Xapi.Core`, `Xapi.Client` and
-`Xapi.Client.Outbox` as a Unity app would, installed by NuGetForUnity from `Assets/packages.config`. The
-`Unity` workflow packs the three packages, points the project at them with `tests/Unity/UseLocalPackages.cs`,
-and runs the tests in the editor and in a Linux IL2CPP player. It needs the `UNITY_LICENSE`, `UNITY_EMAIL` and
-`UNITY_PASSWORD` secrets and is skipped without them.
+`Xapi.Client.Outbox` as a Unity app would, installed by NuGetForUnity from `Assets/packages.config`, and the
+Unity package in `src/Xapi.Unity` from the checkout. The client and outbox tests run once with
+`HttpClientHandler` and once with `UnityWebRequestHandler`. The `Unity` workflow packs the three NuGet
+packages, points the project at them with `tests/Unity/UseLocalPackages.cs`, and runs the tests in the editor
+and in a Linux IL2CPP player. It needs the `UNITY_LICENSE`, `UNITY_EMAIL` and `UNITY_PASSWORD` secrets and is
+skipped without them. CI does not run the WebGL tests yet.
 
 To run the tests locally, install Unity 6000.3.26f1 with Mac (or Windows or Linux) Build Support (IL2CPP),
 start the LRS image, restore the packages and run the tests in the editor or in a player:
 
 ```bash
-docker run -d -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret ghcr.io/nurullahturkoglu/xapi-lrs:0.1.0-preview.1
+docker run -d -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret -e "LrsHost__AllowedOrigins=*" \
+  ghcr.io/nurullahturkoglu/xapi-lrs:0.1.0-preview.1
 cd tests/Unity
 dotnet tool restore
 dotnet nugetforunity restore .
@@ -165,6 +168,24 @@ test packages packed from your checkout instead of the versions on nuget.org, ru
 `UseLocalPackages.cs` fails until `Assets/packages.config` lists the new version: install the packages again
 from the NuGet window, or run `Unity -batchmode -quit -projectPath . -executeMethod XapiPackages.Install` with
 `XAPI_PACKAGE_VERSION` set to a published version.
+
+The WebGL tests need a browser. Unity opens the default one when it runs player tests, so build the player
+only and run it in headless Chromium instead.
+`XAPI_UNITY_PLAYER_PATH` makes a player test run build the player into that directory and quit
+(`Assets/Tests/BuildOnly.cs`); `ConsoleReporter.cs` writes the results to the browser console, and
+`tests/Unity/WebGL/run.mjs` serves the player, runs it and prints them. The LRS needs
+`LrsHost__AllowedOrigins`, as in the command above.
+
+```bash
+XAPI_UNITY_PLAYER_PATH=$PWD/Builds/WebGL Unity -batchmode -projectPath . -runTests -testPlatform WebGL
+cd WebGL
+npm ci
+npx playwright-core install chromium --only-shell
+node run.mjs ../Builds/WebGL
+```
+
+The build takes about 10 minutes. Tests marked `HttpClientHandler` are skipped in WebGL, because that handler
+cannot open connections in a browser.
 
 ## Dependency floors
 
@@ -229,15 +250,18 @@ and the pull request title becomes the commit message, so write it the same way.
 
 ## Releasing
 
-Releases are made by the maintainer. The version comes from the git tag through MinVer; no file holds it.
+Releases are made by the maintainer. The NuGet package version comes from the git tag through MinVer. The
+Unity package in `src/Xapi.Unity` is installed from git, so its `package.json` holds the version too.
 
 1. In a pull request, rename `[Unreleased]` in `CHANGELOG.md` to `[x.y.z] - YYYY-MM-DD`, add a new empty
    `[Unreleased]` section and the comparison links, and record measured results (test counts, conformance
    results, benchmarks where relevant). Until the first stable release there is no `latest` image, so also
-   move the `xapi-lrs:<version>` tags in the docs to the new version (`git grep 'xapi-lrs:'`). Merge it.
+   move the `xapi-lrs:<version>` tags in the docs to the new version (`git grep 'xapi-lrs:'`). Set `version`
+   in `src/Xapi.Unity/package.json` to the new version, and move the `#v<version>` in the Unity install URLs
+   (`git grep 'Xapi.Unity#v'`). Merge it.
 2. Tag the merge commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. Previews use
    `vX.Y.Z-preview.N`.
-3. The `Release` workflow builds, tests and packs, checks that the package version matches the tag and that
+3. The `Release` workflow builds, tests and packs, checks that the package versions match the tag and that
    `CHANGELOG.md` has a section for it, and attests build provenance for the nupkgs. It then waits for
    approval of the `nuget` environment.
 4. Review the run and approve the `nuget` environment in GitHub. The workflow then publishes to nuget.org
