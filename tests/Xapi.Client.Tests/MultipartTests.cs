@@ -108,7 +108,7 @@ public class MultipartTests
         var exception = await Assert.ThrowsAsync<XapiValidationException>(() => client.SaveStatementAsync(statement, cancellationToken: Ct));
 
         var error = Assert.Single(exception.Errors);
-        Assert.Equal("attachment.payload.missing", error.Code);
+        Assert.Equal(XapiErrorCodes.AttachmentPayloadMissing, error.Code);
         Assert.Equal("$.attachments[0]", error.Path);
         Assert.Empty(handler.Requests);
     }
@@ -136,7 +136,9 @@ public class MultipartTests
 
         var exception = await Assert.ThrowsAsync<XapiValidationException>(() => client.SaveStatementAsync(Samples.Statement(), [payload], cancellationToken: Ct));
 
-        Assert.Equal("attachment.payload.unreferenced", Assert.Single(exception.Errors).Code);
+        var error = Assert.Single(exception.Errors);
+        Assert.Equal(XapiErrorCodes.AttachmentPayloadUnreferenced, error.Code);
+        Assert.Equal("attachments[0]", error.Path);
         Assert.Empty(handler.Requests);
     }
 

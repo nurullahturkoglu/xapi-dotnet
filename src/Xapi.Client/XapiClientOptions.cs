@@ -28,8 +28,8 @@ public sealed class XapiClientOptions
     /// </summary>
     /// <remarks>
     /// The check also matches attachment data with the Statements: every Attachment without a <c>fileUrl</c> needs
-    /// an <see cref="AttachmentPayload"/> with the same SHA-2 (error code <c>attachment.payload.missing</c>), and
-    /// every payload must belong to an Attachment (<c>attachment.payload.unreferenced</c>).
+    /// an <see cref="AttachmentPayload"/> with the same SHA-2 (<see cref="XapiErrorCodes.AttachmentPayloadMissing"/>),
+    /// and every payload must belong to an Attachment (<see cref="XapiErrorCodes.AttachmentPayloadUnreferenced"/>).
     /// </remarks>
     public bool ValidateBeforeSend { get; set; } = true;
 }

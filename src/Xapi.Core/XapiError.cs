@@ -4,7 +4,9 @@ namespace Xapi;
 /// <param name="Code">A stable, lowercase dotted error code from <see cref="XapiErrorCodes"/>.</param>
 /// <param name="Path">
 /// A JSON path to the offending value, for example <c>$.context.contextAgents[0].relevantTypes</c>. Batch
-/// errors start with the index, for example <c>$[3].id</c>.
+/// errors start with the index, for example <c>$[3].id</c>. The one exception is
+/// <see cref="XapiErrorCodes.AttachmentPayloadUnreferenced"/>, whose path is an index into the attachment data
+/// sent with the Statements, such as <c>attachments[0]</c>, because that data is not part of the JSON.
 /// </param>
 /// <param name="Message">A human-readable English description. Not stable; match on <paramref name="Code"/>.</param>
 public sealed record XapiError(string Code, string Path, string Message)

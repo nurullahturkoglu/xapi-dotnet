@@ -27,6 +27,7 @@ listed under a "Breaking" heading.
 - A documentation site built with docfx from the guides and the XML docs, deployed to GitHub Pages from `main`: https://nurullahturkoglu.github.io/xapi-dotnet/
 - `Xapi.Lrs`: `MaxStatementsPerBatch` (1,000 by default) limits the statements in one POST; larger batches get 413 before they are parsed.
 - `Xapi.Lrs`: `MigrateXapiLrsDatabaseAsync()` on the app's `IServiceProvider` applies the database migrations as a separate deployment step, so migrating no longer needs the experimental `XapiLrsDbContext`.
+- `Xapi.Core`: `XapiErrorCodes.AttachmentPayloadMissing` and `XapiErrorCodes.AttachmentPayloadUnreferenced`, the codes `Xapi.Client` and `Xapi.Client.Outbox` report for attachment data. The values are unchanged. `XapiError.Path` documents that the path of `attachment.payload.unreferenced` is an index into the attachment data (`attachments[0]`), not a JSON path.
 - `Xapi.Lrs`: `XapiLrsOptions.Bind(configuration)` reads the options from a configuration section, credentials included (`Lrs:Credentials:0:Key`, `:Secret`, `:Scopes:0`). Scopes are xAPI or `XapiScope` names; an incomplete credential, an unknown scope or a value out of range fails with the configuration path in the message and never the secret. `samples/LrsHost` reads its options this way, so it accepts more than one credential. See [Options from configuration](docs/lrs.md#options-from-configuration).
 
 ### Changed

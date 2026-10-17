@@ -129,6 +129,21 @@ public static class XapiErrorCodes
     /// <summary>An attachment <c>length</c> below zero.</summary>
     public const string AttachmentLength = "attachment.length.negative";
 
+    /// <summary>
+    /// An Attachment without a <c>fileUrl</c> and without attachment data of the same SHA-2 to send with it
+    /// (4.1.3). Reported by <c>Xapi.Client</c> and <c>Xapi.Client.Outbox</c> before sending, not by the
+    /// statement validator; <see cref="XapiError.Path"/> is the Attachment, for example <c>$.attachments[0]</c>.
+    /// </summary>
+    public const string AttachmentPayloadMissing = "attachment.payload.missing";
+
+    /// <summary>
+    /// Attachment data that no Attachment of the Statements refers to by SHA-2 (4.1.3). Reported by
+    /// <c>Xapi.Client</c> before sending. The data is not part of the JSON, so <see cref="XapiError.Path"/> is its
+    /// index in the list of attachment data passed with the Statements, for example <c>attachments[0]</c>, without
+    /// the <c>$</c> of a JSON path.
+    /// </summary>
+    public const string AttachmentPayloadUnreferenced = "attachment.payload.unreferenced";
+
     /// <summary>Two statements in one batch share an <c>id</c> (4.1.6.1).</summary>
     public const string BatchDuplicateId = "batch.id.duplicate";
 }
