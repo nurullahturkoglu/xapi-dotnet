@@ -1,0 +1,19 @@
+# The repository's .gitignore is for .NET projects; Unity keeps .meta files and Packages/manifest.json.
+!*.meta
+!/Packages/*
+
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+*.csproj
+*.sln
+*.slnx
+
+# Restored by NuGetForUnity from Assets/packages.config when the project opens
+/Assets/Packages/
+/Assets/Packages.meta

@@ -26,8 +26,9 @@ The 2.0 standard is IEEE 9274.1.1-2023, also adopted as ISO/IEC/IEEE 39274-1-1:2
 The `netstandard2.0` builds are for .NET Framework 4.6.2 and later and for Unity. JSON is read and written by
 hand with `Utf8JsonReader` and `Utf8JsonWriter`, without reflection, so the `net10.0` builds of the Core,
 Client and Outbox packages can be trimmed and published with Native AOT; CI publishes
-`samples/ConsoleClient` that way and fails on any warning. Unity support will only be claimed after it has
-been tested on IL2CPP and WebGL.
+`samples/ConsoleClient` that way and fails on any warning. Under Unity they pass their tests in the editor and
+in IL2CPP players ([docs/unity.md](docs/unity.md)); WebGL is not tested yet, so Unity support is not claimed
+until it is.
 
 ## Quick start: send a statement
 

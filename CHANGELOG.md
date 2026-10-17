@@ -9,6 +9,10 @@ listed under a "Breaking" heading.
 
 ## [Unreleased]
 
+### Added
+
+- `tests/Unity`: Unity 6.3 tests of `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox`, installed with NuGetForUnity, that run in the editor and in IL2CPP players; CI runs them on Linux against the packages packed from the commit. See [docs/unity.md](docs/unity.md).
+
 ## [0.1.0-preview.1] - 2026-10-17
 
 The first preview of all six packages. The LRS passes both ADL conformance batteries in full on SQLite and PostgreSQL (xAPI 2.0.0: 1435 of 1435, 1.0.3: 1365 of 1365), and the solution has about 5,300 tests.
