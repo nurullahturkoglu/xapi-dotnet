@@ -58,11 +58,18 @@ public interface IStatementStore
     Task<Person> GetPersonAsync(Agent agent, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reads the attachment data stored with statements (<see cref="StatementRecord.Attachments"/>), for the
-    /// <c>attachments=true</c> response format.
+    /// Lists the attachment data stored with statements (<see cref="StatementRecord.Attachments"/>) without
+    /// reading it, for the <c>attachments=true</c> response format. The response is written from this list, and
+    /// the data of one attachment at a time is read with <see cref="GetAttachmentContentAsync"/>.
     /// </summary>
     /// <param name="statementIds">The statement ids.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The distinct attachment data of those statements, in no particular order.</returns>
-    Task<IReadOnlyList<AttachmentContent>> GetAttachmentsAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AttachmentSummary>> GetAttachmentSummariesAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Reads the attachment data stored under one SHA-2.</summary>
+    /// <param name="sha2">The SHA-2 as hexadecimal text, as in <see cref="AttachmentSummary.Sha2"/>.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The data, or <see langword="null"/> when none is stored under that hash.</returns>
+    Task<AttachmentContent?> GetAttachmentContentAsync(string sha2, CancellationToken cancellationToken = default);
 }

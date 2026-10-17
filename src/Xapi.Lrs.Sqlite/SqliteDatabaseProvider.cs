@@ -11,8 +11,6 @@ namespace Xapi.Lrs.Sqlite;
 
 internal sealed class SqliteDatabaseProvider(string connectionString) : XapiLrsDatabaseProvider
 {
-    private const int SqliteBusy = 5;
-    private const int SqliteLocked = 6;
     private const int SqliteConstraintPrimaryKey = 1555;
     private const int SqliteConstraintUnique = 2067;
 
@@ -36,12 +34,14 @@ internal sealed class SqliteDatabaseProvider(string connectionString) : XapiLrsD
         return await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken).ConfigureAwait(false);
     }
 
+    // SQLITE_BUSY and SQLITE_LOCKED are not retried. They only get here after the wait for the lock has run out
+    // (the 30-second busy timeout, and Microsoft.Data.Sqlite's own retries until the command timeout), and each of
+    // the store's retries would wait as long again: about 4 minutes before the request failed.
     public override bool IsTransientWriteFailure(Exception exception)
     {
         for (var current = exception; current is not null; current = current.InnerException)
         {
-            if (current is SqliteException { SqliteErrorCode: SqliteBusy or SqliteLocked } or
-                SqliteException { SqliteExtendedErrorCode: SqliteConstraintUnique or SqliteConstraintPrimaryKey })
+            if (current is SqliteException { SqliteExtendedErrorCode: SqliteConstraintUnique or SqliteConstraintPrimaryKey })
             {
                 return true;
             }

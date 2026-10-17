@@ -87,6 +87,37 @@ public class StatementQueryTests(LrsHosts hosts)
         Assert.Equal([ids[5]], Ids(await client.QueryAsync(Query(filter, ("related_agents", "false")))));
     }
 
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task A_statement_with_the_agent_in_several_places_is_counted_once_when_paging(TestDatabase database)
+    {
+        var client = (await hosts.SharedAsync(database)).Client();
+        var mbox = NewMbox();
+        var agent = new JsonObject { ["mbox"] = mbox };
+
+        // A Group and its member share the identifier, so the statement has two actor rows for it; the second
+        // statement also has the agent as instructor
+        JsonObject Shared()
+        {
+            var statement = Statement();
+            statement["actor"] = new JsonObject { ["objectType"] = "Group", ["mbox"] = mbox, ["member"] = new JsonArray(agent.DeepClone()) };
+            return statement;
+        }
+
+        var instructed = Shared();
+        instructed["context"] = new JsonObject { ["instructor"] = agent.DeepClone() };
+        var ids = await client.PutAllAsync(Shared(), instructed);
+
+        foreach (var related in new[] { "false", "true" })
+        {
+            var page = await client.QueryAsync(Query(("agent", agent.ToJsonString()), ("related_agents", related), ("limit", "1")));
+            Assert.Equal([ids[1]], Ids(page));
+            page = await client.MoreAsync(page);
+            Assert.Equal([ids[0]], Ids(page));
+            Assert.Equal("", More(page));
+        }
+    }
+
     [Fact]
     public async Task Related_agents_matches_the_authority()
     {

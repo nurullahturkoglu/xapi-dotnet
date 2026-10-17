@@ -145,6 +145,63 @@ public class AlternateRequestSyntaxTests(LrsHosts hosts)
     }
 
     [Fact]
+    public async Task A_form_over_MaxAlternateRequestBytes_gets_413_before_it_is_authenticated()
+    {
+        var app = await hosts.SharedAsync(TestDatabase.Sqlite);
+        var id = Guid.NewGuid();
+        var statement = Statement();
+
+        // About 1.1 MiB of form data against the default limit of 1 MiB; the statement alone fits MaxStatementBytes
+        statement["result"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["extensions"] = new System.Text.Json.Nodes.JsonObject { ["http://example.com/extensions/padding"] = new string('x', 1100 * 1024) },
+        };
+        var fields = new Dictionary<string, string>
+        {
+            ["statementId"] = id.ToString(),
+            ["content"] = statement.ToJsonString(),
+            ["Authorization"] = Authorization,
+            ["X-Experience-API-Version"] = "1.0.3",
+        };
+
+        using (var response = await PostFormAsync(app.Anonymous(version: null), "PUT", fields))
+        {
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+            Assert.Equal("1.0.3", Header(response, "X-Experience-API-Version"));
+        }
+
+        // The size is checked before the credentials in the form are
+        using (var response = await PostFormAsync(app.Anonymous(version: null), "PUT", new(fields) { ["Authorization"] = Basic(Credentials.All, "wrong").ToString() }))
+        {
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        }
+
+        // Without Content-Length, the limit is checked while reading
+        var request = new HttpRequestMessage(HttpMethod.Post, "/xapi/statements?method=PUT")
+        {
+            Content = new StreamContent(new MemoryStream(await Form(fields).ReadAsByteArrayAsync(TestContext.Current.CancellationToken))),
+        };
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded");
+        request.Headers.TransferEncodingChunked = true;
+        using (var chunked = await app.Anonymous(version: null).SendAsync(request, TestContext.Current.CancellationToken))
+        {
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, chunked.StatusCode);
+        }
+
+        using var get = await app.Client().GetStatementAsync(id);
+        Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
+    }
+
+    [Fact]
+    public void MaxAlternateRequestBytes_must_be_positive()
+    {
+        var options = new XapiLrsOptions();
+
+        Assert.Equal(1024 * 1024, options.MaxAlternateRequestBytes);
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxAlternateRequestBytes = 0);
+    }
+
+    [Fact]
     public async Task Without_1_0_3_support_the_alternate_syntax_is_rejected()
     {
         var app = await hosts.CreateAsync(TestDatabase.Sqlite, services => services.AddXapiLrs(o => o.EnableVersion1_0_3 = false));
