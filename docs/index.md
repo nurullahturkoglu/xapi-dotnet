@@ -51,18 +51,14 @@ statements through network outages and restarts.
 
 ## Host an LRS
 
-In an ASP.NET Core app with the `Xapi.Lrs.Sqlite` package and `using Xapi.Lrs;`:
+In an ASP.NET Core app with the `Xapi.Lrs.Sqlite` package:
 
 <!-- snippet: host-lrs -->
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddXapiLrs(options =>
-    {
-        options.MigrateOnStartup = true;
-        options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScopes.All);
-    })
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"), options => options.MigrateOnStartup = true)
     .UseSqlite("Data Source=lrs.db");
 
 var app = builder.Build();
@@ -70,8 +66,18 @@ app.MapXapiLrs("/xapi");
 app.Run();
 ```
 
-Clients then use `https://<your app>/xapi/` as their endpoint, with the key `my-app` and the secret from
-`Lrs:Secret`. The [LRS guide](lrs.md) covers scopes, delegated authentication, PostgreSQL, migrations and
+`appsettings.json` lists the credentials under `Lrs`, without their secrets:
+
+```json
+{
+  "Lrs": {
+    "Credentials": [ { "Key": "my-app", "Scopes": [ "all" ] } ]
+  }
+}
+```
+
+The secret comes from user secrets or the environment (`Lrs__Credentials__0__Secret`). Clients then use
+`https://<your app>/xapi/` as their endpoint, with the key `my-app` and that secret. The [LRS guide](lrs.md) covers scopes, delegated authentication, PostgreSQL, migrations and
 limits. The LRS passes the full ADL LRS Conformance Test Suite for both versions on both databases; see
 [Conformance](conformance.md).
 

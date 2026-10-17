@@ -41,13 +41,11 @@ on SQLite and PostgreSQL; see [conformance.md](conformance.md).
 builder.Services
     .AddXapiLrs(options =>
     {
-        options.Credentials.Add("course-player", builder.Configuration["Lrs:PlayerSecret"]!,
+        options.Credentials.Add("course-player", builder.Configuration["LrsSecrets:CoursePlayer"]!,
             XapiScopes.StatementsWrite, XapiScopes.StatementsReadMine, XapiScopes.State);
-        options.Credentials.Add("reporting", builder.Configuration["Lrs:ReportingSecret"]!, XapiScopes.AllRead);
-        options.Credentials.Add(new XapiLrsCredential("lms", builder.Configuration["Lrs:LmsSecret"]!, XapiScopes.All)
-        {
-            Authority = Agent.FromAccount(new Iri("https://lms.example.com/"), "lms"),
-        });
+        options.Credentials.Add("reporting", builder.Configuration["LrsSecrets:Reporting"]!, XapiScopes.AllRead);
+        options.Credentials.Add("lms", builder.Configuration["LrsSecrets:Lms"]!,
+            Agent.FromAccount(new Uri("https://lms.example.com/"), "lms"), XapiScopes.All);
 
         options.AuthorityHomePage = new Uri("https://lrs.example.com/");
         options.MaxDocumentBytes = 256 * 1024;
@@ -117,13 +115,13 @@ convert, with a message that names its key, and an empty `AuthorityHomePage` or 
 `AuthenticationScheme` is set to null or empty, which startup then rejects. Remove a value rather than set it to
 empty to keep the default.
 
-`AuthorityFactory` and a credential's `Authority` cannot come from configuration. Set them in code, in the
-callback that the overload takes as its second argument and runs after binding the section. Credentials added
-there join those from configuration, and a key that appears twice fails at startup. The section can also be
-bound with `builder.Services.Configure<XapiLrsOptions>(section)` before or after `AddXapiLrs`; that binds the
-same way but ignores keys it does not know. In an app that turns on the configuration binding source generator
-(`EnableConfigurationBindingGenerator`), use the `AddXapiLrs` overload instead: the generator cannot handle the
-`Authority` property of a credential, an `Agent`, and the app does not compile.
+Credentials from configuration get the default authority, an account on `AuthorityHomePage` named after the
+key. `AuthorityFactory` and a credential with another authority are set in code, in the callback that the
+overload takes as its second argument and runs after binding the section, for example
+`options.Credentials.Add("lms", secret, authority, XapiScopes.All)`. Credentials added there join those from
+configuration, and a key that appears twice fails at startup. The section can also be bound with
+`builder.Services.Configure<XapiLrsOptions>(section)` before or after `AddXapiLrs`, with the reflection-based or
+the source-generated configuration binder; that binds the same way but ignores keys it does not know.
 
 ## Storage
 
@@ -135,7 +133,7 @@ same way but ignores keys it does not know. In an app that turns on the configur
 <!-- snippet: lrs-postgresql -->
 ```csharp
 builder.Services
-    .AddXapiLrs(options => options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScopes.All))
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"))
     .UsePostgreSql(builder.Configuration.GetConnectionString("Lrs")!);
 ```
 
@@ -198,7 +196,8 @@ the configuration stops working on the other instances within a minute of the re
 | `all` | `All` | Everything. |
 
 The LRS sets the `authority` of every statement it stores. For a Basic credential it is an Agent with an
-account on `AuthorityHomePage` named after the key, unless the credential sets `Authority`.
+account on `AuthorityHomePage` named after the key, unless the credential was added in code with an authority
+(`Credentials.Add(key, secret, authority, scopes)`).
 
 ### Delegated authentication
 

@@ -206,7 +206,7 @@ namespace Xapi.Lrs
     {
         public XapiLrsCredential() { }
         public XapiLrsCredential(string key, string secret, params string[] scopes) { }
-        public Xapi.Agent? Authority { get; set; }
+        public XapiLrsCredential(string key, string secret, Xapi.Agent authority, params string[] scopes) { }
         public string? Key { get; set; }
         public System.Collections.Generic.IList<string> Scopes { get; }
         public string? Secret { get; set; }
@@ -215,6 +215,7 @@ namespace Xapi.Lrs
     {
         public XapiLrsCredentialList() { }
         public Xapi.Lrs.XapiLrsCredential Add(string key, string secret, params string[] scopes) { }
+        public Xapi.Lrs.XapiLrsCredential Add(string key, string secret, Xapi.Agent authority, params string[] scopes) { }
         protected override void InsertItem(int index, Xapi.Lrs.XapiLrsCredential item) { }
         protected override void SetItem(int index, Xapi.Lrs.XapiLrsCredential item) { }
     }

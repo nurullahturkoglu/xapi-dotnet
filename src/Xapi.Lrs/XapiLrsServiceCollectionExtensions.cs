@@ -93,8 +93,9 @@ public static class XapiLrsServiceCollectionExtensions
     /// which validation then reports. Remove a value rather than set it to empty to keep the default.
     /// </para>
     /// <para>
-    /// <see cref="XapiLrsOptions.AuthorityFactory"/> and <see cref="XapiLrsCredential.Authority"/> cannot be read
-    /// from configuration; set them in <paramref name="configure"/>, which runs after the section is bound.
+    /// <see cref="XapiLrsOptions.AuthorityFactory"/> and the authority of a credential cannot be read from
+    /// configuration; set them in <paramref name="configure"/>, which runs after the section is bound. Credentials
+    /// from configuration get the default authority, an account on <see cref="XapiLrsOptions.AuthorityHomePage"/>.
     /// </para>
     /// </remarks>
     /// <param name="services">The application's services.</param>

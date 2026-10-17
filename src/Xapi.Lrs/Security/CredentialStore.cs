@@ -67,7 +67,7 @@ internal sealed class CredentialStore(IDbContextFactory<XapiLrsDbContext> contex
             {
                 var key = credential.Key!;
                 var secret = credential.Secret!;
-                var authority = credential.Authority ?? Agent.FromAccount(authorityHomePage, key);
+                var authority = credential.GetAuthority() ?? Agent.FromAccount(authorityHomePage, key);
                 var scopes = string.Join(' ', credential.Scopes.Distinct(StringComparer.Ordinal));
                 var authorityPayload = XapiJson.SerializeActor(authority, XapiVersion.V2_0_0);
                 if (rows.Remove(key, out var row))

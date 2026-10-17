@@ -224,12 +224,12 @@ public class OptionsTests
             o =>
             {
                 o.MaxStatementsPerPage = 7;
-                o.Credentials.Add(new XapiLrsCredential("lms", Secret, XapiScopes.All) { Authority = lms });
+                o.Credentials.Add("lms", Secret, lms, XapiScopes.All);
             }));
 
         Assert.Equal(7, options.MaxStatementsPerPage);
         Assert.Equal(["player", "lms"], options.Credentials.Select(c => c.Key));
-        Assert.Same(lms, options.Credentials[1].Authority);
+        Assert.Same(lms, options.Credentials[1].GetAuthority());
     }
 
     [Fact]
@@ -264,7 +264,8 @@ public class OptionsTests
     // Misspelt keys: ErrorOnUnknownConfiguration names the key, not its value
     [InlineData("Lrs:Credentials:0:Secert", Secret, "'Secert'")]
     [InlineData("Lrs:MaxStatementPerPage", "20", "'MaxStatementPerPage'")]
-    [InlineData("Lrs:Credentials:0:Authority:account:name", "lms", "Agent")]
+    // The authority is set in code only
+    [InlineData("Lrs:Credentials:0:Authority:account:name", "lms", "'Authority'")]
     [InlineData("Lrs:MaxStatementBytes", "0", "MaxStatementBytes is 0")]
     [InlineData("Lrs:MaxStatementsPerPage", "many", "'Lrs:MaxStatementsPerPage'")]
     [InlineData("Lrs:EnableVersion1_0_3", "yes", "'Lrs:EnableVersion1_0_3'")]

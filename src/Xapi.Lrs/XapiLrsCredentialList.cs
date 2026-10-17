@@ -17,6 +17,19 @@ public sealed class XapiLrsCredentialList : Collection<XapiLrsCredential>
         return credential;
     }
 
+    /// <summary>Adds a credential that stores statements with the given authority.</summary>
+    /// <param name="key">The Basic user name.</param>
+    /// <param name="secret">The Basic password.</param>
+    /// <param name="authority">The authority put on statements stored with this credential.</param>
+    /// <param name="scopes">The scopes granted, as <see cref="XapiScopes"/> names. At least one is required.</param>
+    /// <returns>The added credential.</returns>
+    public XapiLrsCredential Add(string key, string secret, Agent authority, params string[] scopes)
+    {
+        var credential = new XapiLrsCredential(key, secret, authority, scopes);
+        Add(credential);
+        return credential;
+    }
+
     /// <inheritdoc/>
     protected override void InsertItem(int index, XapiLrsCredential item)
     {

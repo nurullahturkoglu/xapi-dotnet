@@ -17,13 +17,11 @@ internal static class LrsSnippets
         builder.Services
             .AddXapiLrs(options =>
             {
-                options.Credentials.Add("course-player", builder.Configuration["Lrs:PlayerSecret"]!,
+                options.Credentials.Add("course-player", builder.Configuration["LrsSecrets:CoursePlayer"]!,
                     XapiScopes.StatementsWrite, XapiScopes.StatementsReadMine, XapiScopes.State);
-                options.Credentials.Add("reporting", builder.Configuration["Lrs:ReportingSecret"]!, XapiScopes.AllRead);
-                options.Credentials.Add(new XapiLrsCredential("lms", builder.Configuration["Lrs:LmsSecret"]!, XapiScopes.All)
-                {
-                    Authority = Agent.FromAccount(new Iri("https://lms.example.com/"), "lms"),
-                });
+                options.Credentials.Add("reporting", builder.Configuration["LrsSecrets:Reporting"]!, XapiScopes.AllRead);
+                options.Credentials.Add("lms", builder.Configuration["LrsSecrets:Lms"]!,
+                    Agent.FromAccount(new Uri("https://lms.example.com/"), "lms"), XapiScopes.All);
 
                 options.AuthorityHomePage = new Uri("https://lrs.example.com/");
                 options.MaxDocumentBytes = 256 * 1024;
@@ -47,7 +45,7 @@ internal static class LrsSnippets
     {
         // snippet: lrs-postgresql
         builder.Services
-            .AddXapiLrs(options => options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScopes.All))
+            .AddXapiLrs(builder.Configuration.GetSection("Lrs"))
             .UsePostgreSql(builder.Configuration.GetConnectionString("Lrs")!);
         // end snippet
     }
