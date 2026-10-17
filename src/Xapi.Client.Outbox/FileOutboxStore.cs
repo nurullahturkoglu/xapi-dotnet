@@ -294,6 +294,7 @@ public sealed class FileOutboxStore : OutboxStore, IDisposable
         }
     }
 
+#if NET
     private static async Task<byte[]> ReadJournalAsync(string path, CancellationToken cancellationToken)
     {
         if (!File.Exists(path))
@@ -307,11 +308,7 @@ public sealed class FileOutboxStore : OutboxStore, IDisposable
         var read = 0;
         while (read < data.Length)
         {
-#if NET
             var count = await stream.ReadAsync(data.AsMemory(read), cancellationToken).ConfigureAwait(false);
-#else
-            var count = await stream.ReadAsync(data, read, data.Length - read, cancellationToken).ConfigureAwait(false);
-#endif
             if (count == 0)
             {
                 throw new EndOfStreamException($"{path} ended after {read} of {data.Length} bytes.");
@@ -322,6 +319,15 @@ public sealed class FileOutboxStore : OutboxStore, IDisposable
 
         return data;
     }
+#else
+    // Read synchronously: this build also runs in Unity, whose runtime reads files asynchronously on the thread
+    // pool, and a WebGL player has no thread pool to finish the read
+    private static Task<byte[]> ReadJournalAsync(string path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(File.Exists(path) ? File.ReadAllBytes(path) : []);
+    }
+#endif
 
     private void Load(byte[] data)
     {

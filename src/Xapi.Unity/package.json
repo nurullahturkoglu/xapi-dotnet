@@ -1,0 +1,16 @@
+{
+  "name": "io.github.nurullahturkoglu.xapi.unity",
+  "version": "0.2.0",
+  "displayName": "xAPI UnityWebRequest transport",
+  "description": "An HttpMessageHandler that sends HttpClient requests with UnityWebRequest, so Xapi.Client works in WebGL players. Install Xapi.Client itself with NuGetForUnity.",
+  "unity": "2021.3",
+  "license": "Apache-2.0",
+  "documentationUrl": "https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/unity.md",
+  "author": {
+    "name": "xapi-dotnet contributors",
+    "url": "https://github.com/nurullahturkoglu/xapi-dotnet"
+  },
+  "dependencies": {
+    "com.unity.modules.unitywebrequest": "1.0.0"
+  }
+}

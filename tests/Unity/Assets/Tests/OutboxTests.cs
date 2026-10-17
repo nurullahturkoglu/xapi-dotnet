@@ -11,13 +11,21 @@ using Xapi.Client.Outbox;
 
 namespace Xapi.Unity.Tests
 {
+    [TestFixture(Transport.HttpClientHandler)]
+    [TestFixture(Transport.UnityWebRequest)]
     public class OutboxTests
     {
+        private readonly Transport transport;
         private string directory = null!;
 
+        public OutboxTests(Transport transport) => this.transport = transport;
+
         [SetUp]
-        public void SetUp() =>
+        public void SetUp()
+        {
+            TestLrs.IgnoreIfUnsupported(transport);
             directory = Path.Combine(Application.temporaryCachePath, "xapi-outbox-" + Guid.NewGuid().ToString("N"));
+        }
 
         [TearDown]
         public void TearDown()
@@ -35,7 +43,7 @@ namespace Xapi.Unity.Tests
             var ids = new List<Guid>();
 
             // Nothing listens on port 1, so every request fails as it does without a network.
-            var offline = TestLrs.CreateClient(new Uri("http://127.0.0.1:1/xapi/"));
+            var offline = TestLrs.CreateClient(transport, new Uri("http://127.0.0.1:1/xapi/"));
             using (var store = await FileOutboxStore.OpenAsync(directory))
             using (var outbox = new StatementOutbox(offline, store))
             {
@@ -52,7 +60,7 @@ namespace Xapi.Unity.Tests
             }
 
             using (var store = await FileOutboxStore.OpenAsync(directory))
-            using (var outbox = new StatementOutbox(TestLrs.CreateClient(), store))
+            using (var outbox = new StatementOutbox(TestLrs.CreateClient(transport), store))
             {
                 Assert.That((await outbox.GetStatusAsync()).PendingCount, Is.EqualTo(3));
 
@@ -62,7 +70,7 @@ namespace Xapi.Unity.Tests
                 Assert.That(result.Status.PendingCount, Is.EqualTo(0));
             }
 
-            var page = await TestLrs.CreateClient().QueryStatementsAsync(
+            var page = await TestLrs.CreateClient(transport).QueryStatementsAsync(
                 new StatementQuery { Registration = registration, Ascending = true });
             Assert.That(page.Statements.Select(s => s.Id!.Value), Is.EqualTo(ids));
         });

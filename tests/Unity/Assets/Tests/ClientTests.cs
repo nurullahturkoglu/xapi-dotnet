@@ -8,12 +8,21 @@ using Xapi.Client;
 
 namespace Xapi.Unity.Tests
 {
+    [TestFixture(Transport.HttpClientHandler)]
+    [TestFixture(Transport.UnityWebRequest)]
     public class ClientTests
     {
+        private readonly Transport transport;
+
+        public ClientTests(Transport transport) => this.transport = transport;
+
+        [SetUp]
+        public void SetUp() => TestLrs.IgnoreIfUnsupported(transport);
+
         [UnityTest]
         public IEnumerator Statement_is_sent_and_read_back() => TestLrs.Run(async () =>
         {
-            var client = TestLrs.CreateClient();
+            var client = TestLrs.CreateClient(transport);
             var registration = UuidV7Generator.Shared.NewGuid();
             var statement = new Statement(
                 Agent.FromMbox("ada@example.com", "Ada Learner"),
@@ -41,7 +50,7 @@ namespace Xapi.Unity.Tests
         [UnityTest]
         public IEnumerator Signed_statement_is_accepted() => TestLrs.Run(async () =>
         {
-            var client = TestLrs.CreateClient();
+            var client = TestLrs.CreateClient(transport);
             var statement = new Statement(
                 Agent.FromMbox("ada@example.com"),
                 Verbs.Passed,
@@ -62,7 +71,7 @@ namespace Xapi.Unity.Tests
         [UnityTest]
         public IEnumerator Wrong_credentials_fail_with_401() => TestLrs.Run(async () =>
         {
-            var client = new XapiClient(TestLrs.Http, new XapiClientOptions
+            var client = new XapiClient(TestLrs.Http(transport), new XapiClientOptions
             {
                 Endpoint = TestLrs.Endpoint,
                 Credentials = XapiCredentials.Basic("unity_key", "wrong"),

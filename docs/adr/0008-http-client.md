@@ -35,3 +35,7 @@ minor version. For the same reason the outbox store is the abstract class `Outbo
   `XapiClient`; a method a test double does not override throws `InvalidOperationException`.
 - Risk: it is not yet verified that `HttpClient` with a custom handler works in Unity WebGL. A spike after
   the client milestone checks it; if it fails, an `IXapiTransport` is added in a minor version.
+  (Checked 2026-10-17: it works. `UnityWebRequestHandler` is in the Unity package in `src/Xapi.Unity`, and the
+  client and outbox tests pass with it in a WebGL player. One thing the handler has to do: complete its task
+  without the main thread's `SynchronizationContext`, or the caller's `ConfigureAwait(false)` continuation is
+  queued to a thread pool that WebGL does not have.)

@@ -204,7 +204,7 @@ so a custom store keeps compiling. The tests in
 ## Unity
 
 The tests in `tests/Unity` queue statements in a `FileOutboxStore` while the LRS cannot be reached and deliver
-them after the store is reopened, in the editor and in an IL2CPP player; [unity.md](unity.md) lists the
+them after the store is reopened, in the editor, in IL2CPP players and in WebGL; [unity.md](unity.md) lists the
 platforms. The package has no reflection, no dynamic code and no Microsoft.Extensions dependencies outside the
 net10.0 build.
 
@@ -214,4 +214,5 @@ net10.0 build.
   because mobile platforms may kill a suspended app without warning. Dispose the outbox and the store in
   `OnApplicationQuit`.
 - Events are usually raised on a thread-pool thread. Marshal to the main thread before touching Unity objects.
-- WebGL has no threads or synchronous file flush; the outbox is not tested there yet.
+- In WebGL, call `FlushAsync` from a coroutine instead of starting `RunAsync`, and send through
+  `UnityWebRequestHandler` ([unity.md](unity.md#webgl)).

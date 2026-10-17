@@ -12,7 +12,12 @@ listed under a "Breaking" heading.
 ### Added
 
 - `samples/LrsHost` and the `xapi-lrs` image: `LrsHost:AllowedOrigins` (`LrsHost__AllowedOrigins` in Docker) turns on CORS for the listed origins, so xAPI content in a browser on another origin can use the LRS. It is off by default.
-- `tests/Unity`: Unity 6.3 tests of `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox`, installed with NuGetForUnity, that run in the editor and in IL2CPP players; CI runs them on Linux against the packages packed from the commit. See [docs/unity.md](docs/unity.md).
+- `tests/Unity`: Unity 6.3 tests of `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox`, installed with NuGetForUnity, that run in the editor, in IL2CPP players and in WebGL; CI runs them on Linux against the packages packed from the commit, and `tests/Unity/WebGL` runs a WebGL build in headless Chromium. See [docs/unity.md](docs/unity.md).
+- A Unity package, `io.github.nurullahturkoglu.xapi.unity` in `src/Xapi.Unity`, installed from git: `UnityWebRequestHandler`, an `HttpMessageHandler` that sends requests with `UnityWebRequest`, so `XapiClient` works in WebGL players, where `HttpClient`'s default handler sends nothing.
+
+### Fixed
+
+- `FileOutboxStore.OpenAsync` never completed in Unity WebGL players when the store already had a journal, because the netstandard2.0 build read it with asynchronous file I/O, which needs the thread pool. That build now reads the journal synchronously; the net10.0 build is unchanged.
 
 ## [0.1.0-preview.1] - 2026-10-17
 

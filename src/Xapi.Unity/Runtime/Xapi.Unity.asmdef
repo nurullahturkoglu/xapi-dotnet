@@ -1,0 +1,6 @@
+{
+    "name": "Xapi.Unity",
+    "rootNamespace": "Xapi.Unity",
+    "references": [],
+    "autoReferenced": true
+}
