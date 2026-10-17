@@ -26,6 +26,16 @@ internal sealed class MetricRecorder : IDisposable
 
     public IReadOnlyList<RecordedMeasurement> All => [.. _measurements];
 
+    // True for a meter created with `new Meter(name)`, false for one from an IMeterFactory. Meter.Scope is new in
+    // System.Diagnostics.DiagnosticSource 8.0, and the net481 tests run against the 7.0 floor. They create no
+    // factory meters: the dependency injection tests are net10.0 only.
+    public static bool IsUnscoped(Meter meter) =>
+#if NET
+        meter.Scope is null;
+#else
+        true;
+#endif
+
     public List<RecordedMeasurement> Of(string instrument) => [.. _measurements.Where(m => m.Instrument == instrument)];
 
     // Sums the measurements of a counter by their tags, written as RecordedMeasurement.TagText

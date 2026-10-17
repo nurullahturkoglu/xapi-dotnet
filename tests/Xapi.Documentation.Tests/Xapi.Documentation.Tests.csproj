@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Keeps the C# code in README.md and docs/ compiling: each marked code block there must match a snippet region
-    in Snippets/ (see SnippetTests), and the regions are compiled here against the current API.
+    Keeps the C# code in README.md, docs/ and the package READMEs (src/*/README.md) compiling: each marked code block
+    there must match a snippet region in Snippets/ (see SnippetTests), and the regions are compiled here against the
+    current API.
   -->
 
   <PropertyGroup>

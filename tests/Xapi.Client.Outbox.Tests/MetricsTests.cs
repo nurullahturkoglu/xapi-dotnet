@@ -91,7 +91,7 @@ public sealed class MetricsTests : IDisposable
     public async Task Outbox_created_with_the_public_constructor_reports_on_the_shared_meter()
     {
         // Other tests' outboxes report on the shared meter too, so only this outbox's dead letter is looked for
-        using var shared = new MetricRecorder(i => i.Meter.Name == XapiClientDiagnostics.MeterName && i.Meter != _meter && i.Meter.Scope is null);
+        using var shared = new MetricRecorder(i => i.Meter.Name == XapiClientDiagnostics.MeterName && i.Meter != _meter && MetricRecorder.IsUnscoped(i.Meter));
         var lrs = new FakeLrs { Reject = _ => (HttpStatusCode)422 };
         await using var h = Harness.Create(lrs: lrs);
         await h.EnqueueAsync(1);

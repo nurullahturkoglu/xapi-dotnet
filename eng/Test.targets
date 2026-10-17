@@ -20,9 +20,17 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3.mtp-v2" />
-    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
     <!-- records and init in test code on the net481 target -->
     <PackageReference Include="PolySharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    Coverage is collected from the net10.0 runs only. On .NET Framework the coverage extension would load a newer
+    System.Text.Json and Microsoft.Bcl.AsyncInterfaces into the test process than the dependency floors in
+    Directory.Packages.props, and the net481 tests are there to run against those floors.
+  -->
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'">
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
   </ItemGroup>
 
   <ItemGroup>

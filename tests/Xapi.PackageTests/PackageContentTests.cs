@@ -24,6 +24,22 @@ public class PackageContentTests
         Assert.Contains("LICENSE", entries);
     }
 
+    // Each package ships its own short README, not the repository README
+    [Theory]
+    [InlineData("Xapi.Core")]
+    [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Client.Outbox")]
+    [InlineData("Xapi.Lrs")]
+    [InlineData("Xapi.Lrs.Sqlite")]
+    [InlineData("Xapi.Lrs.PostgreSql")]
+    public void Package_readme_is_the_package_own(string packageId)
+    {
+        using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
+        using var reader = new StreamReader(archive.GetEntry("README.md")!.Open());
+
+        Assert.Equal($"# {packageId}", reader.ReadLine());
+    }
+
     [Theory]
     [InlineData("Xapi.Core", "netstandard2.0")]
     [InlineData("Xapi.Core", "net10.0")]
@@ -155,6 +171,35 @@ public class PackageContentTests
                 ["Microsoft.Bcl.AsyncInterfaces", "System.Diagnostics.DiagnosticSource", "System.Text.Json", "Xapi.Core"],
                 declared.Keys.Order(StringComparer.Ordinal));
         }
+    }
+
+    // A netstandard2.0 dependency is a minimum version for every .NET Framework and Unity app, so it is the lowest
+    // version that has the APIs used and no known vulnerability, not the newest one
+    [Theory]
+    [InlineData("Xapi.Core")]
+    [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Client.Outbox")]
+    public void NetStandard_dependencies_are_the_floor_versions(string packageId)
+    {
+        using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
+        XDocument nuspec;
+        using (var stream = archive.GetEntry($"{packageId}.nuspec")!.Open())
+        {
+            nuspec = XDocument.Load(stream);
+        }
+
+        var group = nuspec.Descendants().Single(e => e.Name.LocalName == "group" && e.Attribute("targetFramework")?.Value == ".NETStandard2.0");
+        var dependencies = group.Elements()
+            .Where(e => e.Name.LocalName == "dependency" && !e.Attribute("id")!.Value.StartsWith("Xapi.", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.NotEmpty(dependencies);
+        Assert.All(dependencies, d =>
+        {
+            var id = d.Attribute("id")!.Value;
+            Assert.True(PackageUnderTest.DependencyFloors.TryGetValue(id, out var floor), $"{id} has no floor in Directory.Packages.props.");
+            Assert.Equal(floor, d.Attribute("version")?.Value);
+        });
     }
 
     // The providers bind to the experimental storage types of Xapi.Lrs, which can change in any release, so a
