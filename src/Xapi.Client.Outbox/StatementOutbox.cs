@@ -369,7 +369,7 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
             if (attachments[i].FileUrl is null)
             {
                 errors.Add(new XapiError(
-                    "attachment.payload.missing",
+                    XapiErrorCodes.AttachmentPayloadMissing,
                     $"{path}[{i}]",
                     "The outbox does not store attachment data, so only Attachments with a fileUrl can be queued. Send this Statement with IXapiClient.SaveStatementAsync."));
             }

@@ -6,10 +6,17 @@ namespace Xapi.Client;
 /// The raw data of an Attachment, sent or received as a part of a <c>multipart/mixed</c> request or response and
 /// matched to its Attachment object by SHA-2 (IEEE 9274.1.1, 4.1.3).
 /// </summary>
-/// <remarks>Equality compares the hash (ignoring case), the content type and the bytes.</remarks>
+/// <remarks>
+/// <para>Equality compares the hash (ignoring case), the content type and the bytes.</para>
+/// <para>
+/// The payload keeps the memory it is given; the bytes are not copied. Do not change them afterwards: the payload
+/// would then send data that no longer matches its <see cref="Sha2"/>, and an LRS that checks the hash would reject
+/// it. Copy the buffer first if it is reused.
+/// </para>
+/// </remarks>
 /// <param name="Sha2">The SHA-256 of <paramref name="Content"/> as hexadecimal text.</param>
 /// <param name="ContentType">The media type, sent as the part's <c>Content-Type</c>.</param>
-/// <param name="Content">The raw bytes.</param>
+/// <param name="Content">The raw bytes. Kept without a copy, so they must not change afterwards.</param>
 public sealed record AttachmentPayload(string Sha2, string ContentType, ReadOnlyMemory<byte> Content)
 {
     private readonly string _sha2 = Guard.NotEmpty(Sha2);
@@ -30,7 +37,7 @@ public sealed record AttachmentPayload(string Sha2, string ContentType, ReadOnly
     }
 
     /// <summary>Creates a payload and computes its SHA-2.</summary>
-    /// <param name="content">The raw bytes.</param>
+    /// <param name="content">The raw bytes. Kept without a copy, so they must not change afterwards.</param>
     /// <param name="contentType">The media type, for example <c>image/png</c>.</param>
     /// <returns>The payload.</returns>
     public static AttachmentPayload Create(ReadOnlyMemory<byte> content, string contentType) =>

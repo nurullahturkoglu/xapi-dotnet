@@ -90,7 +90,7 @@ public class EnqueueTests
         await h.Outbox.EnqueueAsync(withUrl, Ct);
 
         var error = Assert.Single(exception.Errors);
-        Assert.Equal("attachment.payload.missing", error.Code);
+        Assert.Equal(XapiErrorCodes.AttachmentPayloadMissing, error.Code);
         Assert.Equal("$.attachments[0]", error.Path);
         Assert.Equal(1, await h.Store.GetPendingCountAsync(Ct));
     }

@@ -222,7 +222,9 @@ foreach (var payload in page.Attachments)
 ```
 
 With `ValidateBeforeSend`, every Attachment without a `fileUrl` needs a payload with the same SHA-2 (error
-code `attachment.payload.missing`), and every payload needs an Attachment (`attachment.payload.unreferenced`).
+code `attachment.payload.missing`), and every payload needs an Attachment (`attachment.payload.unreferenced`,
+whose path is the payload's index in the list, such as `attachments[0]`, since payloads are not part of the
+JSON). Both codes are constants on `XapiErrorCodes`.
 Attachments that only point to a `fileUrl` need no payload. The client integration tests send and receive
 attachments against lrsql, and the LRS tests against `Xapi.Lrs`.
 

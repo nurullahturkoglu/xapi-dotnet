@@ -305,6 +305,8 @@ namespace Xapi
     public static class XapiErrorCodes
     {
         public const string AttachmentLength = "attachment.length.negative";
+        public const string AttachmentPayloadMissing = "attachment.payload.missing";
+        public const string AttachmentPayloadUnreferenced = "attachment.payload.unreferenced";
         public const string AuthorityGroup = "authority.group";
         public const string BatchDuplicateId = "batch.id.duplicate";
         public const string ContextPlatform = "context.platform.object";

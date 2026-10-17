@@ -11,6 +11,7 @@
     -->
     <NoWarn>$(NoWarn);CA1000;CA1707;CA1710</NoWarn>
     <Description>Experience API (xAPI 2.0, IEEE 9274.1.1, and 1.0.3) models for .NET: strict JSON reading and writing, validation, and statement comparison. Works on .NET Framework, Unity and modern .NET.</Description>
+    <PackageTags>$(PackageTags);statements;json;validation</PackageTags>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

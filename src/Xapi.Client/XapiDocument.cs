@@ -7,8 +7,14 @@ namespace Xapi.Client;
 /// A document of the State, Activity Profile or Agent Profile resource: arbitrary bytes with a content type, plus
 /// the ETag and Last-Modified time the LRS returned with it.
 /// </summary>
-/// <remarks>Equality compares the content type, the bytes, the ETag and the Last-Modified time.</remarks>
-/// <param name="Content">The document bytes.</param>
+/// <remarks>
+/// <para>Equality compares the content type, the bytes, the ETag and the Last-Modified time.</para>
+/// <para>
+/// The document keeps the memory it is given; the bytes are not copied. Do not change them while the document is
+/// in use, for example between creating it and sending it. Copy the buffer first if it is reused.
+/// </para>
+/// </remarks>
+/// <param name="Content">The document bytes. Kept without a copy, so they must not change afterwards.</param>
 /// <param name="ContentType">The media type, for example <c>application/json</c>.</param>
 public sealed record XapiDocument(ReadOnlyMemory<byte> Content, string ContentType)
 {

@@ -12,6 +12,7 @@
     -->
     <NoWarn>$(NoWarn);CA1707;XAPI0001</NoWarn>
     <Description>An embeddable xAPI Learning Record Store (xAPI 2.0, IEEE 9274.1.1, and 1.0.3) for ASP.NET Core: minimal API endpoints, version negotiation, Basic or delegated authentication, and EF Core storage. Add Xapi.Lrs.Sqlite or Xapi.Lrs.PostgreSql for a database.</Description>
+    <PackageTags>$(PackageTags);lrs;learning-record-store;aspnetcore</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

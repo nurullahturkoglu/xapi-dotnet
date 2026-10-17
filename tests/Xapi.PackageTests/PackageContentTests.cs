@@ -103,6 +103,29 @@ public class PackageContentTests
         Assert.Equal("https://github.com/nurullahturkoglu/xapi-dotnet", repository.Attribute("url")?.Value);
     }
 
+    [Theory]
+    [InlineData("Xapi.Core", "statements json validation")]
+    [InlineData("Xapi.Client", "client httpclient unity")]
+    [InlineData("Xapi.Client.Outbox", "outbox offline retry")]
+    [InlineData("Xapi.Lrs", "lrs learning-record-store aspnetcore")]
+    [InlineData("Xapi.Lrs.Sqlite", "lrs efcore sqlite")]
+    [InlineData("Xapi.Lrs.PostgreSql", "lrs efcore postgresql")]
+    public void Nuspec_has_the_shared_and_package_tags_and_links_the_changelog(string packageId, string packageTags)
+    {
+        using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
+        XDocument nuspec;
+        using (var stream = archive.GetEntry($"{packageId}.nuspec")!.Open())
+        {
+            nuspec = XDocument.Load(stream);
+        }
+
+        var metadata = nuspec.Root!.Elements().Single(e => e.Name.LocalName == "metadata");
+        string? Value(string name) => metadata.Elements().SingleOrDefault(e => e.Name.LocalName == name)?.Value;
+
+        Assert.Equal($"xapi experience-api tincan elearning ieee-9274 {packageTags}", Value("tags"));
+        Assert.Equal("https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/CHANGELOG.md", Value("releaseNotes"));
+    }
+
     // Microsoft.Extensions.Http is only for AddXapiClient, which exists on net10.0 alone (ADR-008)
     [Theory]
     [InlineData("netstandard2.0", false)]

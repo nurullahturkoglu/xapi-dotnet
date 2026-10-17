@@ -234,7 +234,7 @@ public sealed partial class XapiClient
             if (!referenced.Contains(attachments![i].Sha2))
             {
                 errors.Add(new XapiError(
-                    "attachment.payload.unreferenced",
+                    XapiErrorCodes.AttachmentPayloadUnreferenced,
                     $"attachments[{i}]",
                     $"No Attachment object has the SHA-2 {attachments[i].Sha2} of this attachment data."));
             }
@@ -253,7 +253,7 @@ public sealed partial class XapiClient
                 if (list[j].FileUrl is null && !available.Contains(list[j].Sha2))
                 {
                     errors.Add(new XapiError(
-                        "attachment.payload.missing",
+                        XapiErrorCodes.AttachmentPayloadMissing,
                         $"{listPath}[{j}]",
                         $"The Attachment has no fileUrl and no attachment data with the SHA-2 {list[j].Sha2} was given."));
                 }

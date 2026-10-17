@@ -5,6 +5,7 @@
     <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <RootNamespace>Xapi.Client.Outbox</RootNamespace>
     <Description>Durable outbox for Experience API (xAPI 2.0 and 1.0.3) statements on top of Xapi.Client: statements are stored on disk before they are sent, then delivered in order and in batches with retries, error classification, dead letters and idempotent resend. Works offline, on .NET Framework, Unity and modern .NET.</Description>
+    <PackageTags>$(PackageTags);outbox;offline;retry</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

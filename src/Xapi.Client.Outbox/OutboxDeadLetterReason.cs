@@ -1,6 +1,12 @@
 namespace Xapi.Client.Outbox;
 
 /// <summary>Why a Statement was moved to the dead letters instead of being delivered.</summary>
+/// <remarks>
+/// New reasons may be added in a minor release. Code that switches on this enum should handle values it does not
+/// know, for example with a default branch, rather than assume the list is complete. <see cref="Rejected"/> is the
+/// default value (0), so <c>default(OutboxDeadLetterReason)</c> is a valid reason. <see cref="FileOutboxStore"/>
+/// stores reasons by name, not by number.
+/// </remarks>
 public enum OutboxDeadLetterReason
 {
     /// <summary>

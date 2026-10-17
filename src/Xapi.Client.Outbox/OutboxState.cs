@@ -1,6 +1,10 @@
 namespace Xapi.Client.Outbox;
 
 /// <summary>What an outbox is doing.</summary>
+/// <remarks>
+/// New states may be added in a minor release. Code that switches on this enum should handle values it does not
+/// know, for example with a default branch, rather than assume the list is complete.
+/// </remarks>
 public enum OutboxState
 {
     /// <summary>Not sending, and nothing stops the next send.</summary>

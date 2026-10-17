@@ -12,7 +12,7 @@ public sealed class AttachmentContent
     /// <summary>Creates attachment content.</summary>
     /// <param name="sha2">The SHA-2 of <paramref name="content"/> as hexadecimal text; stored in lower case.</param>
     /// <param name="contentType">The media type of the data.</param>
-    /// <param name="content">The raw bytes.</param>
+    /// <param name="content">The raw bytes. Kept without a copy, so they must not change afterwards.</param>
     public AttachmentContent(string sha2, string contentType, ReadOnlyMemory<byte> content)
     {
         ArgumentException.ThrowIfNullOrEmpty(sha2);
