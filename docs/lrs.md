@@ -451,6 +451,12 @@ add `-e LrsHost__Database=postgres` and `-e LrsHost__ConnectionString=...`. `Lrs
 `-e Lrs__AuthorityHomePage=...`, `-e Lrs__Credentials__0__Key=...` and the other keys from
 [Options from configuration](#options-from-configuration) work too.
 
+The image sends no CORS headers unless `LrsHost__AllowedOrigins` lists the origins that browser content calls it
+from, separated by `;`, for example `-e "LrsHost__AllowedOrigins=https://course.example.com;http://localhost:5000"`.
+It then applies the policy from [Browser clients on other origins](#browser-clients-on-other-origins). An origin is
+a scheme, host and optional port with no path or trailing slash; the LRS refuses to start with any other value.
+`*` allows every origin, which suits local testing.
+
 ## Experimental storage API
 
 The storage interfaces are public so that the provider packages and custom stores can use them. They are
