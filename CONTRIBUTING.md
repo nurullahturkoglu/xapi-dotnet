@@ -221,7 +221,7 @@ Releases are made by the maintainer. The version comes from the git tag through 
 
 One-time setup, done by the maintainer: a trusted publishing policy on nuget.org for this repository,
 workflow `release.yml` and environment `nuget`; a `nuget` environment in the repository settings with a
-required reviewer; and a `NUGET_USER` secret holding the nuget.org user name. No API key is stored.
+required reviewer; and a `NUGET_USER` secret in that environment holding the nuget.org user name. No API key is stored.
 
 The first release creates the `xapi-lrs` package on ghcr.io as a private package. Once, after that release,
 open the package settings on GitHub (Packages, `xapi-lrs`, Package settings): change its visibility to
