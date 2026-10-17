@@ -47,9 +47,27 @@ public static class StatementSamples
             $"\"timestamp\":\"{timestamp:yyyy-MM-ddTHH:mm:ss.fffZ}\"}}");
     }
 
-    public static string Batch(int count, int start = 0)
+    // An instructor's comment on the statement `target`: its object is a StatementRef. About 0.5 KB.
+    public static string StatementRefStatement(Guid id, int n, Guid target)
+    {
+        var instructor = n % 20;
+        var timestamp = new DateTimeOffset(2026, 10, 1, 9, 0, 0, TimeSpan.Zero).AddSeconds(n);
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{{\"id\":\"{id}\",\"actor\":{{\"objectType\":\"Agent\",\"name\":\"Instructor {instructor}\",\"mbox\":\"mailto:instructor{instructor}@example.com\"}}," +
+            $"\"verb\":{{\"id\":\"http://adlnet.gov/expapi/verbs/commented\",\"display\":{{\"en-US\":\"commented\"}}}}," +
+            $"\"object\":{{\"objectType\":\"StatementRef\",\"id\":\"{target}\"}}," +
+            $"\"result\":{{\"response\":\"Good work, see the notes on the second question.\"}}," +
+            $"\"context\":{{\"registration\":\"{DeterministicGuid((n - 1) % 500)}\",\"language\":\"en-US\"}}," +
+            $"\"timestamp\":\"{timestamp:yyyy-MM-ddTHH:mm:ss.fffZ}\"}}");
+    }
+
+    // With statementRefEvery > 0, every statementRefEvery-th statement (n % statementRefEvery is the last value) is
+    // a StatementRefStatement that targets the statement before it, in place of the statement Statement(n) would
+    // give. The other statements are unchanged, so the verbs and learners they match stay the same.
+    public static string Batch(int count, int start = 0, int statementRefEvery = 0)
     {
         var builder = new StringBuilder("[");
+        var previous = Guid.Empty;
         for (var i = 0; i < count; i++)
         {
             if (i > 0)
@@ -57,7 +75,12 @@ public static class StatementSamples
                 builder.Append(',');
             }
 
-            builder.Append(Statement(Guid.NewGuid(), start + i));
+            var n = start + i;
+            var id = Guid.NewGuid();
+            builder.Append(statementRefEvery > 0 && i > 0 && n % statementRefEvery == statementRefEvery - 1
+                ? StatementRefStatement(id, n, previous)
+                : Statement(id, n));
+            previous = id;
         }
 
         return builder.Append(']').ToString();
