@@ -92,6 +92,15 @@ internal static class StatementEndpoints
             return bodyError!;
         }
 
+        // 413 rather than 400: the batch is valid, only larger than this LRS is configured to take, and the client
+        // can send it in parts (4.1.5 413 Content Too Large; XAPI-00328 rejects what exceeds a configured size
+        // limit with 413)
+        var maxBatch = options.Value.MaxStatementsPerBatch;
+        if (StatementBatch.IsLargerThan(body.Json, maxBatch))
+        {
+            return XapiResults.Problem(StatusCodes.Status413PayloadTooLarge, $"The batch has more than the {maxBatch} statements this LRS accepts in one request. Send it in smaller batches.");
+        }
+
         var parsed = XapiJson.ParseStatements(body.Json, request.Version);
         if (!parsed.IsSuccess)
         {

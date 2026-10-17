@@ -68,6 +68,7 @@ builder.Services
 | `MaxDocumentBytes` | 1 MiB | The largest State or profile document, also after a POST merge. Larger ones get 413. |
 | `MaxStatementBytes` | 16 MiB | The most statement JSON in one statement PUT or POST: the whole `application/json` body, or the first part of a `multipart/mixed` one. More gets 413. |
 | `MaxAttachmentBytes` | 50 MiB | The most attachment data in one statement request, all parts together. More gets 413. |
+| `MaxStatementsPerBatch` | 1,000 | The most statements in one statement POST. More gets 413. |
 | `MaxStatementsPerPage` | 100 | The page size of statement queries when the request asks for `limit=0` or no limit; larger limits are lowered to it. |
 | `MigrateOnStartup` | `false` | Apply database migrations when the host starts. |
 
@@ -250,6 +251,7 @@ clients you do not trust can write documents, consider mapping the LRS on a host
 | Document size | `MaxDocumentBytes` (1 MiB) | 413 |
 | Statement JSON per statement request | `MaxStatementBytes` (16 MiB) | 413 |
 | Attachment data per statement request | `MaxAttachmentBytes` (50 MiB) | 413 |
+| Statements per POST | `MaxStatementsPerBatch` (1,000) | 413 |
 | Statements per query page | `MaxStatementsPerPage` (100) | The page is shorter and has a `more` link. |
 | Request body of other requests | The server, for example Kestrel's `MaxRequestBodySize` (30,000,000 bytes by default) | 413 |
 
@@ -263,7 +265,14 @@ the server's own limit stays in place and the LRS still enforces its options whi
 
 A statement request is read into memory whole before it is validated, so one request can hold up to
 `MaxStatementBytes` plus `MaxAttachmentBytes` of memory, and more while it is parsed. Lower the limits if many
-large requests can arrive at once. There is no separate limit on the number of statements in a batch.
+large requests can arrive at once.
+
+`MaxStatementsPerBatch` is checked by counting the top-level array before anything is parsed. A batch is parsed
+in memory (about 20 times its JSON size) and stored in one transaction, during which SQLite lets no other write
+through; at 1,000 statements of about 1 KB that is roughly 20 MB and 0.3 to 0.5 seconds on the laptop in
+[benchmarks.md](benchmarks.md). The ADL conformance suite sends batches of at most 2 statements, and the outbox in
+`Xapi.Client.Outbox` sends 50 by default. The answer is 413 rather than 400 because the batch is valid, only
+larger than this LRS accepts; the client can send it in parts.
 
 Responses with `attachments=true` are written as they are read: the statements first, then the data of one
 attachment at a time, so a response holds at most one attachment in memory.

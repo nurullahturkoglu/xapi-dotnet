@@ -92,6 +92,27 @@ public sealed class XapiLrsOptions
     } = 50 * 1024 * 1024;
 
     /// <summary>
+    /// The most statements accepted in one statement POST; larger batches get 413 (IEEE 9274.1.1, 4.1.5) before
+    /// they are parsed. Defaults to 1,000.
+    /// </summary>
+    /// <remarks>
+    /// A batch is parsed in memory and stored in one transaction, so this bounds what one request costs whatever
+    /// its byte size: parsing takes about 20 times the JSON's size, and on SQLite every other write waits until
+    /// the batch is stored. A batch of 1,000 statements of 1 KB takes about 20 MB to parse and 0.3 to 0.5 seconds
+    /// to store (docs/benchmarks.md). Clients that send larger batches must split them.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
+    public int MaxStatementsPerBatch
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            field = value;
+        }
+    } = 1000;
+
+    /// <summary>
     /// The most statements one page of a statement query returns, and the page size when the request asks for
     /// <c>limit=0</c> or gives no limit. Larger limits are lowered to it. Defaults to 100.
     /// </summary>

@@ -88,6 +88,44 @@ public class RequestLimitTests(LrsHosts hosts)
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, multipart.StatusCode);
     }
 
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task Batches_over_MaxStatementsPerBatch_get_413_before_they_are_parsed(TestDatabase database)
+    {
+        var app = await hosts.CreateAsync(database, services => services.Configure<XapiLrsOptions>(o => o.MaxStatementsPerBatch = 3));
+        var client = app.Client();
+
+        using (var fits = await client.PostStatementsAsync(new JsonArray(Statement(), Statement(), Statement())))
+        {
+            Assert.Equal(HttpStatusCode.OK, fits.StatusCode);
+        }
+
+        var id = Guid.NewGuid();
+        using (var tooMany = await client.PostStatementsAsync(new JsonArray(Statement(id), Statement(), Statement(), Statement())))
+        {
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, tooMany.StatusCode);
+            Assert.Equal("2.0.0", Header(tooMany, "X-Experience-API-Version"));
+        }
+
+        using (var stored = await client.GetStatementAsync(id))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, stored.StatusCode);
+        }
+
+        // The statements are counted, not read: invalid ones get 413 too
+        using var invalid = await client.PostStatementsAsync(new JsonArray(Statement(), Statement(), Statement(), new JsonObject { ["verb"] = 1 }));
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, invalid.StatusCode);
+    }
+
+    [Fact]
+    public void MaxStatementsPerBatch_must_be_positive()
+    {
+        var options = new XapiLrsOptions();
+
+        Assert.Equal(1000, options.MaxStatementsPerBatch);
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxStatementsPerBatch = 0);
+    }
+
     [Fact]
     public void MaxStatementBytes_must_be_positive()
     {
