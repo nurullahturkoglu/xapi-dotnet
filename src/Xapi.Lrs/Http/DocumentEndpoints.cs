@@ -299,6 +299,7 @@ internal static class DocumentEndpoints
 
     private static async Task<byte[]?> ReadBodyAsync(HttpRequest request, long max, CancellationToken cancellationToken)
     {
+        RequestReading.SetBodyLimit(request.HttpContext, max);
         if (request.ContentLength > max)
         {
             return null;

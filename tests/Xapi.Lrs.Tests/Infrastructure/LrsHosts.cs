@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -47,12 +48,12 @@ public sealed class LrsHosts : IAsyncLifetime
         }
     }
 
-    public async Task<LrsApp> CreateAsync(TestDatabase database, Action<IServiceCollection>? configure = null, bool start = true)
+    public async Task<LrsApp> CreateAsync(TestDatabase database, Action<IServiceCollection>? configure = null, bool start = true, Action<KestrelServerOptions>? kestrel = null)
     {
         await _lock.WaitAsync(TestContext.Current.CancellationToken);
         try
         {
-            return await CreateLockedAsync(database, configure, start);
+            return await CreateLockedAsync(database, configure, start, kestrel);
         }
         finally
         {
@@ -60,7 +61,7 @@ public sealed class LrsHosts : IAsyncLifetime
         }
     }
 
-    private async Task<LrsApp> CreateLockedAsync(TestDatabase database, Action<IServiceCollection>? configure, bool start = true)
+    private async Task<LrsApp> CreateLockedAsync(TestDatabase database, Action<IServiceCollection>? configure, bool start = true, Action<KestrelServerOptions>? kestrel = null)
     {
         var name = "lrs" + Interlocked.Increment(ref _databases);
         string connectionString;
@@ -80,7 +81,7 @@ public sealed class LrsHosts : IAsyncLifetime
             connectionString = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString()) { Database = name }.ToString();
         }
 
-        var app = new LrsApp(database, connectionString, configure);
+        var app = new LrsApp(database, connectionString, configure, kestrel);
         _apps.Add(app);
         if (start)
         {
