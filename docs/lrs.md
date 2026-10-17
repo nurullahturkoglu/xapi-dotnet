@@ -223,6 +223,19 @@ The LRS logs when it applies migrations, unhandled exceptions (with the method a
 string), and, at Debug level, writes retried after a concurrent write. It does not emit metrics or traces yet.
 EF Core logs under the `Microsoft.EntityFrameworkCore` categories.
 
+## Running the sample LRS in Docker
+
+`samples/LrsHost/Dockerfile` builds the standalone sample into an image. It runs as a non-root user, stores
+SQLite data in the `/data` volume and does not start until a credential is given:
+
+```bash
+docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
+docker run -p 8080:8080 -e Lrs__Key=my-key -e Lrs__Secret=my-secret -v xapi-lrs-data:/data xapi-lrs
+```
+
+The LRS is then at `http://localhost:8080/xapi`. For PostgreSQL, add `-e Lrs__Database=postgres` and
+`-e Lrs__ConnectionString=...`. No image is published yet; build it from the repository.
+
 ## Experimental storage API
 
 The storage interfaces are public so that the provider packages and custom stores can use them, but they are

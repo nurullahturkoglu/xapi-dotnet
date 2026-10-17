@@ -52,8 +52,8 @@ both databases, as of commit `69bb8ff` on `main` (17 October 2026):
 | xAPI 1.0.3 | 1,365 | 1,365 | 1,365 | 0 |
 | xAPI 2.0.0 | 1,435 | 1,435 | 1,435 | 0 |
 
-Every `xapi-dotnet` row of `floor.json` now has `minPassed` equal to the total and `maxNeverRan` at 0, so a
-single failing or skipped test fails the pull request that causes it.
+Every `xapi-dotnet` row of `floor.json` now has `minPassed` equal to the total, `maxNeverRan` at 0 and
+`strict: true`, so a single failing or skipped test fails the pull request that causes it.
 
 ## Where the suite and the standard disagree
 
