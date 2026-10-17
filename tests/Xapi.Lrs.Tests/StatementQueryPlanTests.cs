@@ -65,23 +65,67 @@ public partial class StatementQueryPlanTests(LrsHosts hosts)
         }
     }
 
+    // A filter that matches a few statements, in a database with more StatementRefs than that: the matches
+    // through StatementRefs are read from the filter's index too, not from every xapi_statement_ref row
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task StatementRef_matches_of_a_filter_with_few_matches_are_read_from_its_index(TestDatabase database)
+    {
+        var recorder = new PlanRecorder();
+        var app = await hosts.CreateAsync(database, services => Interception.Add(services, new Explainer(recorder)));
+        var client = app.Client();
+        await StoreAsync(client);
+        var verb = NewIri("verbs");
+        var target = await client.PutAllAsync(Statement(verb: verb));
+        var reference = await client.PutAllAsync(Referencing(target[0]));
+        if (database == TestDatabase.PostgreSql)
+        {
+            await using var context = app.CreateDbContext();
+            await context.Database.ExecuteSqlRawAsync("ANALYZE", TestContext.Current.CancellationToken);
+        }
+
+        recorder.Plans.Clear();
+        Assert.Equal([reference[0], target[0]], Ids(await client.QueryAsync(Query(("verb", verb)))));
+
+        var plan = Assert.Single(recorder.Plans);
+        if (database == TestDatabase.Sqlite)
+        {
+            Assert.True(plan.FullScans.Count == 0, $"{string.Join("; ", plan.FullScans)}\n{plan.Text}");
+        }
+        else
+        {
+            Assert.True(plan.RowsRead < 50, $"{plan.RowsRead} rows read\n{plan.Text}");
+        }
+    }
+
     // Statements with a verb, an activity, a learner, an instructor, a parent and a registration each, so every
-    // filter has rows to walk past
+    // filter has rows to walk past. Every tenth is a StatementRef to the statement before it instead.
     private static async Task StoreAsync(HttpClient client)
     {
         for (var start = 0; start < Stored; start += 100)
         {
             var batch = new JsonArray();
+            var previous = Guid.Empty;
             for (var n = start; n < start + 100; n++)
             {
-                var statement = Statement(activity: $"http://example.com/activities/{n % 40}", mbox: $"mailto:learner{n % 50}@example.com");
-                statement["context"] = new JsonObject
+                var id = Guid.NewGuid();
+                if (n % 10 == 9)
                 {
-                    ["registration"] = Guid.NewGuid().ToString(),
-                    ["instructor"] = new JsonObject { ["mbox"] = "mailto:instructor@example.com" },
-                    ["contextActivities"] = new JsonObject { ["parent"] = new JsonArray(new JsonObject { ["id"] = "http://example.com/course" }) },
-                };
-                batch.Add(statement);
+                    batch.Add(Referencing(previous, id));
+                }
+                else
+                {
+                    var statement = Statement(id, activity: $"http://example.com/activities/{n % 40}", mbox: $"mailto:learner{n % 50}@example.com");
+                    statement["context"] = new JsonObject
+                    {
+                        ["registration"] = Guid.NewGuid().ToString(),
+                        ["instructor"] = new JsonObject { ["mbox"] = "mailto:instructor@example.com" },
+                        ["contextActivities"] = new JsonObject { ["parent"] = new JsonArray(new JsonObject { ["id"] = "http://example.com/course" }) },
+                    };
+                    batch.Add(statement);
+                }
+
+                previous = id;
             }
 
             using var response = await client.PostStatementsAsync(batch);
@@ -101,6 +145,11 @@ public partial class StatementQueryPlanTests(LrsHosts hosts)
     {
         // The tables a filter may only read through an index range
         private static readonly string[] Guarded = ["xapi_statement", "xapi_statement_actor", "xapi_statement_activity"];
+
+        // On SQLite also xapi_statement_ref: every filter here matches fewer statements than there are StatementRefs,
+        // and the store then reads the StatementRef matches from the filter's index (StatementRefMatchesAsync).
+        // PostgreSQL chooses from its statistics and may read the 100 StatementRef rows instead.
+        private static readonly string[] ScanGuarded = [.. Guarded, "xapi_statement_ref"];
 
         public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
             DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
@@ -130,7 +179,7 @@ public partial class StatementQueryPlanTests(LrsHosts hosts)
             }
 
             var guardedAliases = TableAlias().Matches(command.CommandText)
-                .Where(m => Guarded.Contains(m.Groups["table"].Value))
+                .Where(m => ScanGuarded.Contains(m.Groups["table"].Value))
                 .Select(m => m.Groups["alias"].Value)
                 .ToHashSet();
             var fullScans = details.Where(d => ScanOf().Match(d) is { Success: true } scan && guardedAliases.Contains(scan.Groups["alias"].Value)).ToList();

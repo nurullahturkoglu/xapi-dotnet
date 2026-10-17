@@ -13,6 +13,13 @@ internal sealed partial class EfStatementStore(
 {
     private const int MaxAttempts = 8;
 
+    // On SQLite, how far the xapi_statement_ref rows of a query are counted to choose where its StatementRef matches
+    // start (StatementRefMatchesAsync). Counting reads an index only, about 0.3 ms for 10,000 rows.
+    private const int MaxStatementRefsCounted = 10_000;
+
+    // DatabaseFacade.ProviderName of Microsoft.EntityFrameworkCore.Sqlite, which this assembly does not reference
+    private const string SqliteProviderName = "Microsoft.EntityFrameworkCore.Sqlite";
+
     private static readonly string VoidedVerb = Verbs.VoidedId.Value;
 
     public async Task<StatementStoreResult> StoreAsync(IReadOnlyList<StatementRecord> statements, bool updateDefinitions, CancellationToken cancellationToken = default)
@@ -83,7 +90,7 @@ internal sealed partial class EfStatementStore(
             var conditions = Conditions(context, filter, bounds);
             if (conditions.Count > 0)
             {
-                var candidates = Candidates(context, filter, visible, conditions, bounds, take);
+                var candidates = await CandidatesAsync(context, filter, visible, conditions, bounds, take, cancellationToken).ConfigureAwait(false);
                 query = context.Statements.AsNoTracking().Where(s => candidates.Contains(s.Pk));
             }
 
@@ -205,29 +212,89 @@ internal sealed partial class EfStatementStore(
     // read in key order and stops once it has a page, so a filter costs about a page of index entries whether it
     // matches most statements or none. One condition such as "verb = x OR the StatementRef target has verb x"
     // would instead make the database walk every statement in key order and test it.
-    private static IQueryable<Guid> Candidates(
+    private static async Task<IQueryable<Guid>> CandidatesAsync(
         XapiLrsDbContext context,
         StatementFilter filter,
         IQueryable<StatementEntity> visible,
         List<Condition> conditions,
         List<Expression<Func<Guid, bool>>> bounds,
-        int take)
+        int take,
+        CancellationToken cancellationToken)
     {
         // The first condition is read from its index; the others are tested on the statements it finds
         var driver = conditions[0];
         var rows = conditions.Skip(1).Aggregate(visible, (query, condition) => query.Where(condition.Match));
         var ranges = driver.Ranges(rows).Select(keys => First(keys, filter.Ascending, take * driver.RowsPerStatement)).ToList();
 
-        // 4.1.6.1 "Filter Conditions for StatementRefs": a statement also matches when a statement it targets
-        // matches, recursively (xapi_statement_ref holds every id reached), and voided targets count
-        // (4.1.6.1 "Voided Statements": statements targeting a voided statement are returned)
-        var targets = context.Statements.Where(conditions.Select(c => c.Match).Aggregate(And));
-        var ancestors = Within(context.StatementRefs, r => r.AncestorPk, bounds)
-            .Where(r => targets.Any(t => t.StatementId == r.DescendantId))
-            .Select(r => r.AncestorPk);
-        ranges.Add(First(visible.Where(s => ancestors.Contains(s.Pk)).Select(s => s.Pk), filter.Ascending, take));
+        if (await StatementRefMatchesAsync(context, filter, conditions, bounds, cancellationToken).ConfigureAwait(false) is { } ancestors)
+        {
+            ranges.Add(First(visible.Where(s => ancestors.Contains(s.Pk)).Select(s => s.Pk), filter.Ascending, take));
+        }
 
         return ranges.Aggregate(Queryable.Concat);
+    }
+
+    // 4.1.6.1 "Filter Conditions for StatementRefs": a statement also matches when a statement it targets matches,
+    // recursively (xapi_statement_ref holds every id reached), and voided targets count (4.1.6.1 "Voided
+    // Statements": statements targeting a voided statement are returned). The keys of those statements within the
+    // bounds, or null when there cannot be any.
+    //
+    // Unlike the other ranges this one cannot stop after a page, because targets are not in the order of the
+    // statements that reach them. It can start from either side: from the xapi_statement_ref rows within the
+    // bounds, testing the target of each, or from the statements that match the filters, read from their indexes,
+    // looking up the rows that reach each (ix_xapi_statement_ref_descendant_id). Each costs a lookup per row it
+    // starts from, so the smaller side should go first: without StatementRefs or for a verb most statements have,
+    // the rows; for a learner, a registration or a verb no statement has, the matches. PostgreSQL chooses from its
+    // statistics. SQLite has none unless ANALYZE has run and always starts from the rows, so there the rows are
+    // counted first (up to MaxStatementRefsCounted), then the matches up to that number, and the smaller side goes
+    // first. The counts only choose the plan; both plans return the same keys.
+    private static async Task<IQueryable<Guid>?> StatementRefMatchesAsync(
+        XapiLrsDbContext context,
+        StatementFilter filter,
+        List<Condition> conditions,
+        List<Expression<Func<Guid, bool>>> bounds,
+        CancellationToken cancellationToken)
+    {
+        var references = Within(context.StatementRefs, r => r.AncestorPk, bounds);
+        var targets = context.Statements.Where(conditions.Select(c => c.Match).Aggregate(And));
+        var fromReferences = references
+            .Where(r => targets.Any(t => t.StatementId == r.DescendantId))
+            .Select(r => r.AncestorPk);
+        if (context.Database.ProviderName != SqliteProviderName)
+        {
+            return fromReferences;
+        }
+
+        // The counts and the page share one connection
+        await context.Database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var referenceCount = await First(references.Select(r => r.AncestorPk), filter.Ascending, MaxStatementRefsCounted)
+            .CountAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (referenceCount == 0)
+        {
+            return null;
+        }
+
+        // The bounds apply to the statement returned, not to its target
+        var targetConditions = Conditions(context, filter, []);
+        var targetRows = targetConditions.Skip(1).Aggregate(context.Statements.AsQueryable(), (query, condition) => query.Where(condition.Match));
+        var targetRanges = targetConditions[0].Ranges(targetRows).ToList();
+        var targetCount = await targetRanges.Select(keys => First(keys, filter.Ascending, referenceCount)).Aggregate(Queryable.Concat)
+            .CountAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (targetCount == 0)
+        {
+            return null;
+        }
+
+        if (targetCount >= referenceCount)
+        {
+            return fromReferences;
+        }
+
+        return targetRanges.Aggregate(Queryable.Concat)
+            .Join(context.Statements, k => k, t => t.Pk, (_, t) => t.StatementId)
+            .Join(references, id => id, r => r.DescendantId, (_, r) => r.AncestorPk);
     }
 
     private static IQueryable<Guid> First(IQueryable<Guid> keys, bool ascending, int take) =>

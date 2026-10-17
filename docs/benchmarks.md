@@ -117,13 +117,61 @@ with other builds and tests running.
 
 Each filter reads its own index: the verb filter the statements' verb index, `agent` and `activity` the
 index of the statements that mention them (one range per place in the statement that the filter covers,
-such as actor, object or context), and the matches through StatementRefs a separate range, all newest first
-and only as far as one page. So the time follows the page size and not the number of statements stored.
+such as actor, object or context), all newest first and only as far as one page. So the time follows the
+page size and not the number of statements stored. The matches through StatementRefs are a separate range
+that cannot stop after a page; see [below](#statement-queries-with-statementrefs).
 
 Until it read these ranges, the query walked the statements newest first and tested each one until it
 filled the page, so the rows with few matches read the whole table. In a run of the same benchmarks just before this one, the
 verb with no statements took 70 ms on SQLite and 52 ms on PostgreSQL at 100,000 statements, and the
 `related_agents` query 581 ms and 15 ms.
+
+### Statement queries with StatementRefs
+
+The same requests with every tenth statement replaced by a StatementRef statement: an instructor's comment
+whose object is a StatementRef to the statement before it (`StatementRefPercent = 10`). The other statements
+and the matches of each filter are the same as above; no filter here matches through a StatementRef. Run on
+17 October 2026 from 06:23 to 06:45 (UTC+3); the "before" column is the previous version of the store, from a
+run at 06:13 to 06:23 with the same benchmarks at 100,000 statements. The rows without StatementRefs in the
+06:23 run were within noise of the table above (at 100,000 statements on SQLite: 0.88, 0.91, 0.20 and 2.0 ms).
+
+| Request | Stored | SQLite | SQLite before | PostgreSQL | PostgreSQL before |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GET one statement by `statementId` | 10,000 | 0.17 ms | | 0.43 ms | |
+| GET `verb=...&limit=100`, first page of 1,000 matches | 10,000 | 2.9 ms | | 2.6 ms | |
+| GET the `more` link of that page | 10,000 | 2.6 ms | | 3.1 ms | |
+| GET `verb=...&limit=100` for a verb no statement has | 10,000 | 0.26 ms | | 0.80 ms | |
+| GET `agent=...&related_agents=true&limit=100`, 20 matches | 10,000 | 2.0 ms | | 4.8 ms | |
+| GET one statement by `statementId` | 100,000 | 0.12 ms | 0.12 ms | 0.41 ms | 0.41 ms |
+| GET `verb=...&limit=100`, first page of 10,000 matches | 100,000 | 25 ms | 24 ms | 17 ms | 17 ms |
+| GET the `more` link of that page | 100,000 | 25 ms | 24 ms | 11 ms | 17 ms |
+| GET `verb=...&limit=100` for a verb no statement has | 100,000 | 0.42 ms | 23 ms | 0.82 ms | 0.92 ms |
+| GET `agent=...&related_agents=true&limit=100`, first page of 200 matches | 100,000 | 4.1 ms | 65 ms | 5.7 ms | 6.6 ms |
+
+The matches through StatementRefs are the one range that cannot stop after a page: the statements a
+StatementRef targets are not in the order of the statements that target them. The range can start from
+either side. From the `xapi_statement_ref` rows, it reads each one and looks up its target; from the filter,
+it reads the statements that match from their index and looks up the rows that reach each one
+(`ix_xapi_statement_ref_descendant_id`). Either costs about one lookup per row it starts from, so the smaller
+side should go first.
+
+PostgreSQL chooses from its statistics. With `EXPLAIN ANALYZE` on this data it started from the filter for
+the verb with no statements (6 buffers, 0.16 ms) and for the `related_agents` query (200 lookups in
+`ix_xapi_statement_ref_descendant_id`), and its SQL is unchanged; the `more` row differing between the two
+runs is noise. SQLite keeps no statistics unless `ANALYZE` has run, and its plan always started from the rows:
+`SCAN` of `xapi_statement_ref` with a `ux_xapi_statement_statement_id` lookup per row, 10,000 lookups for
+every filtered query whatever it matched. That is the 23 ms and 65 ms in the "before" column. On SQLite the
+store now counts the rows within the query's bounds (up to 10,000, about 0.3 ms) and then the filter's
+matches up to that number, and starts from the smaller side; when either count is 0 the range is left out.
+
+Where both sides are large the counts cannot help: the verb that matches 10,000 statements, with 10,000
+StatementRefs, costs 10,000 lookups from either side, 25 ms on SQLite and 17 ms on PostgreSQL. Those lookups
+read the statement rows, payload included: in the `sqlite3` shell on this database, counting the verb's
+10,000 index entries took 0.5 ms and reading their statement ids 15 ms. An index that covers the statement
+id, key, verb and registration would make the lookups index-only but would not change how the time grows;
+only StatementRef matches stored at write time would make it follow the page size. Neither was added, so
+this case still costs about 2.5 μs per StatementRef within the query's time bounds on SQLite. A tenth of all
+statements is a deliberately high share of StatementRefs.
 
 ### Concurrent writers
 
@@ -165,8 +213,9 @@ per class, plus `lrs-retries.md` with the retry counts. Useful variations:
 - `--filter '*StatementJson*'`, `'*Enqueue*'`, `'*Lrs*'` or `'*ConcurrentWriter*'` runs one group, and
   `'*StatementQuery*'` only the query rows.
 - `--list flat` lists the benchmarks.
-- Without `--job`, every benchmark uses the short job above, and the whole suite takes about 15 minutes
-  with PostgreSQL, 10 of them for the query rows, which store 100,000 statements per database first.
+- Without `--job`, every benchmark uses the short job above, and the whole suite takes about 30 minutes
+  with PostgreSQL, 22 of them for the query rows, which store 10,000 or 100,000 statements per database,
+  with and without StatementRefs, before each one.
   `--job Default` gives BenchmarkDotNet's full statistics (more launches and iterations until the results
   are stable) and takes much longer; use it, on an idle machine, before quoting a number.
 - `XAPI_BENCH_POSTGRES=1` adds PostgreSQL to the LRS benchmarks. It starts the same image as the
