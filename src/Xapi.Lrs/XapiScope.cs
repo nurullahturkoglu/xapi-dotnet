@@ -4,6 +4,11 @@ namespace Xapi.Lrs;
 /// A permission granted to a credential. The names follow the scopes of xAPI 1.0.3 (Communication, 4.2,
 /// "OAuth Authorization Scope"); IEEE 9274.1.1 leaves authorization to the LRS.
 /// </summary>
+/// <remarks>
+/// New scopes may be added in a minor release. Code that switches on this enum should handle values it does not
+/// know, for example with a default branch, rather than assume the list is complete. Credentials store scopes by
+/// their xAPI names, not their numbers.
+/// </remarks>
 public enum XapiScope
 {
     /// <summary><c>statements/write</c>: store statements.</summary>
