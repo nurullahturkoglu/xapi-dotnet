@@ -15,7 +15,8 @@ if (args.Length != 1)
 }
 
 var packageDirectory = Path.GetFullPath(args[0]);
-var projectDirectory = Path.Combine(Path.GetDirectoryName(GetSourcePath())!, "Assets");
+// Not CallerFilePath: CI builds map source paths to /_/
+var projectDirectory = Path.Combine((string)AppContext.GetData("EntryPointFileDirectoryPath")!, "Assets");
 var packagesConfigPath = Path.Combine(projectDirectory, "packages.config");
 var nugetConfigPath = Path.Combine(projectDirectory, "NuGet.config");
 
@@ -83,5 +84,3 @@ foreach (var package in listed.Values.Where(p => ((string)p.Attribute("id")!).St
 }
 
 return 0;
-
-static string GetSourcePath([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
