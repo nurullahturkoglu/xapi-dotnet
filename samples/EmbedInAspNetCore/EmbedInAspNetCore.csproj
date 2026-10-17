@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <ProjectType>Sample</ProjectType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- The Web SDK warns when "dotnet pack xapi-dotnet.slnx" reaches a project that is not packable -->
+    <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Lrs.Sqlite/Xapi.Lrs.Sqlite.csproj" />
+  </ItemGroup>
+
+</Project>
