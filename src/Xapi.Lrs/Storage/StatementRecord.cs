@@ -12,14 +12,18 @@ public sealed class StatementRecord
     /// <summary>Creates a record.</summary>
     /// <param name="key">The storage key, see <see cref="Key"/>.</param>
     /// <param name="statement">The prepared statement. Its <see cref="Statement.Id"/> and <see cref="Statement.Stored"/> must be set.</param>
-    /// <param name="json">The statement as returned to clients in the <c>exact</c> format.</param>
+    /// <param name="utf8Json">The statement as returned to clients in the <c>exact</c> format, as UTF-8 JSON. Kept without a copy, so the bytes must not change afterwards.</param>
     /// <param name="authorityKey">An identifier of the authority, see <see cref="AuthorityKey"/>.</param>
-    /// <exception cref="ArgumentException">The statement has no id or stored time.</exception>
-    public StatementRecord(Guid key, Statement statement, string json, string authorityKey)
+    /// <exception cref="ArgumentException">The statement has no id or stored time, or <paramref name="utf8Json"/> is empty.</exception>
+    public StatementRecord(Guid key, Statement statement, ReadOnlyMemory<byte> utf8Json, string authorityKey)
     {
         ArgumentNullException.ThrowIfNull(statement);
-        ArgumentException.ThrowIfNullOrEmpty(json);
         ArgumentException.ThrowIfNullOrEmpty(authorityKey);
+        if (utf8Json.IsEmpty)
+        {
+            throw new ArgumentException("The statement JSON must not be empty.", nameof(utf8Json));
+        }
+
         if (statement.Id is null || statement.Stored is null)
         {
             throw new ArgumentException("The statement must have an id and a stored time.", nameof(statement));
@@ -27,13 +31,13 @@ public sealed class StatementRecord
 
         Key = key;
         Statement = statement;
-        Json = json;
+        Utf8Json = utf8Json;
         AuthorityKey = authorityKey;
     }
 
     /// <summary>
     /// A monotonic UUIDv7 whose time part is the statement's <c>stored</c> time. It orders statements by
-    /// stored time and serves as the paging cursor (ADR-020).
+    /// stored time, and the default store's continuation tokens mark a position in this order (ADR-0020).
     /// </summary>
     public Guid Key { get; }
 
@@ -43,8 +47,11 @@ public sealed class StatementRecord
     /// <summary>The statement id.</summary>
     public Guid Id => Statement.Id!.Value;
 
-    /// <summary>The statement as returned to clients in the <c>exact</c> format.</summary>
-    public string Json { get; }
+    /// <summary>
+    /// The statement as returned to clients in the <c>exact</c> format, as UTF-8 JSON. A store keeps these bytes
+    /// and returns them in <see cref="StoredStatement.Utf8Json"/>.
+    /// </summary>
+    public ReadOnlyMemory<byte> Utf8Json { get; }
 
     /// <summary>
     /// An identifier of the statement's authority, used to find "my" statements for the

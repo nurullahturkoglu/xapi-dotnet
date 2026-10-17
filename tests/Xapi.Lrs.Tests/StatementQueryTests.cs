@@ -466,13 +466,17 @@ public class StatementQueryTests(LrsHosts hosts)
         var verb = NewIri("verbs");
         var mine = await app.Client(Credentials.Mine).PutAllAsync(Statement(verb: verb), Statement(verb: verb));
         await app.Client(Credentials.Writer).PutAllAsync(Statement(verb: verb), Statement(verb: verb));
-        var after = Guid.CreateVersion7(DateTimeOffset.UtcNow.AddDays(1));
+        var after = ContinuationToken(Guid.CreateVersion7(DateTimeOffset.UtcNow.AddDays(1)));
+        var filter = $"verb={Uri.EscapeDataString(verb)}";
 
         // The token is base64url of a query string; it is not signed, so these are what a client could send
         string[] rejected =
         [
             $"after={after}&statementId={mine[0]}", $"after={after}&after={after}", $"after={after}&agent=%7B",
-            $"after={after}&limit=-1", "after=not-a-uuid", "limit=1", $"after={after}&Verb=x",
+            $"after={after}&limit=-1", "limit=1", $"after={after}&Verb=x", $"{filter}&after=",
+            // Continuation tokens the store cannot read
+            $"{filter}&after=not-a-token", $"{filter}&after={Guid.NewGuid()}", $"{filter}&after={after}A", $"{filter}&after={after[..^1]}",
+            $"{filter}&after=%2B{after[1..]}",
         ];
         foreach (var forged in rejected)
         {
@@ -486,11 +490,14 @@ public class StatementQueryTests(LrsHosts hosts)
         }
 
         // A huge limit is lowered to the maximum, and statements/read/mine still applies
-        var page = await app.Client(Credentials.Mine).QueryAsync("more=" + Token($"verb={Uri.EscapeDataString(verb)}&limit=99999999999999999999&after={after}"));
+        var page = await app.Client(Credentials.Mine).QueryAsync("more=" + Token($"{filter}&limit=99999999999999999999&after={after}"));
         Assert.Equal(mine.AsEnumerable().Reverse(), Ids(page));
     }
 
     private static string Token(string query) => Base64Url.EncodeToString(Encoding.UTF8.GetBytes(query));
+
+    // The default store's continuation token: the storage key's bytes in RFC 9562 order, base64url-encoded
+    private static string ContinuationToken(Guid key) => Base64Url.EncodeToString(key.ToByteArray(bigEndian: true));
 
     [Fact]
     public async Task Attachments_true_answers_with_a_multipart_statement_result()

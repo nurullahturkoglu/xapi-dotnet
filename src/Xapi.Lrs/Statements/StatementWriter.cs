@@ -1,4 +1,3 @@
-using Xapi.Json;
 using Xapi.Lrs.Security;
 using Xapi.Lrs.Storage;
 using Xapi.Lrs.Telemetry;
@@ -65,7 +64,7 @@ internal sealed class StatementWriter(IStatementStore store, StatementWriteTrack
             Version = statement.Version ?? (version.IsV2 ? "2.0.0" : "1.0.0"),
         };
 
-        var json = XapiJson.SerializeStatement(prepared, version);
+        var json = StatementJson.Write(prepared, version);
         return new StatementRecord(key, prepared, json, caller.AuthorityKey) { Attachments = attachments };
     }
 }

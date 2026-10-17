@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -93,6 +94,38 @@ public class StorageTests(LrsHosts hosts)
         var row = await context.Statements.SingleAsync(s => s.StatementId == id, TestContext.Current.CancellationToken);
         Assert.Equal(7, row.Pk.Version);
         Assert.Equal(UuidV7Generator.GetTimestamp(row.Pk), row.Stored);
+    }
+
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task Non_ascii_text_is_stored_as_text_and_returned_byte_for_byte(TestDatabase database)
+    {
+        var app = await hosts.SharedAsync(database);
+        var client = app.Client();
+        const string Name = "Öğrenci 学生 \U0001F393 \u2028 \"quoted\"";
+        var verb = NewIri("verbs");
+        var statement = Statement(verb: verb);
+        statement["actor"]!["name"] = Name;
+        var id = Guid.NewGuid();
+        using (var put = await client.PutStatementAsync(id, statement))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+        }
+
+        using var single = await client.GetStatementAsync(id);
+        var exact = await single.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(Name, JsonNode.Parse(exact)!["actor"]!["name"]!.GetValue<string>());
+
+        // The payload column holds the same JSON as text (ADR-0011), and queries return it unchanged
+        using var context = app.CreateDbContext();
+        var payload = await context.Statements.Where(s => s.StatementId == id).Select(s => s.Payload).SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(Encoding.UTF8.GetString(exact), payload);
+        using var query = await client.GetStatementsAsync(QueryApi.Query(("verb", verb)));
+        var page = await query.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Equal($$"""{"statements":[{{payload}}],"more":""}""", page);
+
+        var canonical = await client.QueryAsync(QueryApi.Query(("verb", verb), ("format", "canonical")));
+        Assert.Equal(Name, canonical["statements"]![0]!["actor"]!["name"]!.GetValue<string>());
     }
 
     [Theory]

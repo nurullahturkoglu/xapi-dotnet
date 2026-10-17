@@ -44,5 +44,6 @@ page), the `toc.yml` files and `api-notes/` are its configuration; see
 | [0018](adr/0018-license-and-attribution.md) | License and attribution |
 | [0019](adr/0019-test-infrastructure.md) | Test infrastructure |
 | [0020](adr/0020-statement-ordering-key.md) | Statement ordering key |
+| [0021](adr/0021-storage-api-before-stable.md) | Storage API before it is declared stable |
 
 A new decision gets the next number. A decision that is replaced keeps its file, with its status changed to "Superseded by ADR-NNNN".

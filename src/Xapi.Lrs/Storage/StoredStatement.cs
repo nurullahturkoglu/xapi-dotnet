@@ -12,17 +12,22 @@ public sealed class StoredStatement
     /// <param name="version">The statement's <c>version</c> property.</param>
     /// <param name="isVoided">Whether another stored statement voids it.</param>
     /// <param name="authorityKey">The identifier of its authority, see <see cref="StatementRecord.AuthorityKey"/>.</param>
-    /// <param name="json">The statement in the <c>exact</c> format.</param>
-    public StoredStatement(Guid id, DateTimeOffset stored, string version, bool isVoided, string? authorityKey, string json)
+    /// <param name="utf8Json">The statement in the <c>exact</c> format, as UTF-8 JSON. Kept without a copy, so the bytes must not change afterwards.</param>
+    /// <exception cref="ArgumentException"><paramref name="utf8Json"/> is empty.</exception>
+    public StoredStatement(Guid id, DateTimeOffset stored, string version, bool isVoided, string? authorityKey, ReadOnlyMemory<byte> utf8Json)
     {
         ArgumentNullException.ThrowIfNull(version);
-        ArgumentException.ThrowIfNullOrEmpty(json);
+        if (utf8Json.IsEmpty)
+        {
+            throw new ArgumentException("The statement JSON must not be empty.", nameof(utf8Json));
+        }
+
         Id = id;
         Stored = stored;
         Version = version;
         IsVoided = isVoided;
         AuthorityKey = authorityKey;
-        Json = json;
+        Utf8Json = utf8Json;
     }
 
     /// <summary>The statement id.</summary>
@@ -40,6 +45,10 @@ public sealed class StoredStatement
     /// <summary>The identifier of the statement's authority.</summary>
     public string? AuthorityKey { get; }
 
-    /// <summary>The statement in the <c>exact</c> format.</summary>
-    public string Json { get; }
+    /// <summary>
+    /// The statement in the <c>exact</c> format, as UTF-8 JSON: the bytes the store received in
+    /// <see cref="StatementRecord.Utf8Json"/>. The LRS writes them into responses unchanged and without
+    /// validating them again.
+    /// </summary>
+    public ReadOnlyMemory<byte> Utf8Json { get; }
 }

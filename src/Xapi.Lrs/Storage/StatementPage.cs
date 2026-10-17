@@ -8,20 +8,31 @@ public sealed class StatementPage
 {
     /// <summary>Creates a page.</summary>
     /// <param name="statements">The statements, in the requested order.</param>
-    /// <param name="continuation">See <see cref="Continuation"/>.</param>
-    public StatementPage(IReadOnlyList<StoredStatement> statements, Guid? continuation)
+    /// <param name="continuationToken">See <see cref="ContinuationToken"/>.</param>
+    /// <exception cref="ArgumentException"><paramref name="continuationToken"/> is empty.</exception>
+    public StatementPage(IReadOnlyList<StoredStatement> statements, string? continuationToken)
     {
         ArgumentNullException.ThrowIfNull(statements);
+        if (continuationToken is { Length: 0 })
+        {
+            throw new ArgumentException("The continuation token must not be empty.", nameof(continuationToken));
+        }
+
         Statements = statements;
-        Continuation = continuation;
+        ContinuationToken = continuationToken;
     }
 
     /// <summary>The statements, in the requested order.</summary>
     public IReadOnlyList<StoredStatement> Statements { get; }
 
     /// <summary>
-    /// The storage key of the last statement on this page when more statements match, to pass as
-    /// <see cref="StatementFilter.After"/> for the next page; <see langword="null"/> on the last page.
+    /// When more statements match, an opaque token that marks the end of this page, to pass as
+    /// <see cref="StatementFilter.ContinuationToken"/> with the same query for the next page;
+    /// <see langword="null"/> on the last page. Only the store that returned it can read it.
     /// </summary>
-    public Guid? Continuation { get; }
+    /// <remarks>
+    /// The LRS hands the token to clients inside the <c>more</c> URL and reads it back from there, so it should be
+    /// short. It is not secret and not protected: a client can read it and send a different one.
+    /// </remarks>
+    public string? ContinuationToken { get; }
 }

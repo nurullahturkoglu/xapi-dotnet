@@ -26,13 +26,17 @@ public interface IStatementStore
     Task<StoredStatement?> GetAsync(Guid statementId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reads one page of the statements that match a query, ordered by storage key (stored time). Pages are
-    /// keyed on the storage key, so statements stored while a client pages through the results neither repeat
-    /// nor shift earlier pages.
+    /// Reads one page of the statements that match a query, ordered by storage key (stored time). A page
+    /// continues from where the previous one ended (<see cref="StatementFilter.ContinuationToken"/>), so
+    /// statements stored while a client pages through the results neither repeat nor shift earlier pages.
     /// </summary>
     /// <param name="filter">The query.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The page, possibly empty.</returns>
+    /// <exception cref="ArgumentException">
+    /// <see cref="StatementFilter.ContinuationToken"/> is not a token this store can read. The LRS answers such a
+    /// request with 400 Bad Request.
+    /// </exception>
     Task<StatementPage> QueryAsync(StatementFilter filter, CancellationToken cancellationToken = default);
 
     /// <summary>

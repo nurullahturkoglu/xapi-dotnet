@@ -454,3 +454,18 @@ Code that uses an experimental type gets the compile error `XAPI0001`. Suppressi
 accepts that the code may have to change when `Xapi.Lrs` is updated. `Xapi.Lrs.Sqlite` and
 `Xapi.Lrs.PostgreSql` use these types themselves, so they are released together with `Xapi.Lrs` and depend on
 exactly the same version of it.
+
+A custom `IStatementStore` should know three things about the data it is given:
+
+- Statement JSON is UTF-8 (`StatementRecord.Utf8Json`). The store returns the same bytes in
+  `StoredStatement.Utf8Json`, and the LRS writes them into responses without parsing them again.
+- `StatementPage.ContinuationToken` is the store's own opaque text. The LRS puts it into the `more` URL and
+  hands it back in `StatementFilter.ContinuationToken`, so a client can change it; the store throws
+  `ArgumentException` for a token it cannot read, and the LRS answers 400.
+- SHA-2 hashes of attachment data are lower-case hexadecimal (`AttachmentContent.Sha2`), and lookups may come in
+  either case.
+
+[ADR-0021](adr/0021-storage-api-before-stable.md) lists what is still expected to change before each part of
+this API is declared stable. `IDocumentStore` is the first candidate. `XapiLrsDbContext` and
+`XapiLrsDatabaseProvider` expose EF Core types and are not planned to become stable; apps migrate with
+`MigrateXapiLrsDatabaseAsync` instead.

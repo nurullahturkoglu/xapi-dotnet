@@ -53,6 +53,9 @@ internal static class XapiResults
     public static IResult Json(string json, DateTimeOffset? lastModified = null) =>
         new BodyResult(StatusCodes.Status200OK, "application/json", Encoding.UTF8.GetBytes(json), lastModified);
 
+    public static IResult Json(ReadOnlyMemory<byte> utf8Json, DateTimeOffset? lastModified = null) =>
+        new BodyResult(StatusCodes.Status200OK, "application/json", utf8Json, lastModified);
+
     public static IResult Body(string contentType, ReadOnlyMemory<byte> body, DateTimeOffset? lastModified = null) =>
         new BodyResult(StatusCodes.Status200OK, contentType, body, lastModified);
 

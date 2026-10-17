@@ -109,10 +109,10 @@ namespace Xapi.Lrs.Storage
     {
         public StatementFilter() { }
         public Xapi.Iri? Activity { get; init; }
-        public System.Guid? After { get; init; }
         public Xapi.Actor? Agent { get; init; }
         public bool Ascending { get; init; }
         public string? AuthorityKey { get; init; }
+        public string? ContinuationToken { get; init; }
         public int Limit { get; init; }
         public System.Guid? Registration { get; init; }
         public bool RelatedActivities { get; init; }
@@ -124,20 +124,20 @@ namespace Xapi.Lrs.Storage
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StatementPage
     {
-        public StatementPage(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StoredStatement> statements, System.Guid? continuation) { }
-        public System.Guid? Continuation { get; }
+        public StatementPage(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StoredStatement> statements, string? continuationToken) { }
+        public string? ContinuationToken { get; }
         public System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StoredStatement> Statements { get; }
     }
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StatementRecord
     {
-        public StatementRecord(System.Guid key, Xapi.Statement statement, string json, string authorityKey) { }
+        public StatementRecord(System.Guid key, Xapi.Statement statement, System.ReadOnlyMemory<byte> utf8Json, string authorityKey) { }
         public System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.AttachmentContent> Attachments { get; init; }
         public string AuthorityKey { get; }
         public System.Guid Id { get; }
-        public string Json { get; }
         public System.Guid Key { get; }
         public Xapi.Statement Statement { get; }
+        public System.ReadOnlyMemory<byte> Utf8Json { get; }
     }
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StatementStoreResult
@@ -162,12 +162,12 @@ namespace Xapi.Lrs.Storage
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StoredStatement
     {
-        public StoredStatement(System.Guid id, System.DateTimeOffset stored, string version, bool isVoided, string? authorityKey, string json) { }
+        public StoredStatement(System.Guid id, System.DateTimeOffset stored, string version, bool isVoided, string? authorityKey, System.ReadOnlyMemory<byte> utf8Json) { }
         public string? AuthorityKey { get; }
         public System.Guid Id { get; }
         public bool IsVoided { get; }
-        public string Json { get; }
         public System.DateTimeOffset Stored { get; }
+        public System.ReadOnlyMemory<byte> Utf8Json { get; }
         public string Version { get; }
     }
     [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]

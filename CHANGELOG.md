@@ -24,6 +24,8 @@ listed under a "Breaking" heading.
 - `Xapi.Lrs`: `XapiLrsOptions.AuthorityHomePage` is a `Uri` instead of an `Iri`.
 - `Xapi.Lrs`: the size and count limits of `XapiLrsOptions` no longer throw when set out of range; startup validation reports them instead.
 - `samples/LrsHost`: the sample's own settings moved from the `Lrs` section to `LrsHost` (`LrsHost:Key`, `LrsHost:Secret`, `LrsHost:Database`, `LrsHost:ConnectionString`, and `LrsHost__Key` and so on in the Docker image), because `Lrs` is now bound to `XapiLrsOptions` and rejects other keys.
+- `Xapi.Lrs` (experimental storage API, `XAPI0001`): `StatementFilter.After` and `StatementPage.Continuation` (`Guid?`, the storage key) are replaced by an opaque `string? ContinuationToken` on both. A store throws `ArgumentException` for a token it cannot read, and the LRS answers 400. `more` URLs keep their shape.
+- `Xapi.Lrs` (experimental storage API, `XAPI0001`): `StatementRecord.Json` and `StoredStatement.Json` (`string`) are replaced by `Utf8Json` (`ReadOnlyMemory<byte>`, UTF-8 JSON), and their constructors take the UTF-8 bytes. The database schema is unchanged. See [ADR-0021](docs/adr/0021-storage-api-before-stable.md) for what else changes in this API before it is declared stable.
 
 ### Added
 

@@ -1,12 +1,13 @@
 using Xapi.Json;
+using Xapi.Lrs.Statements;
 using Xapi.Lrs.Storage;
 
 namespace Xapi.Lrs.Http;
 
-// Turns stored statements into the JSON of the requested format (IEEE 9274.1.1, 4.1.6.1 GET "format").
+// Turns stored statements into the UTF-8 JSON of the requested format (IEEE 9274.1.1, 4.1.6.1 GET "format").
 internal static class StatementRendering
 {
-    public static async Task<List<string>> RenderAsync(
+    public static async Task<List<ReadOnlyMemory<byte>>> RenderAsync(
         IReadOnlyList<StoredStatement> statements,
         StatementFormat format,
         IReadOnlyList<string> acceptLanguages,
@@ -15,7 +16,7 @@ internal static class StatementRendering
     {
         if (format == StatementFormat.Exact)
         {
-            return [.. statements.Select(s => s.Json)];
+            return [.. statements.Select(s => s.Utf8Json)];
         }
 
         var parsed = statements.Select(s => (Statement: Read(s), Version: VersionOf(s))).ToList();
@@ -26,7 +27,7 @@ internal static class StatementRendering
             canonical = await store.GetActivitiesAsync(ids, cancellationToken).ConfigureAwait(false);
         }
 
-        return parsed.ConvertAll(p => XapiJson.SerializeStatement(
+        return parsed.ConvertAll(p => StatementJson.Write(
             canonical is null ? p.Statement : WithCanonicalActivities(p.Statement, canonical),
             p.Version,
             format,
@@ -74,7 +75,7 @@ internal static class StatementRendering
     private static Statement Read(StoredStatement stored)
     {
         // Stored payloads were validated on the way in; 2.0.0 reading accepts everything 1.0.3 does
-        var parsed = XapiJson.ParseStatement(stored.Json, XapiVersion.V2_0_0, XapiReadMode.Lenient);
+        var parsed = XapiJson.ParseStatement(stored.Utf8Json.Span, XapiVersion.V2_0_0, XapiReadMode.Lenient);
         return parsed.IsSuccess
             ? parsed.Value
             : throw new InvalidOperationException("A stored statement could not be read: " + string.Join("; ", parsed.Errors));

@@ -161,7 +161,7 @@ internal static class StatementEndpoints
 
             if (!StatementQueryReader.TryReadToken(token, out parameters))
             {
-                return BadRequest("The more value is not one this LRS returned.");
+                return BadRequest(StatementQueryReader.ForeignMoreMessage);
             }
 
             return await QueryAsync(http, store, options.Value, parameters).ConfigureAwait(false);
@@ -233,6 +233,11 @@ internal static class StatementEndpoints
             {
                 page = await store.QueryAsync(filter, http.RequestAborted).ConfigureAwait(false);
             }
+            catch (ArgumentException) when (filter.ContinuationToken is not null)
+            {
+                // The token came from the client, in the more URL; the store found it unreadable
+                return BadRequest(StatementQueryReader.ForeignMoreMessage);
+            }
             catch (Exception exception) when (XapiLrsActivities.Failed(activity, exception))
             {
                 throw;
@@ -244,7 +249,7 @@ internal static class StatementEndpoints
         var statements = await StatementRendering.RenderAsync(page.Statements, query.Format, AcceptLanguages(http.Request), store, http.RequestAborted).ConfigureAwait(false);
 
         // 1.0.3 (Data 2.5) has "more" as an empty string on the last page; 2.0 allows that too
-        var more = page.Continuation is { } continuation ? StatementQueryReader.MoreUrl(http.Request, query, continuation) : "";
+        var more = page.ContinuationToken is { } continuation ? StatementQueryReader.MoreUrl(http.Request, query, continuation) : "";
 
         // 4.1.6.1 GET: Last-Modified is the most recent stored time of the returned statements
         DateTimeOffset? lastModified = page.Statements.Count == 0 ? null : page.Statements.Max(s => s.Stored);
@@ -255,7 +260,7 @@ internal static class StatementEndpoints
     // holds for the returned statements; false for application/json without attachment data
     private static async Task<IResult> JsonOrMultipartAsync(
         IStatementStore store,
-        string json,
+        ReadOnlyMemory<byte> json,
         IReadOnlyList<StoredStatement> statements,
         bool attachments,
         DateTimeOffset? lastModified,
@@ -270,7 +275,7 @@ internal static class StatementEndpoints
         return new MultipartResponse(json, data, store, lastModified);
     }
 
-    private static string WriteStatementResult(List<string> statements, string more)
+    private static ReadOnlyMemory<byte> WriteStatementResult(List<ReadOnlyMemory<byte>> statements, string more)
     {
         var buffer = new ArrayBufferWriter<byte>();
         using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
@@ -279,7 +284,7 @@ internal static class StatementEndpoints
             writer.WriteStartArray("statements");
             foreach (var statement in statements)
             {
-                writer.WriteRawValue(statement, skipInputValidation: true);
+                writer.WriteRawValue(statement.Span, skipInputValidation: true);
             }
 
             writer.WriteEndArray();
@@ -287,7 +292,7 @@ internal static class StatementEndpoints
             writer.WriteEndObject();
         }
 
-        return Encoding.UTF8.GetString(buffer.WrittenSpan);
+        return buffer.WrittenMemory;
     }
 
     private static bool MayRead(XapiCaller caller, StoredStatement statement) =>

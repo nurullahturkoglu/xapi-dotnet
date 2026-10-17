@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Xapi.Lrs.Storage;
 using Xapi.Lrs.Tests.Infrastructure;
 using static Xapi.Lrs.Tests.Infrastructure.MultipartApi;
 using static Xapi.Lrs.Tests.Infrastructure.QueryApi;
@@ -122,6 +123,39 @@ public partial class AttachmentTests(LrsHosts hosts)
         await using var context = app.CreateDbContext();
         Assert.Equal(1, await context.AttachmentContents.CountAsync(c => c.Sha2 == part.Sha2, TestContext.Current.CancellationToken));
         Assert.Equal(2, await context.StatementAttachments.CountAsync(c => c.Sha2 == part.Sha2, TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task An_upper_case_part_hash_matches_and_is_kept_in_lower_case(TestDatabase database)
+    {
+        var app = await hosts.SharedAsync(database);
+        var client = app.Client();
+        var data = Encoding.UTF8.GetBytes("upper " + Guid.NewGuid());
+        var sha2 = Sha256(data);
+        var part = new Part(data, "text/plain", Hash: sha2.ToUpperInvariant());
+        var attachment = Attachment(part);
+        attachment["sha2"] = sha2;
+        var id = Guid.NewGuid();
+
+        using (var put = await client.PutMultipartAsync(id, Statement().WithAttachments(attachment), part))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+        }
+
+        using var response = await client.GetAsync($"/xapi/statements?statementId={id}&attachments=true", TestContext.Current.CancellationToken);
+        var parts = await ReadPartsAsync(response);
+        Assert.Equal(sha2, parts[1].Header("X-Experience-API-Hash"));
+        Assert.Equal(data, parts[1].Data);
+
+        await using var context = app.CreateDbContext();
+        Assert.Equal(1, await context.AttachmentContents.CountAsync(c => c.Sha2 == sha2, TestContext.Current.CancellationToken));
+        Assert.Equal(1, await context.StatementAttachments.CountAsync(c => c.Sha2 == sha2, TestContext.Current.CancellationToken));
+
+        // Lookups take either case
+        var store = app.Services.GetRequiredService<IStatementStore>();
+        Assert.Equal(sha2, (await store.GetAttachmentContentAsync(sha2.ToUpperInvariant(), TestContext.Current.CancellationToken))?.Sha2);
+        Assert.Equal(sha2, new AttachmentSummary(sha2.ToUpperInvariant(), "text/plain", data.Length).Sha2);
     }
 
     [Theory]
