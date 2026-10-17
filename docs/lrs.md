@@ -66,6 +66,7 @@ builder.Services
 | `AuthorityHomePage` | `https://xapi-dotnet.invalid/credentials` | The `homePage` of generated authority accounts. Set it to a URL you control before storing statements you keep: the authority is stored with each statement and not rewritten later. |
 | `EnableVersion1_0_3` | `true` | Accept `1.0.x` requests and handle them with xAPI 1.0.3 rules. When `false`, only 2.0 requests are accepted. |
 | `MaxDocumentBytes` | 1 MiB | The largest State or profile document, also after a POST merge. Larger ones get 413. |
+| `MaxStatementBytes` | 16 MiB | The most statement JSON in one statement PUT or POST: the whole `application/json` body, or the first part of a `multipart/mixed` one. More gets 413. |
 | `MaxAttachmentBytes` | 50 MiB | The most attachment data in one statement request, all parts together. More gets 413. |
 | `MaxStatementsPerPage` | 100 | The page size of statement queries when the request asks for `limit=0` or no limit; larger limits are lowered to it. |
 | `MigrateOnStartup` | `false` | Apply database migrations when the host starts. |
@@ -75,7 +76,7 @@ builder.Services
 | Package | Builder method | Notes |
 | --- | --- | --- |
 | `Xapi.Lrs.Sqlite` | `UseSqlite(connectionString)` | WAL mode and a 30 second busy timeout. Statement writes take the write lock when their transaction begins (`BEGIN IMMEDIATE`), so concurrent writers wait for each other instead of failing. Suits one server. |
-| `Xapi.Lrs.PostgreSql` | `UsePostgreSql(connectionString)` | For several app instances sharing one database. |
+| `Xapi.Lrs.PostgreSql` | `UsePostgreSql(connectionString)` | For several app instances sharing one database. PostgreSQL cannot index values over about 2.7 KB, so a statement or document request with a longer IRI, agent identifier or document id gets 400. |
 
 <!-- snippet: lrs-postgresql -->
 ```csharp
@@ -125,6 +126,14 @@ store.
 
 A request without valid credentials gets 401 with a `WWW-Authenticate: Basic` challenge. A request whose credential lacks
 the scope for the resource gets 403.
+
+Basic sends the secret with every request, so serve the LRS over HTTPS only. Checking a secret runs PBKDF2,
+which is slow on purpose: an unknown key costs the same check as a wrong secret, so response times do not tell
+which keys exist, and every failed attempt costs CPU time. The LRS does not limit attempts itself. Add rate
+limiting (see [Endpoint conventions](#endpoint-conventions)), partitioned by client address if the LRS is
+reachable from the internet, so that guessing secrets is slow and cannot tie up the server. A successful check
+is remembered in memory for one minute; with several app instances on one database, a credential removed from
+the configuration stops working on the other instances within a minute of the restart that removed it.
 
 | `XapiScope` | xAPI scope | Allows |
 | --- | --- | --- |
@@ -200,16 +209,61 @@ app.MapXapiLrs("/xapi").RequireRateLimiting("xapi");
 middleware produces before the LRS endpoints run, such as this rejection, do not carry the
 `X-Experience-API-Version` header.
 
+### Browser clients on other origins
+
+The LRS sends no CORS headers by default. xAPI content running in a browser on another origin, such as a course
+package on a CDN, needs a CORS policy on the LRS endpoints:
+
+<!-- snippet: lrs-cors -->
+```csharp
+builder.Services.AddCors(options => options.AddPolicy("xapi", policy => policy
+    .WithOrigins("https://course.example.com")
+    .WithMethods("GET", "HEAD", "PUT", "POST", "DELETE")
+    .WithHeaders("Authorization", "Content-Type", "X-Experience-API-Version", "If-Match", "If-None-Match")
+    .WithExposedHeaders("ETag", "Last-Modified", "X-Experience-API-Version", "X-Experience-API-Consistent-Through")));
+
+var app = builder.Build();
+app.UseCors();
+app.MapXapiLrs("/xapi").RequireCors("xapi");
+```
+
+List the origins you serve content from rather than allowing any origin. The exposed headers let the client
+read ETags for document concurrency and the version and consistency headers.
+
+If `AuthenticationScheme` is a cookie scheme and the cookie is sent on cross-site requests (`SameSite=None`), a
+page on another site can make the browser send it with a form post. xAPI 2.0 requests need the `X-Experience-API-Version` header, which a cross-site form cannot set,
+but the xAPI 1.0.3 Alternate Request Syntax carries headers as form fields. Set `EnableVersion1_0_3 = false`,
+or require antiforgery tokens, when cookies authenticate the LRS.
+
+### Content served back to browsers
+
+Documents are returned with the content type the client stored them with, which can be `text/html` or
+`image/svg+xml`. Every LRS response has `X-Content-Type-Options: nosniff`, and a document that is not
+`application/json` also comes with `Content-Disposition: attachment` and `Content-Security-Policy: default-src
+'none'; sandbox`, so a browser opened on its URL downloads it instead of running it on your app's origin. If
+clients you do not trust can write documents, consider mapping the LRS on a host name of its own anyway.
+
 ## Limits
 
 | Limit | Where it is set | Over the limit |
 | --- | --- | --- |
 | Document size | `MaxDocumentBytes` (1 MiB) | 413 |
+| Statement JSON per statement request | `MaxStatementBytes` (16 MiB) | 413 |
 | Attachment data per statement request | `MaxAttachmentBytes` (50 MiB) | 413 |
 | Statements per query page | `MaxStatementsPerPage` (100) | The page is shorter and has a `more` link. |
-| Request body | The server, for example Kestrel's `MaxRequestBodySize` (30,000,000 bytes by default) | 413 |
+| Request body of other requests | The server, for example Kestrel's `MaxRequestBodySize` (30,000,000 bytes by default) | 413 |
 
-There is no separate limit on the number of statements in a batch.
+The options above replace the server's request body limit on the requests they cover. Document writes get
+`MaxDocumentBytes` as their limit, `application/json` statement requests `MaxStatementBytes`, and
+`multipart/mixed` statement requests `MaxStatementBytes` plus `MaxAttachmentBytes` plus 1 MiB for part headers
+and boundaries. So raising `MaxAttachmentBytes` above Kestrel's default works without changing Kestrel, and a
+lower global limit set in Kestrel does not apply to these requests. The LRS sets the limit through
+`IHttpMaxRequestBodySizeFeature`; on a server without it, or when other middleware has already read the body,
+the server's own limit stays in place and the LRS still enforces its options while reading.
+
+A statement request is read into memory whole before it is validated, so one request can hold up to
+`MaxStatementBytes` plus `MaxAttachmentBytes` of memory, and more while it is parsed. Lower the limits if many
+large requests can arrive at once. There is no separate limit on the number of statements in a batch.
 
 ## xAPI versions
 
@@ -222,6 +276,12 @@ Requests with `X-Experience-API-Version` `2.0` or `2.0.x` are handled as xAPI 2.
 The LRS logs when it applies migrations, unhandled exceptions (with the method and path, not the query
 string), and, at Debug level, writes retried after a concurrent write. It does not emit metrics or traces yet.
 EF Core logs under the `Microsoft.EntityFrameworkCore` categories.
+
+Query strings of LRS requests carry agents as JSON, often with an email address (`mbox`). ASP.NET Core logs
+every request URL, query string included, under `Microsoft.AspNetCore.Hosting.Diagnostics` at Information
+level. Set that category to `Warning` in production, or log requests with HTTP logging and leave the query
+string out. Error responses never contain stack traces or SQL; unexpected errors are logged and answered with a
+generic 500.
 
 ## Running the sample LRS in Docker
 

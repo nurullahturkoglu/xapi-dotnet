@@ -79,6 +79,21 @@ internal static class LrsSnippets
         // end snippet
     }
 
+    public static void Cors(WebApplicationBuilder builder)
+    {
+        // snippet: lrs-cors
+        builder.Services.AddCors(options => options.AddPolicy("xapi", policy => policy
+            .WithOrigins("https://course.example.com")
+            .WithMethods("GET", "HEAD", "PUT", "POST", "DELETE")
+            .WithHeaders("Authorization", "Content-Type", "X-Experience-API-Version", "If-Match", "If-None-Match")
+            .WithExposedHeaders("ETag", "Last-Modified", "X-Experience-API-Version", "X-Experience-API-Consistent-Through")));
+
+        var app = builder.Build();
+        app.UseCors();
+        app.MapXapiLrs("/xapi").RequireCors("xapi");
+        // end snippet
+    }
+
     public static async Task MigrateOnly(WebApplication app, string[] args)
     {
         // snippet: lrs-migrate

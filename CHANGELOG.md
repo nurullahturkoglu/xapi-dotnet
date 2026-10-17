@@ -25,4 +25,12 @@ listed under a "Breaking" heading.
 - Samples `EmbedInAspNetCore` and `FakeLrsInTests`, and guides in docs/ (getting started, client, LRS, versions, migrating from TinCan.NET, conformance) whose C# blocks are compiled and checked by `tests/Xapi.Documentation.Tests`.
 - `benchmarks/Xapi.Benchmarks`: BenchmarkDotNet benchmarks for statement parsing, writing, validation and equivalence, outbox enqueueing, and the LRS statement endpoints on SQLite and PostgreSQL, with measured results in [docs/benchmarks.md](docs/benchmarks.md).
 
+### Security
+
+- `Xapi.Lrs`: statement and document writes set the server's request body limit from the LRS options, so `MaxAttachmentBytes` and `MaxDocumentBytes` above Kestrel's default of about 28.6 MiB now take effect. The new `MaxStatementBytes` (16 MiB) limits the statement JSON of one request, which before was bounded only by the server.
+- `Xapi.Lrs`: an unknown Basic key now costs the same PBKDF2 check as a wrong secret, so response times no longer tell which keys exist.
+- `Xapi.Lrs`: every response has `X-Content-Type-Options: nosniff`, and documents that are not JSON are served with `Content-Disposition: attachment` and a sandboxing `Content-Security-Policy`, so stored HTML or SVG cannot run on the origin of the app that hosts the LRS.
+- `Xapi.Lrs`: on PostgreSQL, IRIs, agent identifiers and document ids too long for an index get 400 instead of 500.
+- docs/lrs.md covers rate limiting against secret guessing, CORS for browser clients, and keeping agent email addresses out of request logs.
+
 [Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/commits/main

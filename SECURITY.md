@@ -25,7 +25,9 @@ published on GitHub with credit to the reporter unless you ask otherwise.
 The embedded LRS (`Xapi.Lrs`) authenticates requests with HTTP Basic
 credentials or delegates to an ASP.NET Core authentication scheme you
 configure. Transport security, rate limiting and network exposure are the
-responsibility of the host application.
+responsibility of the host application. [docs/lrs.md](docs/lrs.md) describes the
+request limits, rate limiting, CORS and logging settings to review before exposing
+an LRS.
 
 Problems in the ADL LRS Conformance Test Suite or in third-party LRS products
 should go to their own maintainers.
