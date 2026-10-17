@@ -4,7 +4,7 @@ using Xapi.Validation;
 namespace Xapi.Client.Outbox;
 
 /// <summary>
-/// A durable queue in front of an <see cref="IXapiClient"/>: Statements are stored before
+/// A durable queue in front of an <see cref="XapiClient"/>: Statements are stored before
 /// <see cref="EnqueueAsync"/> returns, and delivered later, in order and in batches, by <see cref="FlushAsync"/>
 /// or by a background loop (<see cref="RunAsync"/>).
 /// </summary>
@@ -29,15 +29,15 @@ namespace Xapi.Client.Outbox;
 /// <para>
 /// Attachments are not supported: the outbox does not store attachment data, so Statements with an Attachment
 /// that has no <c>fileUrl</c> are rejected by <see cref="EnqueueAsync"/>. Send those with
-/// <see cref="IXapiClient.SaveStatementAsync"/>.
+/// <see cref="XapiClient.SaveStatementAsync"/>.
 /// </para>
 /// </remarks>
 public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
 {
     private const int MaxResponseBodyLength = 16 * 1024;
 
-    private readonly Func<IXapiClient> _clientFactory;
-    private readonly IOutboxStore _store;
+    private readonly Func<XapiClient> _clientFactory;
+    private readonly OutboxStore _store;
     private readonly TimeProvider _time;
     private readonly UuidV7Generator _ids;
     private readonly int? _maxQueueSize;
@@ -70,13 +70,13 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
     /// <param name="store">Where to keep the Statements: a <see cref="FileOutboxStore"/>, usually.</param>
     /// <param name="options">The settings, or <see langword="null"/> for the defaults. They are copied.</param>
     /// <exception cref="ArgumentException">An option is out of range.</exception>
-    public StatementOutbox(IXapiClient client, IOutboxStore store, OutboxOptions? options = null)
+    public StatementOutbox(XapiClient client, OutboxStore store, OutboxOptions? options = null)
         : this(ConstantFactory(Guard.NotNull(client)), store, options)
     {
     }
 
     /// <summary>Creates an outbox that asks <paramref name="clientFactory"/> for a client at the start of every flush.</summary>
-    internal StatementOutbox(Func<IXapiClient> clientFactory, IOutboxStore store, OutboxOptions? options, OutboxMetrics? metrics = null)
+    internal StatementOutbox(Func<XapiClient> clientFactory, OutboxStore store, OutboxOptions? options, OutboxMetrics? metrics = null)
     {
         _clientFactory = Guard.NotNull(clientFactory);
         _store = Guard.NotNull(store);
@@ -371,7 +371,7 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
         }
     }
 
-    private static Func<IXapiClient> ConstantFactory(IXapiClient client) => () => client;
+    private static Func<XapiClient> ConstantFactory(XapiClient client) => () => client;
 
     private Statement Prepare(Statement statement, DateTimeOffset now)
     {
@@ -405,7 +405,7 @@ public sealed partial class StatementOutbox : IAsyncDisposable, IDisposable
                 errors.Add(new XapiError(
                     XapiErrorCodes.AttachmentPayloadMissing,
                     $"{path}[{i}]",
-                    "The outbox does not store attachment data, so only Attachments with a fileUrl can be queued. Send this Statement with IXapiClient.SaveStatementAsync."));
+                    "The outbox does not store attachment data, so only Attachments with a fileUrl can be queued. Send this Statement with XapiClient.SaveStatementAsync."));
             }
         }
     }

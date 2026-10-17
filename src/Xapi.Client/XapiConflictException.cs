@@ -7,7 +7,7 @@ namespace Xapi.Client;
 /// <para>
 /// For Statements this means the LRS already has a Statement with the same id and it does not match the one sent
 /// (IEEE 9274.1.1, 4.1.6.1). The LRS changed nothing. For a batch the response does not say which Statement
-/// conflicted; fetch each with <see cref="IXapiClient.GetStatementAsync"/> and compare with
+/// conflicted; fetch each with <see cref="XapiClient.GetStatementAsync"/> and compare with
 /// <see cref="Validation.StatementEquivalence"/>.
 /// </para>
 /// <para>
@@ -19,14 +19,14 @@ public sealed class XapiConflictException : XapiHttpException
 {
     /// <summary>Creates an exception with a generic message.</summary>
     public XapiConflictException()
-        : this(null, "The LRS returned 409 Conflict.")
+        : this("The LRS returned 409 Conflict.", responseBody: null)
     {
     }
 
     /// <summary>Creates an exception with a message.</summary>
     /// <param name="message">The message.</param>
     public XapiConflictException(string message)
-        : this(null, message)
+        : this(message, responseBody: null)
     {
     }
 
@@ -34,15 +34,15 @@ public sealed class XapiConflictException : XapiHttpException
     /// <param name="message">The message.</param>
     /// <param name="innerException">The inner exception.</param>
     public XapiConflictException(string message, Exception innerException)
-        : base(HttpStatusCode.Conflict, null, message, null, innerException)
+        : base(message, HttpStatusCode.Conflict, innerException: innerException)
     {
     }
 
     /// <summary>Creates an exception for a 409 response.</summary>
-    /// <param name="responseBody">The response body as text, if any.</param>
     /// <param name="message">The message.</param>
-    public XapiConflictException(string? responseBody, string message)
-        : base(HttpStatusCode.Conflict, responseBody, message)
+    /// <param name="responseBody">The response body as text, if any.</param>
+    public XapiConflictException(string message, string? responseBody)
+        : base(message, HttpStatusCode.Conflict, responseBody)
     {
     }
 }

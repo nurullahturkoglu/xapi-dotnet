@@ -64,12 +64,13 @@ internal static class QuickStartSnippets
         // snippet: client-di-outbox
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddXapiClient(options =>
-        {
-            options.Endpoint = new Uri("https://lrs.example.com/xapi/");
-            options.Credentials = XapiCredentials.Basic(builder.Configuration["Xapi:Key"]!, builder.Configuration["Xapi:Secret"]!);
-        });
-        builder.Services.AddXapiOutbox(Path.Combine(builder.Environment.ContentRootPath, "xapi-outbox"));
+        builder.Services
+            .AddXapiClient(options =>
+            {
+                options.Endpoint = new Uri("https://lrs.example.com/xapi/");
+                options.Credentials = XapiCredentials.Basic(builder.Configuration["Xapi:Key"]!, builder.Configuration["Xapi:Secret"]!);
+            })
+            .AddOutbox(Path.Combine(builder.Environment.ContentRootPath, "xapi-outbox"));
 
         var app = builder.Build();
 

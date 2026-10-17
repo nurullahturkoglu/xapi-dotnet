@@ -6,15 +6,15 @@ using Xapi.Client.Internal;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-/// <summary>Registers <see cref="IXapiClient"/> with <see cref="IHttpClientFactory"/>.</summary>
+/// <summary>Registers <see cref="XapiClient"/> with <see cref="IHttpClientFactory"/>.</summary>
 public static class XapiClientServiceCollectionExtensions
 {
     /// <summary>The name of the <see cref="HttpClient"/> that <see cref="AddXapiClient"/> registers.</summary>
     public const string HttpClientName = "Xapi.Client";
 
     /// <summary>
-    /// Registers <see cref="IXapiClient"/> and <see cref="XapiClient"/> as typed clients of a named
-    /// <see cref="HttpClient"/> (<see cref="HttpClientName"/>), configured with <paramref name="configure"/>.
+    /// Registers <see cref="XapiClient"/> as the typed client of a named <see cref="HttpClient"/>
+    /// (<see cref="HttpClientName"/>), configured with <paramref name="configure"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -60,7 +60,6 @@ public static class XapiClientServiceCollectionExtensions
                 provider.GetRequiredService<IOptions<XapiClientOptions>>().Value,
                 provider.GetRequiredService<VersionNegotiation>(),
                 provider.GetRequiredService<ClientMetrics>()));
-        services.AddTransient<IXapiClient>(static provider => provider.GetRequiredService<XapiClient>());
 
         return new Builder(services, httpClient);
     }

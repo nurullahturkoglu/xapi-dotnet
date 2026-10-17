@@ -7,7 +7,7 @@ using static Xapi.Client.Outbox.Tests.Fakes.Samples;
 
 namespace Xapi.Client.Outbox.Tests.DependencyInjection;
 
-public sealed class AddXapiOutboxTests : IDisposable
+public sealed class AddOutboxTests : IDisposable
 {
     private readonly TempDirectory _directory = new();
 
@@ -18,18 +18,20 @@ public sealed class AddXapiOutboxTests : IDisposable
     {
         var lrs = new FakeLrs();
         var services = new ServiceCollection();
-        services.AddXapiClient(o =>
-        {
-            o.Endpoint = new Uri(Harness.Endpoint);
-            o.Version = XapiVersion.V2_0_0;
-        }).HttpClient.ConfigurePrimaryHttpMessageHandler(() => lrs);
-        services.AddXapiOutbox(_directory.Path, o => o.BatchSize = 7);
-        services.AddXapiOutbox(_directory.Path);
+        var builder = services
+            .AddXapiClient(o =>
+            {
+                o.Endpoint = new Uri(Harness.Endpoint);
+                o.Version = XapiVersion.V2_0_0;
+            })
+            .AddOutbox(_directory.Path, o => o.BatchSize = 7)
+            .AddOutbox(_directory.Path);
+        builder.HttpClient.ConfigurePrimaryHttpMessageHandler(() => lrs);
 
         await using (var provider = services.BuildServiceProvider())
         {
             var outbox = provider.GetRequiredService<StatementOutbox>();
-            Assert.IsType<FileOutboxStore>(provider.GetRequiredService<IOutboxStore>());
+            Assert.IsType<FileOutboxStore>(provider.GetRequiredService<OutboxStore>());
             var hosted = Assert.Single(provider.GetServices<IHostedService>());
 
             await hosted.StartAsync(Ct);
@@ -40,7 +42,7 @@ public sealed class AddXapiOutboxTests : IDisposable
         }
 
         // Disposing the provider released the store's directory lock
-        using var reopened = new FileOutboxStore(_directory.Path);
+        using var reopened = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
         Assert.Equal(0, await reopened.GetPendingCountAsync(Ct));
     }
 
@@ -49,12 +51,11 @@ public sealed class AddXapiOutboxTests : IDisposable
     {
         var store = new InMemoryOutboxStore();
         var services = new ServiceCollection();
-        services.AddXapiClient(o => o.Endpoint = new Uri(Harness.Endpoint));
-        services.AddXapiOutbox(_ => store);
+        services.AddXapiClient(o => o.Endpoint = new Uri(Harness.Endpoint)).AddOutbox(_ => store);
 
         using var provider = services.BuildServiceProvider();
 
-        Assert.Same(store, provider.GetRequiredService<IOutboxStore>());
+        Assert.Same(store, provider.GetRequiredService<OutboxStore>());
         Assert.NotNull(provider.GetRequiredService<StatementOutbox>());
     }
 
@@ -63,8 +64,7 @@ public sealed class AddXapiOutboxTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddMetrics();
-        services.AddXapiClient(o => o.Endpoint = new Uri(Harness.Endpoint));
-        services.AddXapiOutbox(_ => new InMemoryOutboxStore());
+        services.AddXapiClient(o => o.Endpoint = new Uri(Harness.Endpoint)).AddOutbox(_ => new InMemoryOutboxStore());
         using var provider = services.BuildServiceProvider();
         var meterFactory = provider.GetRequiredService<IMeterFactory>();
         using var metrics = new MetricRecorder(i => ReferenceEquals(i.Meter.Scope, meterFactory));

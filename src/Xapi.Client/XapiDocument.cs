@@ -14,13 +14,23 @@ namespace Xapi.Client;
 /// in use, for example between creating it and sending it. Copy the buffer first if it is reused.
 /// </para>
 /// </remarks>
-/// <param name="Content">The document bytes. Kept without a copy, so they must not change afterwards.</param>
-/// <param name="ContentType">The media type, for example <c>application/json</c>.</param>
-public sealed record XapiDocument(ReadOnlyMemory<byte> Content, string ContentType)
+public sealed record XapiDocument
 {
     private const string JsonMediaType = "application/json";
 
-    private readonly string _contentType = Guard.NotEmpty(ContentType);
+    private readonly string _contentType;
+
+    /// <summary>Creates a document.</summary>
+    /// <param name="content">The document bytes. Kept without a copy, so they must not change afterwards.</param>
+    /// <param name="contentType">The media type, for example <c>application/json</c>.</param>
+    public XapiDocument(ReadOnlyMemory<byte> content, string contentType)
+    {
+        Content = content;
+        _contentType = Guard.NotEmpty(contentType);
+    }
+
+    /// <summary>The document bytes. They are not copied, so they must not change while the document is in use.</summary>
+    public ReadOnlyMemory<byte> Content { get; init; }
 
     /// <summary>The media type, for example <c>application/json</c>.</summary>
     public string ContentType

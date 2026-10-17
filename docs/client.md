@@ -5,9 +5,12 @@ covers the Statement, State, Activity Profile, Agent Profile, Agents, Activities
 targets netstandard2.0 and net10.0, uses no reflection, and the net10.0 build can be published with Native
 AOT.
 
-`IXapiClient` is the interface and `XapiClient` the implementation. Code that sends statements should depend
-on `IXapiClient`, so tests can point it at a fake or at the embedded LRS (see
-[samples/FakeLrsInTests](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/FakeLrsInTests)).
+Code that sends statements takes an `XapiClient`. Tests can point it at the embedded LRS (see
+[samples/FakeLrsInTests](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/FakeLrsInTests)),
+or replace it with a test double: the service methods are virtual, and a class derived from `XapiClient` that
+calls its protected parameterless constructor sends nothing and overrides only the methods the test needs.
+Methods it does not override throw `InvalidOperationException`. There is no `IXapiClient` interface;
+[ADR-0008](adr/0008-http-client.md) explains why.
 
 ## Creating a client
 
@@ -69,9 +72,9 @@ For any other scheme, leave `Credentials` empty and add the header in a `Delegat
 
 ## Dependency injection and retries
 
-On net10.0, `AddXapiClient` registers `IXapiClient` and `XapiClient` as typed clients of a named `HttpClient`
+On net10.0, `AddXapiClient` registers `XapiClient` as the typed client of a named `HttpClient`
 (`XapiClientServiceCollectionExtensions.HttpClientName`, "Xapi.Client") from `IHttpClientFactory`. The
-clients are transient, as typed clients are; the negotiated version is shared by all of them.
+client is transient, as typed clients are; the negotiated version is shared by every instance.
 
 The client does not retry. To retry transient failures, add a resilience handler from
 `Microsoft.Extensions.Http.Resilience` to the `HttpClient` that `AddXapiClient` returns:

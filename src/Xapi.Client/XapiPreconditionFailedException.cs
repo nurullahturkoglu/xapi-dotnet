@@ -10,14 +10,14 @@ public sealed class XapiPreconditionFailedException : XapiHttpException
 {
     /// <summary>Creates an exception with a generic message.</summary>
     public XapiPreconditionFailedException()
-        : this(null, "The LRS returned 412 Precondition Failed.")
+        : this("The LRS returned 412 Precondition Failed.", responseBody: null)
     {
     }
 
     /// <summary>Creates an exception with a message.</summary>
     /// <param name="message">The message.</param>
     public XapiPreconditionFailedException(string message)
-        : this(null, message)
+        : this(message, responseBody: null)
     {
     }
 
@@ -25,15 +25,15 @@ public sealed class XapiPreconditionFailedException : XapiHttpException
     /// <param name="message">The message.</param>
     /// <param name="innerException">The inner exception.</param>
     public XapiPreconditionFailedException(string message, Exception innerException)
-        : base(HttpStatusCode.PreconditionFailed, null, message, null, innerException)
+        : base(message, HttpStatusCode.PreconditionFailed, innerException: innerException)
     {
     }
 
     /// <summary>Creates an exception for a 412 response.</summary>
-    /// <param name="responseBody">The response body as text, if any.</param>
     /// <param name="message">The message.</param>
-    public XapiPreconditionFailedException(string? responseBody, string message)
-        : base(HttpStatusCode.PreconditionFailed, responseBody, message)
+    /// <param name="responseBody">The response body as text, if any.</param>
+    public XapiPreconditionFailedException(string message, string? responseBody)
+        : base(message, HttpStatusCode.PreconditionFailed, responseBody)
     {
     }
 }

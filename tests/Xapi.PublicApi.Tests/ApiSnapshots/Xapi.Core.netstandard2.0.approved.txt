@@ -295,11 +295,10 @@ namespace Xapi
     }
     public sealed record XapiError : System.IEquatable<Xapi.XapiError>
     {
-        public XapiError(string Code, string Path, string Message) { }
+        public XapiError(string code, string path, string message) { }
         public string Code { get; init; }
         public string Message { get; init; }
         public string Path { get; init; }
-        public void Deconstruct(out string Code, out string Path, out string Message) { }
         public override string ToString() { }
     }
     public static class XapiErrorCodes

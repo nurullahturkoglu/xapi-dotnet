@@ -10,7 +10,7 @@ internal sealed class Harness : IAsyncDisposable
 
     public static readonly DateTimeOffset Start = new(2026, 10, 17, 9, 0, 0, TimeSpan.Zero);
 
-    private Harness(FakeLrs lrs, IOutboxStore store, FakeTimeProvider time, StatementOutbox outbox, XapiClient client)
+    private Harness(FakeLrs lrs, OutboxStore store, FakeTimeProvider time, StatementOutbox outbox, XapiClient client)
     {
         Lrs = lrs;
         Store = store;
@@ -21,7 +21,7 @@ internal sealed class Harness : IAsyncDisposable
 
     public FakeLrs Lrs { get; }
 
-    public IOutboxStore Store { get; }
+    public OutboxStore Store { get; }
 
     public FakeTimeProvider Time { get; }
 
@@ -29,7 +29,7 @@ internal sealed class Harness : IAsyncDisposable
 
     public XapiClient Client { get; }
 
-    public static Harness Create(Action<OutboxOptions>? configure = null, IOutboxStore? store = null, FakeLrs? lrs = null, XapiVersion? version = null, OutboxMetrics? metrics = null)
+    public static Harness Create(Action<OutboxOptions>? configure = null, OutboxStore? store = null, FakeLrs? lrs = null, XapiVersion? version = null, OutboxMetrics? metrics = null)
     {
         lrs ??= new FakeLrs();
         var time = new FakeTimeProvider(Start);

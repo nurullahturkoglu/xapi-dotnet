@@ -153,11 +153,12 @@ public class ErrorTests
     [Fact]
     public void Exceptions_can_be_created_for_tests_of_callers()
     {
-        var transient = new XapiHttpException(HttpStatusCode.ServiceUnavailable, "busy", "busy", TimeSpan.FromSeconds(5));
+        var transient = new XapiHttpException("busy", HttpStatusCode.ServiceUnavailable, "busy", TimeSpan.FromSeconds(5));
 
         Assert.True(transient.IsTransient);
         Assert.Equal(TimeSpan.FromSeconds(5), transient.RetryAfter);
         Assert.Equal(HttpStatusCode.Conflict, new XapiConflictException().StatusCode);
+        Assert.Equal("{}", new XapiConflictException("conflict", "{}").ResponseBody);
         Assert.Equal(HttpStatusCode.PreconditionFailed, new XapiPreconditionFailedException("changed").StatusCode);
         Assert.False(new XapiHttpException().IsTransient);
     }

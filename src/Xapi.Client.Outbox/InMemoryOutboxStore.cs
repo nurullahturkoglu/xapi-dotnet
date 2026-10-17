@@ -3,11 +3,11 @@ using Xapi.Client.Outbox.Internal;
 namespace Xapi.Client.Outbox;
 
 /// <summary>
-/// An <see cref="IOutboxStore"/> that keeps everything in memory. Queued Statements are lost when the process
+/// An <see cref="OutboxStore"/> that keeps everything in memory. Queued Statements are lost when the process
 /// ends, so use it for tests, or where that is acceptable; use <see cref="FileOutboxStore"/> otherwise.
 /// </summary>
 /// <remarks>Thread-safe.</remarks>
-public sealed class InMemoryOutboxStore : IOutboxStore
+public sealed class InMemoryOutboxStore : OutboxStore
 {
 #if NET9_0_OR_GREATER
     private readonly Lock _gate = new();
@@ -17,7 +17,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     private readonly OutboxQueue _queue = new();
 
     /// <inheritdoc/>
-    public ValueTask<bool> AddAsync(OutboxEntry entry, CancellationToken cancellationToken)
+    public override ValueTask<bool> AddAsync(OutboxEntry entry, CancellationToken cancellationToken)
     {
         Guard.NotNull(entry);
         cancellationToken.ThrowIfCancellationRequested();
@@ -28,7 +28,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask<IReadOnlyList<OutboxEntry>> GetPendingAsync(int maxCount, CancellationToken cancellationToken)
+    public override ValueTask<IReadOnlyList<OutboxEntry>> GetPendingAsync(int maxCount, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -38,7 +38,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask<int> GetPendingCountAsync(CancellationToken cancellationToken)
+    public override ValueTask<int> GetPendingCountAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -48,7 +48,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask RemoveAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken)
+    public override ValueTask RemoveAsync(IReadOnlyCollection<Guid> statementIds, CancellationToken cancellationToken)
     {
         Guard.NotNull(statementIds);
         cancellationToken.ThrowIfCancellationRequested();
@@ -64,7 +64,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask RecordFailedAttemptAsync(IReadOnlyCollection<Guid> statementIds, string error, CancellationToken cancellationToken)
+    public override ValueTask RecordFailedAttemptAsync(IReadOnlyCollection<Guid> statementIds, string error, CancellationToken cancellationToken)
     {
         Guard.NotNull(statementIds);
         Guard.NotNull(error);
@@ -81,7 +81,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask MoveToDeadLettersAsync(OutboxDeadLetter deadLetter, CancellationToken cancellationToken)
+    public override ValueTask MoveToDeadLettersAsync(OutboxDeadLetter deadLetter, CancellationToken cancellationToken)
     {
         Guard.NotNull(deadLetter);
         cancellationToken.ThrowIfCancellationRequested();
@@ -94,7 +94,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask<IReadOnlyList<OutboxDeadLetter>> GetDeadLettersAsync(CancellationToken cancellationToken)
+    public override ValueTask<IReadOnlyList<OutboxDeadLetter>> GetDeadLettersAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -104,7 +104,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask<int> GetDeadLetterCountAsync(CancellationToken cancellationToken)
+    public override ValueTask<int> GetDeadLetterCountAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -114,7 +114,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask<bool> RequeueAsync(Guid statementId, CancellationToken cancellationToken)
+    public override ValueTask<bool> RequeueAsync(Guid statementId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
@@ -124,7 +124,7 @@ public sealed class InMemoryOutboxStore : IOutboxStore
     }
 
     /// <inheritdoc/>
-    public ValueTask<bool> RemoveDeadLetterAsync(Guid statementId, CancellationToken cancellationToken)
+    public override ValueTask<bool> RemoveDeadLetterAsync(Guid statementId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)

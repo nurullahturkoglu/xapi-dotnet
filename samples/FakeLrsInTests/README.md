@@ -12,7 +12,7 @@ dotnet test --project samples/FakeLrsInTests
 
 | File | What it is |
 | --- | --- |
-| `CourseProgress.cs` | The code under test: records a completion and saves and reads a bookmark through `IXapiClient`. |
+| `CourseProgress.cs` | The code under test: records a completion and saves and reads a bookmark through `XapiClient`. |
 | `FakeLrs.cs` | An xUnit fixture that starts the LRS and hands out clients. |
 | `CourseProgressTests.cs` | Tests that run the code and then check what the LRS stored, for xAPI 1.0.3 and 2.0.0. |
 
@@ -33,7 +33,7 @@ can use different Agents or Activity ids, as these do, or the fixture can be mad
 ## Use it in your own tests
 
 Copy `FakeLrs.cs` into your test project and reference `Xapi.Client`, `Xapi.Lrs.Sqlite` and
-`Microsoft.AspNetCore.TestHost`. Pass `fakeLrs.CreateClient()` wherever your code takes an `IXapiClient`, or
+`Microsoft.AspNetCore.TestHost`. Pass `fakeLrs.CreateClient()` wherever your code takes an `XapiClient`, or
 `fakeLrs.CreateClient(XapiVersion.V1_0_3)` to test against xAPI 1.0.3. If your code creates its own
 `HttpClient`, let it accept one, or register the client in your test's service collection with the
 `HttpClient` from the test server.

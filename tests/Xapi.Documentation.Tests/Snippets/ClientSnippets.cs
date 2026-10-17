@@ -24,7 +24,7 @@ internal static class ClientSnippets
         _ = await client.GetVersionAsync();
     }
 
-    public static IXapiClient Bearer(HttpClient http, ITokenSource tokens)
+    public static XapiClient Bearer(HttpClient http, ITokenSource tokens)
     {
         // snippet: client-bearer
         var client = new XapiClient(http, new XapiClientOptions
@@ -50,7 +50,7 @@ internal static class ClientSnippets
         // end snippet
     }
 
-    public static async Task Statements(IXapiClient client, Statement statement, Agent learner)
+    public static async Task Statements(XapiClient client, Statement statement, Agent learner)
     {
         // snippet: client-statements
         var ids = await client.SaveStatementsAsync([statement, statement with { Verb = Verbs.Passed }]);
@@ -63,7 +63,7 @@ internal static class ClientSnippets
         _ = (stored, voidingId, voided);
     }
 
-    public static async Task Query(IXapiClient client)
+    public static async Task Query(XapiClient client)
     {
         // snippet: client-query
         var query = new StatementQuery
@@ -80,7 +80,7 @@ internal static class ClientSnippets
         // end snippet
     }
 
-    public static async Task Documents(IXapiClient client, Iri course, Agent learner)
+    public static async Task Documents(XapiClient client, Iri course, Agent learner)
     {
         // snippet: client-documents
         var key = new StateKey(course, learner, "bookmark");
@@ -101,7 +101,7 @@ internal static class ClientSnippets
         // end snippet
     }
 
-    public static async Task Merge(IXapiClient client, Iri course, Agent learner)
+    public static async Task Merge(XapiClient client, Iri course, Agent learner)
     {
         // snippet: client-merge
         using var changes = JsonDocument.Parse("""{ "lastPage": 12, "theme": "dark" }""");
@@ -116,7 +116,7 @@ internal static class ClientSnippets
         _ = theme;
     }
 
-    public static async Task Attachments(IXapiClient client, Iri course, Agent learner)
+    public static async Task Attachments(XapiClient client, Iri course, Agent learner)
     {
         // snippet: client-attachments
         var certificate = AttachmentPayload.Create(await File.ReadAllBytesAsync("certificate.pdf"), "application/pdf");
@@ -140,7 +140,7 @@ internal static class ClientSnippets
         // end snippet
     }
 
-    public static async Task Errors(IXapiClient client, Statement statement)
+    public static async Task Errors(XapiClient client, Statement statement)
     {
         // snippet: client-errors
         try

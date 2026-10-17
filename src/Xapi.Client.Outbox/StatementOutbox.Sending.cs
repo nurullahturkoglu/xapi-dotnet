@@ -36,7 +36,7 @@ public sealed partial class StatementOutbox
     /// failure that stops the flush.
     /// </summary>
     /// <returns><see langword="false"/> when the flush must stop (transient failure or pause).</returns>
-    private async Task<bool> SendAsync(IXapiClient client, IReadOnlyList<OutboxEntry> entries, FlushCounts counts, CancellationToken cancellationToken)
+    private async Task<bool> SendAsync(XapiClient client, IReadOnlyList<OutboxEntry> entries, FlushCounts counts, CancellationToken cancellationToken)
     {
         Exception? error = null;
         try
@@ -112,7 +112,7 @@ public sealed partial class StatementOutbox
         }
     }
 
-    private async Task<bool> SendHalvesAsync(IXapiClient client, IReadOnlyList<OutboxEntry> entries, FlushCounts counts, CancellationToken cancellationToken)
+    private async Task<bool> SendHalvesAsync(XapiClient client, IReadOnlyList<OutboxEntry> entries, FlushCounts counts, CancellationToken cancellationToken)
     {
         var middle = entries.Count / 2;
         return await SendAsync(client, entries.Take(middle).ToList(), counts, cancellationToken).ConfigureAwait(false)
@@ -121,7 +121,7 @@ public sealed partial class StatementOutbox
 
     /// <summary>The LRS answered 409 to this Statement alone: delivered if what it stores is equivalent.</summary>
     /// <remarks>IEEE 9274.1.1, 4.1.6.1: an LRS that receives a different Statement with a known id answers 409.</remarks>
-    private async Task<bool> ResolveConflictAsync(IXapiClient client, OutboxEntry entry, XapiHttpException conflict, FlushCounts counts, CancellationToken cancellationToken)
+    private async Task<bool> ResolveConflictAsync(XapiClient client, OutboxEntry entry, XapiHttpException conflict, FlushCounts counts, CancellationToken cancellationToken)
     {
         Statement? stored;
         try

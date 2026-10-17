@@ -5,11 +5,11 @@ using Xapi.Client;
 namespace FakeLrsInTests;
 
 /// <summary>
-/// The application code under test. It only knows <see cref="IXapiClient"/>, so in production it talks to a real
-/// LRS and in the tests to <see cref="FakeLrs"/>.
+/// The application code under test. It is given an <see cref="XapiClient"/>, which in production talks to a real LRS
+/// and in the tests to <see cref="FakeLrs"/>.
 /// </summary>
 /// <param name="lrs">The LRS client.</param>
-public sealed class CourseProgress(IXapiClient lrs)
+public sealed class CourseProgress(XapiClient lrs)
 {
     private const string BookmarkStateId = "bookmark";
 

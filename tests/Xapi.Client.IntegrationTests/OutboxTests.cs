@@ -28,7 +28,7 @@ public sealed class OutboxTests(LrsqlFixture lrs) : IDisposable
         var registration = Guid.NewGuid();
         var ids = new List<Guid>();
 
-        using (var store = new FileOutboxStore(_directory))
+        using (var store = await FileOutboxStore.OpenAsync(_directory, Ct))
         {
             await using var outbox = new StatementOutbox(client, store, new OutboxOptions { BatchSize = 2 });
             for (var i = 0; i < 5; i++)
@@ -43,7 +43,7 @@ public sealed class OutboxTests(LrsqlFixture lrs) : IDisposable
 
         // As after an app restart: a new store and outbox on the same directory
         network.Offline = false;
-        using (var store = new FileOutboxStore(_directory))
+        using (var store = await FileOutboxStore.OpenAsync(_directory, Ct))
         {
             await using var outbox = new StatementOutbox(client, store, new OutboxOptions { BatchSize = 2 });
             var online = await outbox.FlushAsync(Ct);

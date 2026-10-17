@@ -14,7 +14,7 @@ public sealed partial class StatementOutbox
     /// <para>
     /// Needs no host or dependency injection, so it also suits Unity and desktop apps: start it once
     /// (<c>_ = outbox.RunAsync(token)</c>) and cancel the token, or dispose the outbox, on exit. On net10.0,
-    /// <c>AddXapiOutbox</c> runs it as a hosted service. <see cref="FlushAsync"/> can still be called while it runs.
+    /// <c>AddOutbox</c> runs it as a hosted service. <see cref="FlushAsync"/> can still be called while it runs.
     /// </para>
     /// <para>
     /// Errors never end the loop. Failures of the store (a full disk, for example) are handled like transient

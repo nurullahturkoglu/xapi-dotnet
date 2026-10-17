@@ -3,12 +3,19 @@ using Xapi.Client.Internal;
 namespace Xapi.Client;
 
 /// <summary>A document in the Activity Profile resource (<c>activities/profile</c>), IEEE 9274.1.1, 4.1.6.6.</summary>
-/// <param name="ActivityId">The Activity the profile belongs to (<c>activityId</c>).</param>
-/// <param name="ProfileId">The document id (<c>profileId</c>).</param>
-public sealed record ActivityProfileKey(Iri ActivityId, string ProfileId) : DocumentKey
+public sealed record ActivityProfileKey : DocumentKey
 {
-    private readonly Iri _activityId = Guard.NotDefault(ActivityId);
-    private readonly string _profileId = Guard.NotEmpty(ProfileId);
+    private readonly Iri _activityId;
+    private readonly string _profileId;
+
+    /// <summary>Creates a key.</summary>
+    /// <param name="activityId">The Activity the profile belongs to (<c>activityId</c>).</param>
+    /// <param name="profileId">The document id (<c>profileId</c>).</param>
+    public ActivityProfileKey(Iri activityId, string profileId)
+    {
+        _activityId = Guard.NotDefault(activityId);
+        _profileId = Guard.NotEmpty(profileId);
+    }
 
     /// <summary>The Activity the profile belongs to (<c>activityId</c>).</summary>
     public Iri ActivityId

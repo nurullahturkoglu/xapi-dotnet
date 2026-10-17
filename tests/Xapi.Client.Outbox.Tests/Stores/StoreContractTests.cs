@@ -3,7 +3,7 @@ using static Xapi.Client.Outbox.Tests.Fakes.Samples;
 
 namespace Xapi.Client.Outbox.Tests.Stores;
 
-/// <summary>The <see cref="IOutboxStore"/> contract, run against both built-in stores.</summary>
+/// <summary>The <see cref="OutboxStore"/> contract, run against both built-in stores.</summary>
 public sealed class StoreContractTests : IDisposable
 {
     private readonly TempDirectory _directory = new();
@@ -21,7 +21,7 @@ public sealed class StoreContractTests : IDisposable
     [MemberData(nameof(Kinds))]
     public async Task Pending_entries_come_back_in_order_up_to_the_maximum(string kind)
     {
-        var store = Create(kind);
+        var store = await CreateAsync(kind);
         for (var i = 1; i <= 5; i++)
         {
             Assert.True(await store.AddAsync(Entry(i), Ct));
@@ -35,7 +35,7 @@ public sealed class StoreContractTests : IDisposable
     [MemberData(nameof(Kinds))]
     public async Task Adding_a_pending_id_again_is_refused(string kind)
     {
-        var store = Create(kind);
+        var store = await CreateAsync(kind);
         await store.AddAsync(Entry(1), Ct);
 
         Assert.False(await store.AddAsync(Entry(1), Ct));
@@ -46,7 +46,7 @@ public sealed class StoreContractTests : IDisposable
     [MemberData(nameof(Kinds))]
     public async Task Remove_ignores_unknown_ids(string kind)
     {
-        var store = Create(kind);
+        var store = await CreateAsync(kind);
         await store.AddAsync(Entry(1), Ct);
         await store.AddAsync(Entry(2), Ct);
 
@@ -59,7 +59,7 @@ public sealed class StoreContractTests : IDisposable
     [MemberData(nameof(Kinds))]
     public async Task Failed_attempts_are_counted_with_the_last_error(string kind)
     {
-        var store = Create(kind);
+        var store = await CreateAsync(kind);
         await store.AddAsync(Entry(1), Ct);
 
         await store.RecordFailedAttemptAsync([Id(1)], "first", Ct);
@@ -73,7 +73,7 @@ public sealed class StoreContractTests : IDisposable
     [MemberData(nameof(Kinds))]
     public async Task Dead_letter_leaves_the_queue_and_can_be_requeued_or_removed(string kind)
     {
-        var store = Create(kind);
+        var store = await CreateAsync(kind);
         for (var i = 1; i <= 3; i++)
         {
             await store.AddAsync(Entry(i), Ct);
@@ -101,7 +101,7 @@ public sealed class StoreContractTests : IDisposable
     [MemberData(nameof(Kinds))]
     public async Task Requeue_of_an_id_that_is_pending_again_only_removes_the_dead_letter(string kind)
     {
-        var store = Create(kind);
+        var store = await CreateAsync(kind);
         await store.MoveToDeadLettersAsync(DeadLetter(1), Ct);
         await store.AddAsync(Entry(1), Ct);
 
@@ -122,11 +122,11 @@ public sealed class StoreContractTests : IDisposable
             Attempts = 1,
         };
 
-    private IOutboxStore Create(string kind)
+    private async Task<OutboxStore> CreateAsync(string kind)
     {
         if (kind == "file")
         {
-            _file = new FileOutboxStore(_directory.Path);
+            _file = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
             return _file;
         }
 

@@ -235,6 +235,8 @@ public class MultipartTests
         var a = AttachmentPayload.Create(BinaryContent, "image/png");
         var b = new AttachmentPayload(a.Sha2.ToUpperInvariant(), "image/png", BinaryContent.ToArray());
 
+        Assert.Equal(a.Sha2, b.Sha2);
+        Assert.Equal(a.Sha2, (a with { Sha2 = a.Sha2.ToUpperInvariant() }).Sha2);
         Assert.Equal(a, b);
         Assert.Equal(a.GetHashCode(), b.GetHashCode());
         Assert.NotEqual(a, b with { Content = new byte[] { 1 } });

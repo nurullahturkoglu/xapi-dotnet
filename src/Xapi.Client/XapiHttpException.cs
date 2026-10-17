@@ -35,12 +35,12 @@ public class XapiHttpException : Exception
     }
 
     /// <summary>Creates an exception for an LRS response.</summary>
+    /// <param name="message">The message.</param>
     /// <param name="statusCode">The response status code.</param>
     /// <param name="responseBody">The response body as text, if any.</param>
-    /// <param name="message">The message.</param>
     /// <param name="retryAfter">The delay the LRS asked for in a <c>Retry-After</c> header, if any.</param>
     /// <param name="innerException">The inner exception, if any.</param>
-    public XapiHttpException(HttpStatusCode statusCode, string? responseBody, string message, TimeSpan? retryAfter = null, Exception? innerException = null)
+    public XapiHttpException(string message, HttpStatusCode statusCode, string? responseBody = null, TimeSpan? retryAfter = null, Exception? innerException = null)
         : base(message, innerException)
     {
         StatusCode = statusCode;

@@ -3,12 +3,19 @@ using Xapi.Client.Internal;
 namespace Xapi.Client;
 
 /// <summary>A document in the Agent Profile resource (<c>agents/profile</c>), IEEE 9274.1.1, 4.1.6.5.</summary>
-/// <param name="Agent">The Agent the profile belongs to (<c>agent</c>).</param>
-/// <param name="ProfileId">The document id (<c>profileId</c>).</param>
-public sealed record AgentProfileKey(Agent Agent, string ProfileId) : DocumentKey
+public sealed record AgentProfileKey : DocumentKey
 {
-    private readonly Agent _agent = Guard.NotNull(Agent);
-    private readonly string _profileId = Guard.NotEmpty(ProfileId);
+    private readonly Agent _agent;
+    private readonly string _profileId;
+
+    /// <summary>Creates a key.</summary>
+    /// <param name="agent">The Agent the profile belongs to (<c>agent</c>).</param>
+    /// <param name="profileId">The document id (<c>profileId</c>).</param>
+    public AgentProfileKey(Agent agent, string profileId)
+    {
+        _agent = Guard.NotNull(agent);
+        _profileId = Guard.NotEmpty(profileId);
+    }
 
     /// <summary>The Agent the profile belongs to (<c>agent</c>).</summary>
     public Agent Agent
