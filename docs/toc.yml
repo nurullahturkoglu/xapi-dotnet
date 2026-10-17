@@ -16,6 +16,8 @@
       href: migrating-from-tincan.md
     - name: Conformance
       href: conformance.md
+    - name: Benchmarks
+      href: benchmarks.md
 - name: API reference
   href: api/
   topicUid: Xapi
