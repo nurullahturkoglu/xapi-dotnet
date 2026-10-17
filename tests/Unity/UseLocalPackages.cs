@@ -75,7 +75,9 @@ if (errors.Count > 0)
 packagesConfig.Save(packagesConfigPath);
 
 var nugetConfig = XDocument.Load(nugetConfigPath);
-nugetConfig.Root!.Element("packageSources")!.Add(new XElement("add", new XAttribute("key", "local"), new XAttribute("value", packageDirectory)));
+// First, because NuGetForUnity takes a package from the first source that has it and logs an error, failing the
+// restore, for every source it asks that does not
+nugetConfig.Root!.Element("packageSources")!.Element("clear")!.AddAfterSelf(new XElement("add", new XAttribute("key", "local"), new XAttribute("value", packageDirectory)));
 nugetConfig.Save(nugetConfigPath);
 
 foreach (var package in listed.Values.Where(p => ((string)p.Attribute("id")!).StartsWith("Xapi.", StringComparison.Ordinal)))
