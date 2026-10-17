@@ -8,6 +8,7 @@ using Xapi.Lrs.Http;
 using Xapi.Lrs.Security;
 using Xapi.Lrs.Statements;
 using Xapi.Lrs.Storage;
+using Xapi.Lrs.Telemetry;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -62,6 +63,8 @@ public static class XapiLrsServiceCollectionExtensions
         services.AddSingleton<CallerFactory>();
         services.AddSingleton<StatementWriteTracker>();
         services.AddSingleton<StatementWriter>();
+        services.AddMetrics();
+        services.AddSingleton<XapiLrsMetrics>();
         services.AddSingleton<XapiLrsMigrator>();
         services.AddHostedService<XapiLrsStartup>();
         services.AddSingleton<XapiLrsPaths>();

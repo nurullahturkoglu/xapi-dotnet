@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Xapi.Lrs.Security;
 using Xapi.Lrs.Statements;
+using Xapi.Lrs.Telemetry;
 
 namespace Xapi.Lrs.Http;
 
@@ -15,9 +17,10 @@ internal sealed partial class XapiRequestFilter(
     IOptions<XapiLrsOptions> options,
     CallerFactory callers,
     StatementWriteTracker writes,
+    XapiLrsMetrics metrics,
     ILogger<XapiRequestFilter> logger) : IEndpointFilter
 {
-    private static readonly XapiEndpointMetadata Unannotated = new(XapiAccess.Authenticated, VersionHeaderRequired: true, IsStatementResource: false);
+    private static readonly XapiEndpointMetadata Unannotated = new(XapiTags.Other, XapiAccess.Authenticated, VersionHeaderRequired: true, IsStatementResource: false);
 
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
@@ -26,6 +29,37 @@ internal sealed partial class XapiRequestFilter(
 
         var http = context.HttpContext;
         var metadata = http.GetEndpoint()?.Metadata.GetMetadata<XapiEndpointMetadata>() ?? Unannotated;
+        if (!metrics.MeasuresRequests)
+        {
+            return await HandleAsync(context, next, metadata, measurement: null).ConfigureAwait(false);
+        }
+
+        var measurement = new RequestMeasurement(metrics, metadata.Resource);
+        object? result;
+        try
+        {
+            result = await HandleAsync(context, next, metadata, measurement).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            measurement.Complete(http, exception.GetType().FullName);
+            throw;
+        }
+
+        // The status code is known once the result has written the response
+        if (result is IResult inner)
+        {
+            measurement.Result = inner;
+            return measurement;
+        }
+
+        measurement.Complete(http, null);
+        return result;
+    }
+
+    private async ValueTask<object?> HandleAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next, XapiEndpointMetadata metadata, RequestMeasurement? measurement)
+    {
+        var http = context.HttpContext;
         var headers = http.Response.Headers;
 
         // IEEE 9274.1.1, 4.1.7: the header is on every response, errors included
@@ -108,6 +142,7 @@ internal sealed partial class XapiRequestFilter(
         catch (Exception exception) when (exception is not OperationCanceledException && !http.Response.HasStarted)
         {
             LogUnhandled(logger, exception, http.Request.Method, http.Request.Path);
+            measurement?.ExceptionType = exception.GetType().FullName;
             return XapiResults.Problem(StatusCodes.Status500InternalServerError, "The LRS could not process the request.");
         }
     }
@@ -149,4 +184,34 @@ internal sealed partial class XapiRequestFilter(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception in xAPI request {Method} {Path}")]
     private static partial void LogUnhandled(ILogger logger, Exception exception, string method, PathString path);
+
+    // Created only while xapi.lrs.request.duration or xapi.lrs.errors is listened to. Wraps the endpoint's result
+    // so the request is recorded after the response is written, with its final status code.
+    private sealed class RequestMeasurement(XapiLrsMetrics metrics, string resource) : IResult
+    {
+        private readonly long _start = Stopwatch.GetTimestamp();
+
+        public IResult? Result { get; set; }
+
+        // The exception the filter turned into a 500, which the status code alone does not tell
+        public string? ExceptionType { get; set; }
+
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            try
+            {
+                await Result!.ExecuteAsync(httpContext).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                Complete(httpContext, exception.GetType().FullName);
+                throw;
+            }
+
+            Complete(httpContext, ExceptionType);
+        }
+
+        public void Complete(HttpContext http, string? exceptionType) =>
+            metrics.RequestCompleted(http, resource, _start, exceptionType);
+    }
 }

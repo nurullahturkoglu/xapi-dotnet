@@ -7,6 +7,7 @@
 //   Lrs:Credentials       more credentials, for example Lrs:Credentials:0:Key, :Secret and :Scopes:0
 //   Lrs:AuthorityHomePage the homePage of generated authorities
 // and the other XapiLrsOptions by name, for example Lrs:MaxStatementsPerPage (XapiLrsOptions.Bind).
+// GET /health answers 200 Healthy when the database can be reached and is migrated, and 503 otherwise.
 using Xapi.Lrs;
 
 // As PID 1 in a container the process ignores the SIGABRT that ends an unhandled exception and spins instead of
@@ -58,8 +59,11 @@ switch (database)
         throw new InvalidOperationException($"Lrs:Database must be sqlite or postgres, not '{database}'.");
 }
 
+builder.Services.AddHealthChecks().AddXapiLrsHealthCheck();
+
 var app = builder.Build();
 app.MapXapiLrs("/xapi");
+app.MapHealthChecks("/health");
 app.Run();
 
 /// <summary>The entry point, public so tests can host the app with WebApplicationFactory.</summary>

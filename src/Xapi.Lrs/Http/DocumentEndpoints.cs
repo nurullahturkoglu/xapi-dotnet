@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Xapi.Lrs.Storage;
+using Xapi.Lrs.Telemetry;
 
 namespace Xapi.Lrs.Http;
 
@@ -75,7 +76,7 @@ internal static class DocumentEndpoints
         var version = XapiRequestFeature.Get(http).Version;
         var preconditions = DocumentPreconditions.From(http.Request);
         IResult? failure = null;
-        var stored = await store.ChangeAsync(request.Scope, request.Id!, current =>
+        var stored = await ChangeAsync(store, resource, "replace", request.Scope, request.Id!, current =>
         {
             failure = CheckPut(current, preconditions, version, resource);
             return failure is null ? DocumentChange.Store(body, contentType) : DocumentChange.None;
@@ -107,7 +108,7 @@ internal static class DocumentEndpoints
         var preconditions = DocumentPreconditions.From(http.Request);
         var max = options.Value.MaxDocumentBytes;
         IResult? failure = null;
-        var stored = await store.ChangeAsync(request.Scope, request.Id!, current =>
+        var stored = await ChangeAsync(store, resource, "merge", request.Scope, request.Id!, current =>
         {
             failure = null;
             if (!preconditions.HoldFor(current))
@@ -157,13 +158,24 @@ internal static class DocumentEndpoints
         // (4.1.6.2, Multiple Document DELETE). A collection has no ETag, so preconditions do not apply.
         if (request.Id is not { } id)
         {
-            await store.DeleteAllAsync(request.Scope, http.RequestAborted).ConfigureAwait(false);
+            using (var activity = XapiLrsActivities.StartWriteDocument(resource, "delete"))
+            {
+                try
+                {
+                    await store.DeleteAllAsync(request.Scope, http.RequestAborted).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (XapiLrsActivities.Failed(activity, exception))
+                {
+                    throw;
+                }
+            }
+
             return XapiResults.Status(StatusCodes.Status204NoContent);
         }
 
         var preconditions = DocumentPreconditions.From(http.Request);
         IResult? failure = null;
-        await store.ChangeAsync(request.Scope, id, current =>
+        await ChangeAsync(store, resource, "delete", request.Scope, id, current =>
         {
             failure = preconditions.HoldFor(current) ? null : PreconditionFailed();
             return failure is null ? DocumentChange.Delete : DocumentChange.None;
@@ -171,6 +183,27 @@ internal static class DocumentEndpoints
 
         // Deleting a document that does not exist succeeds: the outcome is the same
         return failure ?? XapiResults.Status(StatusCodes.Status204NoContent);
+    }
+
+    // A document write inside its xapi.lrs.documents.write activity; operation is replace, merge or delete
+    private static async Task<StoredDocument?> ChangeAsync(
+        IDocumentStore store,
+        DocumentResource resource,
+        string operation,
+        DocumentScope scope,
+        string id,
+        Func<StoredDocument?, DocumentChange> decide,
+        CancellationToken cancellationToken)
+    {
+        using var activity = XapiLrsActivities.StartWriteDocument(resource, operation);
+        try
+        {
+            return await store.ChangeAsync(scope, id, decide, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (XapiLrsActivities.Failed(activity, exception))
+        {
+            throw;
+        }
     }
 
     private static IResult? CheckPut(StoredDocument? current, DocumentPreconditions preconditions, XapiVersion version, DocumentResource resource)
