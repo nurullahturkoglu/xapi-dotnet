@@ -21,7 +21,11 @@ public static class XapiLrsBuilderStorageExtensions
         return builder;
     }
 
-    /// <summary>Replaces the statement store, for example with a decorator or a different database.</summary>
+    /// <summary>
+    /// Replaces the statement store with another implementation, for example one on a different database. The
+    /// built-in store is removed, not wrapped: <typeparamref name="TStore"/> cannot receive it, so it implements
+    /// every member itself.
+    /// </summary>
     /// <typeparam name="TStore">The store type, resolved as a singleton.</typeparam>
     /// <param name="builder">The builder returned by <c>AddXapiLrs</c>.</param>
     /// <returns>The builder.</returns>
@@ -34,7 +38,11 @@ public static class XapiLrsBuilderStorageExtensions
         return builder;
     }
 
-    /// <summary>Replaces the document store, for example with a decorator or a different database.</summary>
+    /// <summary>
+    /// Replaces the document store with another implementation, for example one on a different database. The
+    /// built-in store is removed, not wrapped: <typeparamref name="TStore"/> cannot receive it, so it implements
+    /// every member itself.
+    /// </summary>
     /// <typeparam name="TStore">The store type, resolved as a singleton.</typeparam>
     /// <param name="builder">The builder returned by <c>AddXapiLrs</c>.</param>
     /// <returns>The builder.</returns>
