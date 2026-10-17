@@ -420,8 +420,24 @@ check opens a connection and reads the migrations history table.
 
 ## Running the sample LRS in Docker
 
-`samples/LrsHost/Dockerfile` builds the standalone sample into an image. It runs as a non-root user, stores
-SQLite data in the `/data` volume and does not start until a credential is given:
+Each release publishes the standalone sample as `ghcr.io/nurullahturkoglu/xapi-lrs`, for linux/amd64 and
+linux/arm64, tagged with the release version (`0.1.0`, `0.1.0-preview.1`) and, for releases that are not
+previews, `latest`. The image runs as a non-root user, stores SQLite data in the `/data` volume and does not
+start until a credential is given:
+
+```bash
+docker run -p 8080:8080 -e LrsHost__Key=my-key -e LrsHost__Secret=my-secret -v xapi-lrs-data:/data \
+  ghcr.io/nurullahturkoglu/xapi-lrs:latest
+```
+
+Each image has a signed build provenance attestation that ties it to the release workflow run and the tagged
+commit. The GitHub CLI checks it:
+
+```bash
+gh attestation verify oci://ghcr.io/nurullahturkoglu/xapi-lrs:latest --repo nurullahturkoglu/xapi-dotnet
+```
+
+To build the image from the repository instead, run `samples/LrsHost/Dockerfile` from the repository root:
 
 ```bash
 docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
@@ -433,8 +449,7 @@ database is reachable and migrated. The sample's own settings are in the `LrsHos
 add `-e LrsHost__Database=postgres` and `-e LrsHost__ConnectionString=...`. `LrsHost__Key` and
 `LrsHost__Secret` give one credential with every scope. The `Lrs` section is bound to the LRS options, so
 `-e Lrs__AuthorityHomePage=...`, `-e Lrs__Credentials__0__Key=...` and the other keys from
-[Options from configuration](#options-from-configuration) work too. No image is
-published yet; build it from the repository.
+[Options from configuration](#options-from-configuration) work too.
 
 ## Experimental storage API
 
