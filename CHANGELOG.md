@@ -37,6 +37,7 @@ listed under a "Breaking" heading.
 
 - `Xapi.Core`: reading a statement allocates about a quarter of what it did (5.2 KB instead of 19.7 KB for a 1 KB statement in strict mode) and takes about 40% less time. JSON paths are formatted only when an error is reported, and known property names are matched without creating strings or a hash set per object. Errors are unchanged. See [docs/benchmarks.md](docs/benchmarks.md).
 - `Xapi.Lrs`: statement queries read each filter's own index (verb, registration, and one range per agent or activity usage, plus StatementRef matches) newest first and only as far as one page, instead of testing every statement. At 100,000 statements a verb with no matches takes 0.22 ms instead of 70 ms on SQLite and 0.84 ms instead of 52 ms on PostgreSQL, and an `agent` query with `related_agents` 2.3 ms instead of 581 ms and 5.9 ms instead of 15 ms.
+- `Xapi.Lrs`: on SQLite, the matches through StatementRefs start from the filter's index when it matches fewer statements than there are StatementRefs, instead of looking up the target of every StatementRef. At 100,000 statements of which 10% are StatementRefs, a verb with no matches takes 0.42 ms instead of 23 ms and an `agent` query with `related_agents` 4.1 ms instead of 65 ms. PostgreSQL already chose this from its statistics. See [docs/benchmarks.md](docs/benchmarks.md#statement-queries-with-statementrefs).
 - `Xapi.Lrs`: `attachments=true` responses are streamed, reading the data of one attachment at a time, and HEAD reads none. `IStatementStore.GetAttachmentsAsync` is replaced by `GetAttachmentSummariesAsync` and `GetAttachmentContentAsync`.
 - `Xapi.Lrs.Sqlite` and `Xapi.Lrs.PostgreSql` depend on the exact version of `Xapi.Lrs` they were built with (`[x.y.z]`), because they use its experimental storage types.
 - `Xapi.Lrs`: the storage API marked `XAPI0001` stays experimental after 1.0 until it is declared stable, and is not covered by semantic versioning until then. The `XAPI0001` error links to [Experimental storage API](docs/lrs.md#experimental-storage-api).
@@ -47,6 +48,7 @@ listed under a "Breaking" heading.
 ### Fixed
 
 - `Xapi.Lrs.Sqlite`: a write that timed out waiting for the database lock (`SQLITE_BUSY`) is no longer retried, which made a request wait about 4 minutes before it failed.
+- `Xapi.Lrs.Sqlite`: read-only connections no longer try to switch the database to WAL mode, so the health check reports the pending migrations of a database that is not in WAL mode yet instead of reporting it unreachable.
 
 ### Security
 

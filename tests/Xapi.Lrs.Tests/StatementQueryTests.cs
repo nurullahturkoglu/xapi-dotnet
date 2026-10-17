@@ -206,6 +206,48 @@ public class StatementQueryTests(LrsHosts hosts)
         Assert.Equal(HttpStatusCode.OK, voided.StatusCode);
     }
 
+    public static IEnumerable<TheoryDataRow<TestDatabase, bool>> DatabasesAndReferenceCounts() =>
+        TestDatabases.All().SelectMany(row => new[] { false, true }.Select(many => new TheoryDataRow<TestDatabase, bool>(row.Data, many) { Skip = row.Skip }));
+
+    // On SQLite the matches through StatementRefs start from the smaller side (EfStatementStore): from the statements
+    // the filter matches when other StatementRefs outnumber them, from the StatementRef rows when the filter matches
+    // more statements. A fresh database, so the test decides both counts; pages of two move the bounds between pages.
+    [Theory]
+    [MemberData(nameof(DatabasesAndReferenceCounts))]
+    public async Task StatementRef_matches_and_their_pages_do_not_depend_on_how_many_StatementRefs_there_are(TestDatabase database, bool manyStatementRefs)
+    {
+        var client = (await hosts.CreateAsync(database)).Client();
+        var verb = NewIri("verbs");
+        var target = Guid.NewGuid();
+        var voidedTarget = Guid.NewGuid();
+        var unrelated = Guid.NewGuid();
+        var reference = Guid.NewGuid();
+        var voiding = Guid.NewGuid();
+        var chained = Guid.NewGuid();
+
+        await PutAsync(client, target, Statement(verb: verb));
+        await PutAsync(client, voidedTarget, Statement(verb: verb));
+        await PutAsync(client, unrelated, Statement());
+        var others = await client.PutAllAsync([.. Enumerable.Range(0, 20).Select(_ => manyStatementRefs ? Referencing(unrelated) : Statement(verb: verb))]);
+        await PutAsync(client, reference, Referencing(target));
+        await PutAsync(client, voiding, Voiding(voidedTarget));
+        await PutAsync(client, chained, Referencing(reference));
+
+        List<Guid> expected = [chained, voiding, reference, .. manyStatementRefs ? [] : Enumerable.Reverse(others), target];
+        Assert.Equal(expected, Ids(await client.QueryAsync(Query(("verb", verb)))));
+
+        var paged = new List<Guid>();
+        var page = await client.QueryAsync(Query(("verb", verb), ("limit", "2")));
+        paged.AddRange(Ids(page));
+        while (More(page).Length > 0)
+        {
+            page = await client.MoreAsync(page);
+            paged.AddRange(Ids(page));
+        }
+
+        Assert.Equal(expected, paged);
+    }
+
     [Theory]
     [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
     public async Task Since_is_exclusive_and_until_inclusive_on_the_stored_time(TestDatabase database)
@@ -508,13 +550,6 @@ public class StatementQueryTests(LrsHosts hosts)
         statement["actor"]!["name"] = "Learner";
         statement["verb"]!["display"] = new JsonObject { ["en-US"] = "attempted", ["de"] = "versucht" };
         statement["object"]!["definition"] = new JsonObject { ["name"] = new JsonObject { ["en-US"] = name, ["de"] = "Test" } };
-        return statement;
-    }
-
-    private static JsonObject Referencing(Guid target)
-    {
-        var statement = Statement();
-        statement["object"] = new JsonObject { ["objectType"] = "StatementRef", ["id"] = target.ToString() };
         return statement;
     }
 

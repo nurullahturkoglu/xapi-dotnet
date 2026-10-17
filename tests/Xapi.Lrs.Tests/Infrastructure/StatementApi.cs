@@ -30,6 +30,13 @@ internal static class StatementApi
         return statement;
     }
 
+    public static JsonObject Referencing(Guid target, Guid? id = null)
+    {
+        var statement = Statement(id);
+        statement["object"] = new JsonObject { ["objectType"] = "StatementRef", ["id"] = target.ToString() };
+        return statement;
+    }
+
     public static JsonObject Voiding(Guid target, Guid? id = null)
     {
         var statement = Statement(id, verb: Voided);

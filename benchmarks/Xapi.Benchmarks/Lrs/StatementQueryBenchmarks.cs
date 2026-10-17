@@ -7,7 +7,10 @@ namespace Xapi.Benchmarks.Lrs;
 // statement by id, the first page of a verb filter (limit 100, so a tenth of the statements match and there is a
 // "more" link), the page that link returns, a verb filter that matches nothing, and a learner with
 // related_agents (one statement in 500). The last two are where a query that walks the statements newest first
-// and tests each one would read most of the table.
+// and tests each one would read most of the table. With StatementRefPercent = 10, every tenth statement is an
+// instructor's comment whose object is a StatementRef to the statement before it, so the matches through
+// StatementRefs have 1,000 or 10,000 rows to look at; none of them match these filters, and the other statements
+// and their matches are the same as without them.
 [MemoryDiagnoser]
 public class StatementQueryBenchmarks
 {
@@ -27,13 +30,16 @@ public class StatementQueryBenchmarks
     [Params(10_000, 100_000)]
     public int Stored { get; set; }
 
+    [Params(0, 10)]
+    public int StatementRefPercent { get; set; }
+
     [GlobalSetup]
     public async Task SetupAsync()
     {
         _server = await LrsServer.StartAsync(Database);
         for (var start = 0; start < Stored; start += 100)
         {
-            await _server.PostAsync(StatementSamples.Batch(100, start));
+            await _server.PostAsync(StatementSamples.Batch(100, start, StatementRefPercent == 0 ? 0 : 100 / StatementRefPercent));
         }
 
         var id = Guid.NewGuid();
