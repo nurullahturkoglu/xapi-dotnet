@@ -13,18 +13,14 @@ dotnet add package Xapi.Lrs.PostgreSql --prerelease
 
 ## Usage
 
-In `Program.cs`, with `using Xapi.Lrs;` and the SQLite provider:
+In `Program.cs`, with the SQLite provider:
 
 <!-- snippet: host-lrs -->
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddXapiLrs(options =>
-    {
-        options.MigrateOnStartup = true;
-        options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All);
-    })
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"), options => options.MigrateOnStartup = true)
     .UseSqlite("Data Source=lrs.db");
 
 var app = builder.Build();
@@ -32,8 +28,18 @@ app.MapXapiLrs("/xapi");
 app.Run();
 ```
 
-Clients then use `https://<your app>/xapi/` as their endpoint, with the key `my-app` and the secret from
-`Lrs:Secret`.
+`appsettings.json` lists the credentials under `Lrs`, without their secrets:
+
+```json
+{
+  "Lrs": {
+    "Credentials": [ { "Key": "my-app", "Scopes": [ "all" ] } ]
+  }
+}
+```
+
+The secret comes from user secrets or the environment (`Lrs__Credentials__0__Secret`). Clients then use
+`https://<your app>/xapi/` as their endpoint, with the key `my-app` and that secret.
 
 ## Target frameworks
 

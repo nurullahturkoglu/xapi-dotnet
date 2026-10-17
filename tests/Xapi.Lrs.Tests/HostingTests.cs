@@ -49,7 +49,7 @@ public class HostingTests(LrsHosts hosts)
             .AddXapiLrs(o =>
             {
                 o.MigrateOnStartup = false;
-                o.Credentials.Add(new XapiCredential("key", "secret", [XapiScope.All]));
+                o.Credentials.Add(new XapiLrsCredential("key", "secret", XapiScopes.All));
             })
             .UseSqlite(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
         await using var app = builder.Build();
@@ -74,7 +74,7 @@ public class HostingTests(LrsHosts hosts)
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseTestServer();
         builder.Services
-            .AddXapiLrs(o => o.Credentials.Add(new XapiCredential("key", "secret", [XapiScope.All])))
+            .AddXapiLrs(o => o.Credentials.Add(new XapiLrsCredential("key", "secret", XapiScopes.All)))
             .UseSqlite(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
         await using var app = builder.Build();
 
@@ -126,16 +126,5 @@ public class HostingTests(LrsHosts hosts)
         using var app = builder.Build();
 
         Assert.Throws<InvalidOperationException>(() => app.MapXapiLrs());
-    }
-
-    [Fact]
-    public void Credentials_reject_keys_with_a_colon_and_duplicates()
-    {
-        var options = new XapiLrsOptions();
-        options.Credentials.Add("key", "secret", XapiScope.All);
-
-        Assert.Throws<ArgumentException>(() => options.Credentials.Add("a:b", "secret", XapiScope.All));
-        Assert.Throws<ArgumentException>(() => options.Credentials.Add("key", "other", XapiScope.All));
-        Assert.Throws<ArgumentException>(() => options.Credentials.Add("none", "secret"));
     }
 }

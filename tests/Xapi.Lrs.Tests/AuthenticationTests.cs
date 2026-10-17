@@ -105,6 +105,25 @@ public class AuthenticationTests(LrsHosts hosts)
     }
 
     [Fact]
+    public async Task A_credential_added_with_an_authority_stores_statements_with_it()
+    {
+        const string Key = "lms";
+        var app = await hosts.CreateAsync(TestDatabase.Sqlite, services => services.AddXapiLrs(o =>
+            o.Credentials.Add(Key, Credentials.SecretOf(Key), Agent.FromAccount(new Uri("https://lms.example.com/"), "lms-service"), XapiScopes.StatementsWrite)));
+        var id = Guid.NewGuid();
+
+        using (var put = await app.Client(Key).PutStatementAsync(id, Statement()))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+        }
+
+        var stored = await app.Client().GetStoredAsync(id);
+        Assert.Equal(
+            """{"objectType":"Agent","account":{"homePage":"https://lms.example.com/","name":"lms-service"}}""",
+            stored["authority"]!.ToJsonString());
+    }
+
+    [Fact]
     public async Task A_delegated_scheme_supplies_the_identity_and_scopes()
     {
         var app = await hosts.CreateAsync(TestDatabase.Sqlite, services =>

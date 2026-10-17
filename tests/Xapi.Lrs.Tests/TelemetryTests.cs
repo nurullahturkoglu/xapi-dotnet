@@ -182,7 +182,7 @@ public class TelemetryTests(LrsHosts hosts)
     public async Task No_tag_carries_agents_iris_ids_or_credential_keys()
     {
         var key = "probe-key-" + Guid.NewGuid().ToString("N");
-        var app = await hosts.CreateAsync(TestDatabase.Sqlite, services => services.AddXapiLrs(o => o.Credentials.Add(key, LrsApp.Credentials.SecretOf(key), XapiScope.All)));
+        var app = await hosts.CreateAsync(TestDatabase.Sqlite, services => services.AddXapiLrs(o => o.Credentials.Add(key, LrsApp.Credentials.SecretOf(key), XapiScopes.All)));
         var activities = new ConcurrentQueue<System.Diagnostics.Activity>();
         var traceId = ActivityTraceId.CreateRandom();
         using var listener = new ActivityListener

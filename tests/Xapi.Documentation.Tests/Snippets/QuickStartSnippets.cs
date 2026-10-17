@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Xapi.Client;
 using Xapi.Client.Outbox;
 using Xapi.Json;
-using Xapi.Lrs;
 using Xapi.Validation;
 
 namespace Xapi.Documentation.Tests.Snippets;
@@ -46,11 +45,7 @@ internal static class QuickStartSnippets
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services
-            .AddXapiLrs(options =>
-            {
-                options.MigrateOnStartup = true;
-                options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All);
-            })
+            .AddXapiLrs(builder.Configuration.GetSection("Lrs"), options => options.MigrateOnStartup = true)
             .UseSqlite("Data Source=lrs.db");
 
         var app = builder.Build();

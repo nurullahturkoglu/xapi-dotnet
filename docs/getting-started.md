@@ -151,18 +151,14 @@ cd MyLrs
 dotnet add package Xapi.Lrs.Sqlite --prerelease
 ```
 
-Replace `Program.cs` with this (`using Xapi.Lrs;` at the top):
+Replace `Program.cs` with this:
 
 <!-- snippet: host-lrs -->
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddXapiLrs(options =>
-    {
-        options.MigrateOnStartup = true;
-        options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All);
-    })
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"), options => options.MigrateOnStartup = true)
     .UseSqlite("Data Source=lrs.db");
 
 var app = builder.Build();
@@ -170,12 +166,22 @@ app.MapXapiLrs("/xapi");
 app.Run();
 ```
 
-`MigrateOnStartup` creates the database on the first run. The credential is a Basic key and secret with every
-scope; the secret is read from configuration. To try it, pass the secret on the command line and send a
-statement with curl, using the address that `dotnet run` prints:
+The LRS options come from the `Lrs` configuration section. Add a credential, a Basic key with every scope, to
+`appsettings.json`, and keep its secret out of the file:
+
+```json
+{
+  "Lrs": {
+    "Credentials": [ { "Key": "my-app", "Scopes": [ "all" ] } ]
+  }
+}
+```
+
+`MigrateOnStartup` creates the database on the first run. To try it, pass the secret on the command line and
+send a statement with curl, using the address that `dotnet run` prints:
 
 ```bash
-dotnet run -- --Lrs:Secret=change-me
+dotnet run -- --Lrs:Credentials:0:Secret=change-me
 
 URL=http://localhost:5000
 curl $URL/xapi/about

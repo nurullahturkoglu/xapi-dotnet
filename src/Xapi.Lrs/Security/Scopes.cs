@@ -16,29 +16,16 @@ internal enum ScopeSet
 
 internal static class Scopes
 {
-    public static string Name(XapiScope scope) => scope switch
-    {
-        XapiScope.StatementsWrite => "statements/write",
-        XapiScope.StatementsReadMine => "statements/read/mine",
-        XapiScope.StatementsRead => "statements/read",
-        XapiScope.State => "state",
-        XapiScope.Define => "define",
-        XapiScope.Profile => "profile",
-        XapiScope.AllRead => "all/read",
-        XapiScope.All => "all",
-        _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, null),
-    };
-
     public static ScopeSet Parse(string name) => name switch
     {
-        "statements/write" => ScopeSet.StatementsWrite,
-        "statements/read/mine" => ScopeSet.StatementsReadMine,
-        "statements/read" => ScopeSet.StatementsRead,
-        "state" => ScopeSet.State,
-        "define" => ScopeSet.Define,
-        "profile" => ScopeSet.Profile,
-        "all/read" => ScopeSet.AllRead,
-        "all" => ScopeSet.All,
+        XapiScopes.StatementsWrite => ScopeSet.StatementsWrite,
+        XapiScopes.StatementsReadMine => ScopeSet.StatementsReadMine,
+        XapiScopes.StatementsRead => ScopeSet.StatementsRead,
+        XapiScopes.State => ScopeSet.State,
+        XapiScopes.Define => ScopeSet.Define,
+        XapiScopes.Profile => ScopeSet.Profile,
+        XapiScopes.AllRead => ScopeSet.AllRead,
+        XapiScopes.All => ScopeSet.All,
         _ => ScopeSet.None,
     };
 

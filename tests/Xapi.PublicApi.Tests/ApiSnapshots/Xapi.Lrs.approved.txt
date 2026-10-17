@@ -18,6 +18,7 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class XapiLrsServiceCollectionExtensions
     {
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder AddXapiLrs(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Xapi.Lrs.XapiLrsOptions>? configure = null) { }
+        public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder AddXapiLrs(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Configuration.IConfiguration configuration, System.Action<Xapi.Lrs.XapiLrsOptions>? configure = null) { }
     }
     public static class XapiLrsServiceProviderExtensions
     {
@@ -197,25 +198,26 @@ namespace Xapi.Lrs.Storage
 }
 namespace Xapi.Lrs
 {
-    public sealed class XapiCredential
-    {
-        public XapiCredential(string key, string secret, System.Collections.Generic.IEnumerable<Xapi.Lrs.XapiScope> scopes) { }
-        public Xapi.Agent? Authority { get; init; }
-        public string Key { get; }
-        public System.Collections.Generic.IReadOnlyList<Xapi.Lrs.XapiScope> Scopes { get; }
-    }
-    public sealed class XapiCredentialList : System.Collections.Generic.IEnumerable<Xapi.Lrs.XapiCredential>, System.Collections.Generic.IReadOnlyCollection<Xapi.Lrs.XapiCredential>, System.Collections.Generic.IReadOnlyList<Xapi.Lrs.XapiCredential>, System.Collections.IEnumerable
-    {
-        public XapiCredentialList() { }
-        public int Count { get; }
-        public Xapi.Lrs.XapiCredential this[int index] { get; }
-        public void Add(Xapi.Lrs.XapiCredential credential) { }
-        public Xapi.Lrs.XapiCredential Add(string key, string secret, params Xapi.Lrs.XapiScope[] scopes) { }
-        public System.Collections.Generic.IEnumerator<Xapi.Lrs.XapiCredential> GetEnumerator() { }
-    }
     public static class XapiLrsAuthenticationDefaults
     {
         public const string AuthenticationScheme = "XapiBasic";
+    }
+    public sealed class XapiLrsCredential
+    {
+        public XapiLrsCredential() { }
+        public XapiLrsCredential(string key, string secret, params string[] scopes) { }
+        public XapiLrsCredential(string key, string secret, Xapi.Agent authority, params string[] scopes) { }
+        public string? Key { get; set; }
+        public System.Collections.Generic.IList<string> Scopes { get; }
+        public string? Secret { get; set; }
+    }
+    public sealed class XapiLrsCredentialList : System.Collections.ObjectModel.Collection<Xapi.Lrs.XapiLrsCredential>
+    {
+        public XapiLrsCredentialList() { }
+        public Xapi.Lrs.XapiLrsCredential Add(string key, string secret, params string[] scopes) { }
+        public Xapi.Lrs.XapiLrsCredential Add(string key, string secret, Xapi.Agent authority, params string[] scopes) { }
+        protected override void InsertItem(int index, Xapi.Lrs.XapiLrsCredential item) { }
+        protected override void SetItem(int index, Xapi.Lrs.XapiLrsCredential item) { }
     }
     public static class XapiLrsDiagnostics
     {
@@ -233,8 +235,8 @@ namespace Xapi.Lrs
         public XapiLrsOptions() { }
         public string? AuthenticationScheme { get; set; }
         public System.Func<System.Security.Claims.ClaimsPrincipal, Xapi.Agent>? AuthorityFactory { get; set; }
-        public Xapi.Iri AuthorityHomePage { get; set; }
-        public Xapi.Lrs.XapiCredentialList Credentials { get; }
+        public System.Uri AuthorityHomePage { get; set; }
+        public Xapi.Lrs.XapiLrsCredentialList Credentials { get; }
         public bool EnableVersion1_0_3 { get; set; }
         public long MaxAlternateRequestBytes { get; set; }
         public long MaxAttachmentBytes { get; set; }
@@ -244,17 +246,16 @@ namespace Xapi.Lrs
         public int MaxStatementsPerPage { get; set; }
         public bool MigrateOnStartup { get; set; }
         public string ScopeClaimType { get; set; }
-        public void Bind(Microsoft.Extensions.Configuration.IConfiguration configuration) { }
     }
-    public enum XapiScope
+    public static class XapiScopes
     {
-        StatementsWrite = 1,
-        StatementsReadMine = 2,
-        StatementsRead = 3,
-        State = 4,
-        Define = 5,
-        Profile = 6,
-        AllRead = 7,
-        All = 8,
+        public const string All = "all";
+        public const string AllRead = "all/read";
+        public const string Define = "define";
+        public const string Profile = "profile";
+        public const string State = "state";
+        public const string StatementsRead = "statements/read";
+        public const string StatementsReadMine = "statements/read/mine";
+        public const string StatementsWrite = "statements/write";
     }
 }

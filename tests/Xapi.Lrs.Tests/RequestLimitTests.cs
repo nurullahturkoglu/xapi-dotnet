@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
+using Xapi.Lrs.Hosting;
 using Xapi.Lrs.Storage;
 using Xapi.Lrs.Tests.Infrastructure;
 using static Xapi.Lrs.Tests.Infrastructure.DocumentApi;
@@ -123,7 +124,8 @@ public class RequestLimitTests(LrsHosts hosts)
         var options = new XapiLrsOptions();
 
         Assert.Equal(1000, options.MaxStatementsPerBatch);
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxStatementsPerBatch = 0);
+        options.MaxStatementsPerBatch = 0;
+        Assert.Contains("MaxStatementsPerBatch is 0;", new XapiLrsOptionsValidator().Validate(null, options).FailureMessage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -132,7 +134,8 @@ public class RequestLimitTests(LrsHosts hosts)
         var options = new XapiLrsOptions();
 
         Assert.Equal(16 * KiB * KiB, options.MaxStatementBytes);
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxStatementBytes = 0);
+        options.MaxStatementBytes = 0;
+        Assert.Contains("MaxStatementBytes is 0;", new XapiLrsOptionsValidator().Validate(null, options).FailureMessage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -141,8 +144,10 @@ public class RequestLimitTests(LrsHosts hosts)
         var options = new XapiLrsOptions();
 
         Assert.Equal(KiB * KiB, options.MaxDocumentBytes);
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxDocumentBytes = 0);
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxDocumentBytes = -1);
+        options.MaxDocumentBytes = 0;
+        Assert.Contains("MaxDocumentBytes is 0;", new XapiLrsOptionsValidator().Validate(null, options).FailureMessage, StringComparison.Ordinal);
+        options.MaxDocumentBytes = -1;
+        Assert.Contains("MaxDocumentBytes is -1;", new XapiLrsOptionsValidator().Validate(null, options).FailureMessage, StringComparison.Ordinal);
     }
 
     // A statement whose JSON is about the given size

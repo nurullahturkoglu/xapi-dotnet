@@ -58,18 +58,14 @@ To keep statements through network outages and restarts, put a
 
 ## Quick start: host an LRS
 
-In an ASP.NET Core app with the `Xapi.Lrs.Sqlite` package and `using Xapi.Lrs;`:
+In an ASP.NET Core app with the `Xapi.Lrs.Sqlite` package:
 
 <!-- snippet: host-lrs -->
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddXapiLrs(options =>
-    {
-        options.MigrateOnStartup = true;
-        options.Credentials.Add("my-app", builder.Configuration["Lrs:Secret"]!, XapiScope.All);
-    })
+    .AddXapiLrs(builder.Configuration.GetSection("Lrs"), options => options.MigrateOnStartup = true)
     .UseSqlite("Data Source=lrs.db");
 
 var app = builder.Build();
@@ -77,8 +73,18 @@ app.MapXapiLrs("/xapi");
 app.Run();
 ```
 
-Clients then use `https://<your app>/xapi/` as their endpoint, with the key `my-app` and the secret from
-`Lrs:Secret`. The [LRS guide](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/lrs.md) covers scopes, delegated authentication, PostgreSQL, migrations
+`appsettings.json` lists the credentials under `Lrs`, without their secrets:
+
+```json
+{
+  "Lrs": {
+    "Credentials": [ { "Key": "my-app", "Scopes": [ "all" ] } ]
+  }
+}
+```
+
+The secret comes from user secrets or the environment (`Lrs__Credentials__0__Secret`). Clients then use
+`https://<your app>/xapi/` as their endpoint, with the key `my-app` and that secret. The [LRS guide](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/lrs.md) covers scopes, delegated authentication, PostgreSQL, migrations
 and limits.
 
 ## Conformance

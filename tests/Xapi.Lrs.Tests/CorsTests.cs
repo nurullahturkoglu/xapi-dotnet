@@ -32,7 +32,7 @@ public class CorsTests
             .AddXapiLrs(o =>
             {
                 o.MigrateOnStartup = true;
-                o.Credentials.Add("key", "secret", XapiScope.All);
+                o.Credentials.Add("key", "secret", XapiScopes.All);
             })
             .UseSqlite(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
         await using var app = builder.Build();

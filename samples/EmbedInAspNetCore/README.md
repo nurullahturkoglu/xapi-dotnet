@@ -2,7 +2,7 @@
 
 An ASP.NET Core app with its own endpoints (`/` and `/api/courses`) that also hosts an LRS under `/xapi`. The
 LRS stores its data in SQLite (`lrs.db` in the working directory), creates or upgrades the schema on start
-(`MigrateOnStartup`), and reads its Basic credentials from configuration.
+(`MigrateOnStartup`), and reads its options and Basic credentials from the `Lrs` configuration section.
 
 ## Run it
 
@@ -14,8 +14,8 @@ The app listens on `http://localhost:5080`. `appsettings.json` defines two crede
 
 | Key | Secret | Scopes |
 | --- | --- | --- |
-| `course-player` | `change-me` | `StatementsWrite`, `StatementsReadMine`, `State` |
-| `reporting` | `change-me-too` | `AllRead` |
+| `course-player` | `change-me` | `statements/write`, `statements/read/mine`, `state` |
+| `reporting` | `change-me-too` | `all/read` |
 
 Send a statement as the course player:
 
