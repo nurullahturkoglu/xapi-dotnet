@@ -116,6 +116,9 @@ set of packages for both sides, tested against the conformance suite. The
 The design decisions are recorded as
 [architecture decision records](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/docs/adr).
 
+The [Documentation site](https://nurullahturkoglu.github.io/xapi-dotnet/) has these guides and the API
+reference, built from `main`.
+
 ## Status and versioning
 
 Versions follow [Semantic Versioning](https://semver.org). During 0.x, minor versions can contain breaking

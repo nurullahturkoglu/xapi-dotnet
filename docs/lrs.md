@@ -10,7 +10,7 @@ trimmed or published with Native AOT, because EF Core cannot.
 `AddXapiLrs` registers the services and the Basic authentication scheme, and returns a builder on which a
 database is chosen. `MapXapiLrs(prefix)` maps the resources under `prefix` (default `/xapi`), which is the
 endpoint clients use. [getting-started.md](getting-started.md#host-an-lrs) has a complete `Program.cs`, and
-[samples/EmbedInAspNetCore](../samples/EmbedInAspNetCore) adds the LRS to an app with endpoints of its own.
+[samples/EmbedInAspNetCore](https://github.com/nurullahturkoglu/xapi-dotnet/tree/main/samples/EmbedInAspNetCore) adds the LRS to an app with endpoints of its own.
 
 | Path under the prefix | Methods |
 | --- | --- |
