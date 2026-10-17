@@ -114,6 +114,10 @@ dotnet test --project tests/Xapi.PackageTests -c Release -p:XapiPackageVersion=<
 `Xapi.Core.0.0.0-preview.0.nupkg`. The project restores into `artifacts/package-tests/packages`, so delete
 `artifacts/` before packing the same version again.
 
+Each package ships its own `README.md` from its project folder (`src/<Package>/README.md`), which nuget.org
+shows on the package page. Keep it short, and mark its C# blocks as snippets like the guides (see
+`tests/Xapi.Documentation.Tests`).
+
 ## Dependency floors
 
 On `netstandard2.0`, `Xapi.Core`, `Xapi.Client` and `Xapi.Client.Outbox` depend on System.Text.Json,

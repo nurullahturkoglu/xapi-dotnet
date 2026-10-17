@@ -6,8 +6,8 @@ namespace Xapi.Documentation.Tests;
 // the region between "// snippet: name" and "// end snippet" in Snippets/*.cs, which this project compiles.
 public partial class SnippetTests
 {
-    // Every C# block in these must be a snippet. outbox.md and signatures.md are not checked yet, and
-    // migrating-from-tincan.md shows TinCan.NET code, which cannot compile here.
+    // Every C# block in these, and in the package READMEs (src/<package>/README.md), must be a snippet. outbox.md and
+    // signatures.md are not checked yet, and migrating-from-tincan.md shows TinCan.NET code, which cannot compile here.
     private static readonly string[] FullyChecked =
     [
         "README.md",
@@ -54,7 +54,7 @@ public partial class SnippetTests
     public void Checked_documents_have_no_unmarked_csharp_blocks()
     {
         var unmarked = ReadBlocks()
-            .Where(b => b.Language == "csharp" && b.Snippet is null && FullyChecked.Contains(b.File))
+            .Where(b => b.Language == "csharp" && b.Snippet is null && (FullyChecked.Contains(b.File) || b.File.StartsWith("src/", StringComparison.Ordinal)))
             .Select(b => $"{b.File}:{b.Line}");
 
         Assert.Empty(unmarked);
@@ -86,8 +86,12 @@ public partial class SnippetTests
 
     private static List<CodeBlock> ReadBlocks()
     {
+        // nuget.org removes HTML comments before rendering a package README, so the markers do not show there
         var files = new[] { "README.md" }
-            .Concat(Directory.EnumerateFiles(Path.Combine(Root, "docs"), "*.md").Select(p => "docs/" + Path.GetFileName(p)));
+            .Concat(Directory.EnumerateFiles(Path.Combine(Root, "docs"), "*.md").Select(p => "docs/" + Path.GetFileName(p)))
+            .Concat(Directory.EnumerateDirectories(Path.Combine(Root, "src"))
+                .Where(d => File.Exists(Path.Combine(d, "README.md")))
+                .Select(d => $"src/{Path.GetFileName(d)}/README.md"));
         var blocks = new List<CodeBlock>();
         foreach (var file in files)
         {

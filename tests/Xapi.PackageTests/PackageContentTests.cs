@@ -24,6 +24,22 @@ public class PackageContentTests
         Assert.Contains("LICENSE", entries);
     }
 
+    // Each package ships its own short README, not the repository README
+    [Theory]
+    [InlineData("Xapi.Core")]
+    [InlineData("Xapi.Client")]
+    [InlineData("Xapi.Client.Outbox")]
+    [InlineData("Xapi.Lrs")]
+    [InlineData("Xapi.Lrs.Sqlite")]
+    [InlineData("Xapi.Lrs.PostgreSql")]
+    public void Package_readme_is_the_package_own(string packageId)
+    {
+        using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
+        using var reader = new StreamReader(archive.GetEntry("README.md")!.Open());
+
+        Assert.Equal($"# {packageId}", reader.ReadLine());
+    }
+
     [Theory]
     [InlineData("Xapi.Core", "netstandard2.0")]
     [InlineData("Xapi.Core", "net10.0")]

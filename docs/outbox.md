@@ -9,6 +9,7 @@ runs on .NET Framework, under Native AOT and (once verified, see below) under Un
 
 Without dependency injection (desktop apps, Unity, console tools):
 
+<!-- snippet: outbox-quick-start -->
 ```csharp
 var http = new HttpClient();
 var client = new XapiClient(http, new XapiClientOptions
