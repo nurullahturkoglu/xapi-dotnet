@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xapi.Lrs;
-using Xapi.Lrs.Storage;
 
 namespace Xapi.Documentation.Tests.Snippets;
 
@@ -97,15 +95,11 @@ internal static class LrsSnippets
     public static async Task MigrateOnly(WebApplication app, string[] args)
     {
         // snippet: lrs-migrate
-        #pragma warning disable XAPI0001 // XapiLrsDbContext is part of the experimental storage API
         if (args.Contains("--migrate"))
         {
-            var contexts = app.Services.GetRequiredService<IDbContextFactory<XapiLrsDbContext>>();
-            await using var context = await contexts.CreateDbContextAsync();
-            await context.Database.MigrateAsync();
+            await app.Services.MigrateXapiLrsDatabaseAsync();
             return;
         }
-        #pragma warning restore XAPI0001
         // end snippet
 
         await app.RunAsync();

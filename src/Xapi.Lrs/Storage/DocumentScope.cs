@@ -7,7 +7,7 @@ namespace Xapi.Lrs.Storage;
 /// Activity for activity profiles, an Agent for agent profiles. Documents are identified by their id within
 /// a scope.
 /// </summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class DocumentScope
 {
     private DocumentScope(DocumentResource resource, Iri? activityId, Agent? agent, Guid? registration)

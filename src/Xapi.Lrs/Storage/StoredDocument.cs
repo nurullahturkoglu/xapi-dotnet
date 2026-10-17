@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Xapi.Lrs.Storage;
 
 /// <summary>A document read from an <see cref="IDocumentStore"/>.</summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class StoredDocument
 {
     /// <summary>Creates a stored document.</summary>

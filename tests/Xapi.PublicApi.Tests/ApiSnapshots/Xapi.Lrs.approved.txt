@@ -15,10 +15,14 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder AddXapiLrs(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Xapi.Lrs.XapiLrsOptions>? configure = null) { }
     }
+    public static class XapiLrsServiceProviderExtensions
+    {
+        public static System.Threading.Tasks.Task MigrateXapiLrsDatabaseAsync(this System.IServiceProvider services, System.Threading.CancellationToken cancellationToken = default) { }
+    }
 }
 namespace Xapi.Lrs.Storage
 {
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class AttachmentContent
     {
         public AttachmentContent(string sha2, string contentType, System.ReadOnlyMemory<byte> content) { }
@@ -26,7 +30,7 @@ namespace Xapi.Lrs.Storage
         public string ContentType { get; }
         public string Sha2 { get; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class AttachmentSummary
     {
         public AttachmentSummary(string sha2, string contentType, long length) { }
@@ -34,7 +38,7 @@ namespace Xapi.Lrs.Storage
         public long Length { get; }
         public string Sha2 { get; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class DocumentChange
     {
         public System.ReadOnlyMemory<byte> Content { get; }
@@ -44,21 +48,21 @@ namespace Xapi.Lrs.Storage
         public static Xapi.Lrs.Storage.DocumentChange None { get; }
         public static Xapi.Lrs.Storage.DocumentChange Store(System.ReadOnlyMemory<byte> content, string contentType) { }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public enum DocumentChangeKind
     {
         None = 0,
         Store = 1,
         Delete = 2,
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public enum DocumentResource
     {
         State = 0,
         ActivityProfile = 1,
         AgentProfile = 2,
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class DocumentScope
     {
         public Xapi.Iri? ActivityId { get; }
@@ -69,14 +73,14 @@ namespace Xapi.Lrs.Storage
         public static Xapi.Lrs.Storage.DocumentScope ForAgentProfile(Xapi.Agent agent) { }
         public static Xapi.Lrs.Storage.DocumentScope ForState(Xapi.Iri activityId, Xapi.Agent agent, System.Guid? registration = default) { }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class DocumentSummary
     {
         public DocumentSummary(string id, System.DateTimeOffset updated) { }
         public string Id { get; }
         public System.DateTimeOffset Updated { get; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public interface IDocumentStore
     {
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredDocument?> ChangeAsync(Xapi.Lrs.Storage.DocumentScope scope, string id, System.Func<Xapi.Lrs.Storage.StoredDocument?, Xapi.Lrs.Storage.DocumentChange> decide, System.Threading.CancellationToken cancellationToken = default);
@@ -84,7 +88,7 @@ namespace Xapi.Lrs.Storage
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StoredDocument?> GetAsync(Xapi.Lrs.Storage.DocumentScope scope, string id, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.DocumentSummary>> ListAsync(Xapi.Lrs.Storage.DocumentScope scope, System.DateTimeOffset? since, System.Threading.CancellationToken cancellationToken = default);
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public interface IStatementStore
     {
         System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<Xapi.Iri, Xapi.Activity>> GetActivitiesAsync(System.Collections.Generic.IReadOnlyCollection<Xapi.Iri> activityIds, System.Threading.CancellationToken cancellationToken = default);
@@ -95,7 +99,7 @@ namespace Xapi.Lrs.Storage
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StatementPage> QueryAsync(Xapi.Lrs.Storage.StatementFilter filter, System.Threading.CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<Xapi.Lrs.Storage.StatementStoreResult> StoreAsync(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StatementRecord> statements, bool updateDefinitions, System.Threading.CancellationToken cancellationToken = default);
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed record StatementFilter : System.IEquatable<Xapi.Lrs.Storage.StatementFilter>
     {
         public StatementFilter() { }
@@ -112,14 +116,14 @@ namespace Xapi.Lrs.Storage
         public System.DateTimeOffset? Until { get; init; }
         public Xapi.Iri? Verb { get; init; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StatementPage
     {
         public StatementPage(System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StoredStatement> statements, System.Guid? continuation) { }
         public System.Guid? Continuation { get; }
         public System.Collections.Generic.IReadOnlyList<Xapi.Lrs.Storage.StoredStatement> Statements { get; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StatementRecord
     {
         public StatementRecord(System.Guid key, Xapi.Statement statement, string json, string authorityKey) { }
@@ -130,7 +134,7 @@ namespace Xapi.Lrs.Storage
         public System.Guid Key { get; }
         public Xapi.Statement Statement { get; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StatementStoreResult
     {
         public System.Guid? ConflictingStatementId { get; }
@@ -140,7 +144,7 @@ namespace Xapi.Lrs.Storage
         public static Xapi.Lrs.Storage.StatementStoreResult Stored { get; }
         public static Xapi.Lrs.Storage.StatementStoreResult Conflict(System.Guid statementId) { }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StoredDocument
     {
         public StoredDocument(string id, System.ReadOnlyMemory<byte> content, string contentType, string etag, System.DateTimeOffset updated) { }
@@ -150,7 +154,7 @@ namespace Xapi.Lrs.Storage
         public string Id { get; }
         public System.DateTimeOffset Updated { get; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class StoredStatement
     {
         public StoredStatement(System.Guid id, System.DateTimeOffset stored, string version, bool isVoided, string? authorityKey, string json) { }
@@ -161,7 +165,7 @@ namespace Xapi.Lrs.Storage
         public System.DateTimeOffset Stored { get; }
         public string Version { get; }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public static class XapiLrsBuilderStorageExtensions
     {
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UseDatabaseProvider(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder, Xapi.Lrs.Storage.XapiLrsDatabaseProvider provider) { }
@@ -170,7 +174,7 @@ namespace Xapi.Lrs.Storage
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder UseStatementStore<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)]  TStore>(this Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder builder)
             where TStore :  class, Xapi.Lrs.Storage.IStatementStore { }
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public abstract class XapiLrsDatabaseProvider
     {
         protected XapiLrsDatabaseProvider() { }
@@ -179,7 +183,7 @@ namespace Xapi.Lrs.Storage
         public abstract void Configure(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder optionsBuilder);
         public abstract bool IsTransientWriteFailure(System.Exception exception);
     }
-    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001")]
+    [System.Diagnostics.CodeAnalysis.Experimental("XAPI0001", UrlFormat="https://nurullahturkoglu.github.io/xapi-dotnet/lrs.html#experimental-storage-api")]
     public sealed class XapiLrsDbContext : Microsoft.EntityFrameworkCore.DbContext
     {
         public const string MigrationsHistoryTable = "__xapi_migrations";

@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Xapi.Lrs.Storage;
 
 /// <summary>One page of statements returned by <see cref="IStatementStore.QueryAsync"/>.</summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class StatementPage
 {
     /// <summary>Creates a page.</summary>

@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Xapi.Lrs.Storage;
 
 /// <summary>What <see cref="IDocumentStore.ChangeAsync"/> does with a document: keep, store or delete it.</summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class DocumentChange
 {
     private DocumentChange(DocumentChangeKind kind, ReadOnlyMemory<byte> content, string? contentType)

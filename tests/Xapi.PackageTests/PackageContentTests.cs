@@ -130,6 +130,24 @@ public class PackageContentTests
         }
     }
 
+    // The providers bind to the experimental storage types of Xapi.Lrs, which can change in any release, so a
+    // provider must never be resolved against a different Xapi.Lrs than the one it was built with
+    [Theory]
+    [InlineData("Xapi.Lrs.Sqlite")]
+    [InlineData("Xapi.Lrs.PostgreSql")]
+    public void Lrs_provider_packages_depend_on_the_exact_lrs_version(string packageId)
+    {
+        using var archive = ZipFile.OpenRead(PackageUnderTest.NupkgPath(packageId));
+        XDocument nuspec;
+        using (var stream = archive.GetEntry($"{packageId}.nuspec")!.Open())
+        {
+            nuspec = XDocument.Load(stream);
+        }
+
+        var lrs = nuspec.Descendants().Single(e => e.Name.LocalName == "dependency" && e.Attribute("id")?.Value == "Xapi.Lrs");
+        Assert.Equal($"[{PackageUnderTest.Version}]", lrs.Attribute("version")?.Value);
+    }
+
     [Theory]
     [InlineData("Xapi.Lrs")]
     [InlineData("Xapi.Lrs.Sqlite")]

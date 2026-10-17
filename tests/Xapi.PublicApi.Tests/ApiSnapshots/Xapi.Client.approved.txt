@@ -18,12 +18,14 @@ namespace Xapi.Client
         public ActivityProfileKey(Xapi.Iri ActivityId, string ProfileId) { }
         public Xapi.Iri ActivityId { get; init; }
         public string ProfileId { get; init; }
+        public void Deconstruct(out Xapi.Iri ActivityId, out string ProfileId) { }
     }
     public sealed record AgentProfileKey : Xapi.Client.DocumentKey, System.IEquatable<Xapi.Client.AgentProfileKey>
     {
         public AgentProfileKey(Xapi.Agent Agent, string ProfileId) { }
         public Xapi.Agent Agent { get; init; }
         public string ProfileId { get; init; }
+        public void Deconstruct(out Xapi.Agent Agent, out string ProfileId) { }
     }
     public sealed record AttachmentPayload : System.IEquatable<Xapi.Client.AttachmentPayload>
     {
@@ -31,6 +33,7 @@ namespace Xapi.Client
         public System.ReadOnlyMemory<byte> Content { get; init; }
         public string ContentType { get; init; }
         public string Sha2 { get; init; }
+        public void Deconstruct(out string Sha2, out string ContentType, out System.ReadOnlyMemory<byte> Content) { }
         public bool Equals(Xapi.Client.AttachmentPayload? other) { }
         public override int GetHashCode() { }
         public Xapi.Attachment ToAttachment(Xapi.Iri usageType, Xapi.LanguageMap display) { }
@@ -72,6 +75,7 @@ namespace Xapi.Client
         public SignedStatement(Xapi.Statement Statement, Xapi.Client.AttachmentPayload Signature) { }
         public Xapi.Client.AttachmentPayload Signature { get; init; }
         public Xapi.Statement Statement { get; init; }
+        public void Deconstruct(out Xapi.Statement Statement, out Xapi.Client.AttachmentPayload Signature) { }
     }
     public sealed record StateKey : Xapi.Client.DocumentKey, System.IEquatable<Xapi.Client.StateKey>
     {
@@ -80,6 +84,7 @@ namespace Xapi.Client
         public Xapi.Agent Agent { get; init; }
         public System.Guid? Registration { get; init; }
         public string StateId { get; init; }
+        public void Deconstruct(out Xapi.Iri ActivityId, out Xapi.Agent Agent, out string StateId, out System.Guid? Registration) { }
     }
     public sealed record StatementQuery : System.IEquatable<Xapi.Client.StatementQuery>
     {
@@ -104,6 +109,7 @@ namespace Xapi.Client
         public System.DateTimeOffset? ConsistentThrough { get; init; }
         public System.Uri? More { get; init; }
         public Xapi.XapiList<Xapi.Statement> Statements { get; init; }
+        public void Deconstruct(out Xapi.XapiList<Xapi.Statement> Statements, out System.Uri? More) { }
     }
     public static class StatementSigner
     {
@@ -161,6 +167,7 @@ namespace Xapi.Client
         public string ContentType { get; init; }
         public string? ETag { get; init; }
         public System.DateTimeOffset? LastModified { get; init; }
+        public void Deconstruct(out System.ReadOnlyMemory<byte> Content, out string ContentType) { }
         public bool Equals(Xapi.Client.XapiDocument? other) { }
         public override int GetHashCode() { }
         public System.Text.Json.JsonElement ToJson() { }

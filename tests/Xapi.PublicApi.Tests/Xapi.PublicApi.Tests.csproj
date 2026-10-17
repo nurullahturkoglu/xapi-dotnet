@@ -20,6 +20,16 @@
     <ProjectReference Include="../../src/Xapi.Lrs.PostgreSql/Xapi.Lrs.PostgreSql.csproj" />
   </ItemGroup>
 
+  <!--
+    The netstandard2.0 builds of the multi-targeted packages have snapshots of their own. These references only
+    build them; XapiNetStandardAssemblies passes the paths of the built assemblies to the tests.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Core/Xapi.Core.csproj" SetTargetFramework="TargetFramework=netstandard2.0" ReferenceOutputAssembly="false" OutputItemType="XapiNetStandardAssembly" />
+    <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" SetTargetFramework="TargetFramework=netstandard2.0" ReferenceOutputAssembly="false" OutputItemType="XapiNetStandardAssembly" />
+    <ProjectReference Include="../../src/Xapi.Client.Outbox/Xapi.Client.Outbox.csproj" SetTargetFramework="TargetFramework=netstandard2.0" ReferenceOutputAssembly="false" OutputItemType="XapiNetStandardAssembly" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- CallerFilePath is rewritten by PathMap in CI builds, so the snapshot folder is passed in as metadata instead -->
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
@@ -27,5 +37,14 @@
       <_Parameter2>$(MSBuildProjectDirectory)/ApiSnapshots</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
+
+  <Target Name="XapiNetStandardAssemblies" AfterTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>netstandard2.0:%(XapiNetStandardAssembly.Filename)</_Parameter1>
+        <_Parameter2>%(XapiNetStandardAssembly.FullPath)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
 
 </Project>

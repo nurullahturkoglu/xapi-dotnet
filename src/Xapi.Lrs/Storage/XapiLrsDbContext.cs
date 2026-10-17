@@ -8,7 +8,7 @@ namespace Xapi.Lrs.Storage;
 /// The EF Core context of the LRS tables. Public so that the provider packages can ship migrations for it;
 /// the entity types are internal and the schema may change before 1.0.
 /// </summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class XapiLrsDbContext : DbContext
 {
     /// <summary>The name of the migrations history table, kept apart from an application's own migrations.</summary>

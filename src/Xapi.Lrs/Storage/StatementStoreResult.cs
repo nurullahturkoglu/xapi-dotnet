@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Xapi.Lrs.Storage;
 
 /// <summary>The outcome of <see cref="IStatementStore.StoreAsync"/>.</summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class StatementStoreResult
 {
     private StatementStoreResult(Guid? conflictingStatementId) => ConflictingStatementId = conflictingStatementId;

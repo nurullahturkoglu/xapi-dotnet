@@ -50,6 +50,7 @@ public static class XapiLrsServiceCollectionExtensions
         services.AddSingleton<CallerFactory>();
         services.AddSingleton<StatementWriteTracker>();
         services.AddSingleton<StatementWriter>();
+        services.AddSingleton<XapiLrsMigrator>();
         services.AddHostedService<XapiLrsStartup>();
         services.AddSingleton<XapiLrsPaths>();
         services.AddTransient<IStartupFilter, AlternateRequestSyntaxStartupFilter>();

@@ -8,7 +8,7 @@ namespace Xapi.Lrs.Storage;
 /// Connects <see cref="XapiLrsDbContext"/> to a database. Implemented by the provider packages
 /// (<c>UseSqlite</c>, <c>UsePostgreSql</c>) and registered with <c>UseDatabaseProvider</c>.
 /// </summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public abstract class XapiLrsDatabaseProvider
 {
     /// <summary>A short name for logs and errors, such as <c>SQLite</c>.</summary>

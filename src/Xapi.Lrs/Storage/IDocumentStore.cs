@@ -6,7 +6,7 @@ namespace Xapi.Lrs.Storage;
 /// Stores State, Activity Profile and Agent Profile documents. The default implementation uses
 /// <see cref="XapiLrsDbContext"/>.
 /// </summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public interface IDocumentStore
 {
     /// <summary>Reads one document.</summary>

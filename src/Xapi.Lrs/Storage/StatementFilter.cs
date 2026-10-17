@@ -12,7 +12,7 @@ namespace Xapi.Lrs.Storage;
 /// directly or through further StatementRefs, even when that target is voided (4.1.6.1 "Filter Conditions for
 /// StatementRefs"). The time and paging bounds apply to the returned statement itself.
 /// </remarks>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed record StatementFilter
 {
     /// <summary>

@@ -135,6 +135,16 @@ public class RequestLimitTests(LrsHosts hosts)
         Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxStatementBytes = 0);
     }
 
+    [Fact]
+    public void MaxDocumentBytes_must_be_positive()
+    {
+        var options = new XapiLrsOptions();
+
+        Assert.Equal(KiB * KiB, options.MaxDocumentBytes);
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxDocumentBytes = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxDocumentBytes = -1);
+    }
+
     // A statement whose JSON is about the given size
     private static JsonObject Padded(int bytes)
     {

@@ -25,6 +25,19 @@
     <InternalsVisibleTo Include="$(AssemblyName).Tests" Key="$(XapiPublicKey)" />
   </ItemGroup>
 
+  <!--
+    XapiExactProjectReferenceVersions=true makes the nuspec depend on the exact version of each project reference,
+    [x.y.z], instead of NuGet's default minimum version. _GetProjectReferenceVersions (NuGet pack targets) collects
+    those versions; the pack task reads ProjectVersion as a version range.
+  -->
+  <Target Name="XapiExactProjectReferenceVersions" AfterTargets="_GetProjectReferenceVersions" Condition="'$(XapiExactProjectReferenceVersions)' == 'true'">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions>
+        <ProjectVersion>[%(ProjectVersion)]</ProjectVersion>
+      </_ProjectReferencesWithVersions>
+    </ItemGroup>
+  </Target>
+
   <Target Name="XapiRequireDescription" BeforeTargets="GenerateNuspec" Condition="'$(Description)' == ''">
     <Error Text="$(MSBuildProjectName) must set a Description before it can be packed." />
   </Target>

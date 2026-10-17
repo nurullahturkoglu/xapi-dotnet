@@ -6,7 +6,7 @@ namespace Xapi.Lrs.Storage;
 /// A statement ready to be stored: every property the LRS sets (<c>id</c>, <c>stored</c>, <c>timestamp</c>,
 /// <c>authority</c>, <c>version</c>) is filled in, and its storage key is assigned.
 /// </summary>
-[Experimental(XapiLrsDiagnostics.ExperimentalStorage)]
+[Experimental(XapiLrsDiagnostics.ExperimentalStorage, UrlFormat = XapiLrsDiagnostics.ExperimentalStorageUrl)]
 public sealed class StatementRecord
 {
     /// <summary>Creates a record.</summary>

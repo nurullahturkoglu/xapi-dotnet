@@ -50,7 +50,16 @@ public sealed class XapiLrsOptions
     /// The server's request body limit (<c>MaxRequestBodySize</c>) of document writes is set to this value, so
     /// it replaces Kestrel's default of about 28.6 MiB on those requests.
     /// </summary>
-    public long MaxDocumentBytes { get; set; } = 1024 * 1024;
+    /// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
+    public long MaxDocumentBytes
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            field = value;
+        }
+    } = 1024 * 1024;
 
     /// <summary>
     /// The most statement JSON accepted in one statement PUT or POST, in bytes: the whole body of an
@@ -150,7 +159,7 @@ public sealed class XapiLrsOptions
 
     /// <summary>
     /// Whether the database migrations are applied when the host starts. Off by default, so production
-    /// deployments can migrate as a separate step.
+    /// deployments can migrate as a separate step with <c>MigrateXapiLrsDatabaseAsync</c>.
     /// </summary>
     public bool MigrateOnStartup { get; set; }
 }
