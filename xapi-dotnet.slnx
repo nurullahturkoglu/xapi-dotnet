@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/Xapi.Benchmarks/Xapi.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/ConsoleClient/ConsoleClient.csproj" />
     <Project Path="samples/EmbedInAspNetCore/EmbedInAspNetCore.csproj" />

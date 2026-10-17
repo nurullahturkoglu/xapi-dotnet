@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectType>Benchmark</ProjectType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- The LRS benchmarks reach the experimental storage seams only through UseSqlite and UsePostgreSql -->
+    <NoWarn>$(NoWarn);XAPI0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Xapi.Core/Xapi.Core.csproj" />
+    <ProjectReference Include="../../src/Xapi.Client/Xapi.Client.csproj" />
+    <ProjectReference Include="../../src/Xapi.Client.Outbox/Xapi.Client.Outbox.csproj" />
+    <ProjectReference Include="../../src/Xapi.Lrs/Xapi.Lrs.csproj" />
+    <ProjectReference Include="../../src/Xapi.Lrs.Sqlite/Xapi.Lrs.Sqlite.csproj" />
+    <ProjectReference Include="../../src/Xapi.Lrs.PostgreSql/Xapi.Lrs.PostgreSql.csproj" />
+  </ItemGroup>
+
+</Project>

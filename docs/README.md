@@ -10,6 +10,7 @@
 | [`versions.md`](versions.md) | Differences between xAPI 1.0.3 and 2.0.0 and how the packages handle them |
 | [`migrating-from-tincan.md`](migrating-from-tincan.md) | Mapping TinCan.NET types and calls to this library, and what is missing |
 | [`conformance.md`](conformance.md) | How the conformance suite runs in CI, current results, and where the suite and the standard disagree |
+| [`benchmarks.md`](benchmarks.md) | Measured parse, outbox and LRS performance, with the machine, date and how to run the benchmarks |
 
 The C# blocks in these guides and in the README are compiled and checked by `tests/Xapi.Documentation.Tests`
 (except in `outbox.md`, `signatures.md` and the TinCan.NET side of the migration guide).
