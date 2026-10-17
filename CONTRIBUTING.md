@@ -99,6 +99,26 @@ first run fails and writes the received file, which you review and rename to `.a
 also targets `netstandard2.0` needs a row in the `netstandard2.0` test too, and a `netstandard2.0` project
 reference in `Xapi.PublicApi.Tests.csproj`.
 
+## Package validation
+
+`EnablePackageValidation` (`eng/Library.targets`) runs during `dotnet pack`. Until 1.0 it only checks that
+the `net10.0` and `netstandard2.0` builds of a package expose the same API. Once 1.0.0 is on nuget.org,
+`PackageValidationBaselineVersion` is set to `1.0.0` and every pack is also compared with that release, so a
+breaking change fails the build.
+
+The baseline check does not know `[Experimental]`. A change to the storage API marked `XAPI0001` is allowed
+in a minor release, but it fails the comparison like any other break (`CP0002` for a removed member, `CP0006`
+for a member added to an interface, and so on). Record such a change deliberately:
+
+1. Run `dotnet pack xapi-dotnet.slnx -c Release -p:ApiCompatGenerateSuppressionFile=true`. It writes the
+   failures to `CompatibilitySuppressions.xml` in each affected project.
+2. Check that every new suppression targets an experimental type or member, and nothing else.
+3. Commit the file with the change and list the change under "Breaking" in `CHANGELOG.md`, saying it is
+   experimental.
+
+A suppression for anything that is not experimental is a breaking change and waits for the next major
+version.
+
 ## Package tests
 
 `tests/Xapi.PackageTests` consumes the packed nupkgs from `artifacts/packages` instead of referencing the
