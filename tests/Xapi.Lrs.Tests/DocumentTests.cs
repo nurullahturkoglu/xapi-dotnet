@@ -374,6 +374,36 @@ public class DocumentTests(LrsHosts hosts)
         Assert.Equal("""{"a":1}""", (await client.ReadAsync(renamed)).Body);
     }
 
+    [Theory]
+    [MemberData(nameof(ResourcesAndDatabases), MemberType = typeof(DocumentApi))]
+    public async Task Documents_that_are_not_json_are_served_as_downloads_browsers_do_not_render(DocumentResource resource, TestDatabase database)
+    {
+        var client = (await hosts.SharedAsync(database)).Client();
+        var html = DocTarget.New(resource);
+        await client.CreateAsync(html, "<script>alert(document.cookie)</script>", "text/html");
+
+        using (var get = await client.GetDocAsync(html))
+        {
+            Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+            Assert.Equal("text/html", get.Content.Headers.ContentType!.ToString());
+            Assert.Equal("nosniff", StatementApi.Header(get, "X-Content-Type-Options"));
+            Assert.Equal("attachment", get.Content.Headers.ContentDisposition!.DispositionType);
+            Assert.Contains("sandbox", StatementApi.Header(get, "Content-Security-Policy"), StringComparison.Ordinal);
+        }
+
+        var json = DocTarget.New(resource);
+        await client.CreateAsync(json);
+        using (var get = await client.GetDocAsync(json))
+        {
+            Assert.Equal("nosniff", StatementApi.Header(get, "X-Content-Type-Options"));
+            Assert.Null(get.Content.Headers.ContentDisposition);
+        }
+
+        using var missing = await client.GetDocAsync(DocTarget.New(resource));
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal("nosniff", StatementApi.Header(missing, "X-Content-Type-Options"));
+    }
+
     [Fact]
     public async Task Documents_larger_than_the_limit_get_413()
     {

@@ -16,19 +16,29 @@ internal static class StatementBodyReader
     private const string HashHeader = "X-Experience-API-Hash";
     private const string TransferEncodingHeader = "Content-Transfer-Encoding";
 
+    // Boundaries and part headers of a multipart/mixed request, on top of the statements and the attachment
+    // data; a few hundred bytes per part in practice
+    private const long MultipartOverheadBytes = 1024 * 1024;
+
     private static readonly Dictionary<string, AttachmentPart> NoParts = [];
 
-    public static async Task<(StatementBody? Body, IResult? Error)> ReadAsync(HttpRequest request, long maxAttachmentBytes, CancellationToken cancellationToken)
+    public static async Task<(StatementBody? Body, IResult? Error)> ReadAsync(HttpRequest request, XapiLrsOptions options, CancellationToken cancellationToken)
     {
         if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var contentType))
         {
             return (null, BadRequest("Statements must be sent as application/json or multipart/mixed."));
         }
 
+        var maxStatementBytes = options.MaxStatementBytes;
         if (contentType.MediaType.Equals("application/json", StringComparison.OrdinalIgnoreCase))
         {
-            var json = await RequestReading.ReadBodyAsync(request, cancellationToken).ConfigureAwait(false);
-            return (new StatementBody(json, NoParts), null);
+            RequestReading.SetBodyLimit(request.HttpContext, maxStatementBytes);
+            var json = request.ContentLength > maxStatementBytes
+                ? null
+                : await ReadAllAsync(request.Body, maxStatementBytes, cancellationToken).ConfigureAwait(false);
+            return json is null
+                ? (null, StatementsTooLarge(maxStatementBytes))
+                : (new StatementBody(json, NoParts), null);
         }
 
         if (!contentType.MediaType.Equals("multipart/mixed", StringComparison.OrdinalIgnoreCase))
@@ -42,9 +52,10 @@ internal static class StatementBodyReader
             return (null, BadRequest("The multipart/mixed Content-Type has no boundary parameter."));
         }
 
+        RequestReading.SetBodyLimit(request.HttpContext, Add(Add(maxStatementBytes, options.MaxAttachmentBytes), MultipartOverheadBytes));
         try
         {
-            return await ReadMultipartAsync(new MultipartReader(boundary, request.Body), maxAttachmentBytes, cancellationToken).ConfigureAwait(false);
+            return await ReadMultipartAsync(new MultipartReader(boundary, request.Body), maxStatementBytes, options.MaxAttachmentBytes, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is InvalidDataException or IOException and not BadHttpRequestException)
         {
@@ -53,7 +64,7 @@ internal static class StatementBodyReader
         }
     }
 
-    private static async Task<(StatementBody? Body, IResult? Error)> ReadMultipartAsync(MultipartReader reader, long maxAttachmentBytes, CancellationToken cancellationToken)
+    private static async Task<(StatementBody? Body, IResult? Error)> ReadMultipartAsync(MultipartReader reader, long maxStatementBytes, long maxAttachmentBytes, CancellationToken cancellationToken)
     {
         var first = await reader.ReadNextSectionAsync(cancellationToken).ConfigureAwait(false);
         if (first is null)
@@ -68,8 +79,12 @@ internal static class StatementBodyReader
             return (null, BadRequest("The first part of a multipart/mixed statement request must have Content-Type application/json."));
         }
 
-        // Only the attachment parts count against MaxAttachmentBytes; the server's body limit bounds the rest
-        var json = (await ReadAllAsync(first.Body, long.MaxValue, cancellationToken).ConfigureAwait(false))!;
+        var json = await ReadAllAsync(first.Body, maxStatementBytes, cancellationToken).ConfigureAwait(false);
+        if (json is null)
+        {
+            return (null, StatementsTooLarge(maxStatementBytes));
+        }
+
         var parts = new Dictionary<string, AttachmentPart>(StringComparer.Ordinal);
         var remaining = maxAttachmentBytes;
         for (var section = await reader.ReadNextSectionAsync(cancellationToken).ConfigureAwait(false);
@@ -136,6 +151,11 @@ internal static class StatementBodyReader
 
         return buffer.ToArray();
     }
+
+    private static IResult StatementsTooLarge(long max) =>
+        XapiResults.Problem(StatusCodes.Status413PayloadTooLarge, $"The statements in this request are larger than the {max} bytes this LRS accepts.");
+
+    private static long Add(long a, long b) => a > long.MaxValue - b ? long.MaxValue : a + b;
 
     private static IResult BadRequest(string detail) => XapiResults.Problem(StatusCodes.Status400BadRequest, detail);
 }

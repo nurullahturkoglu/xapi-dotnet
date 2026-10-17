@@ -47,13 +47,38 @@ public sealed class XapiLrsOptions
     /// <summary>
     /// The largest State, Activity Profile or Agent Profile document accepted, in bytes; larger ones get 413
     /// (IEEE 9274.1.1, 4.1.5). Applies to the document stored after a POST merge as well. Defaults to 1 MiB.
+    /// The server's request body limit (<c>MaxRequestBodySize</c>) of document writes is set to this value, so
+    /// it replaces Kestrel's default of about 28.6 MiB on those requests.
     /// </summary>
     public long MaxDocumentBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
+    /// The most statement JSON accepted in one statement PUT or POST, in bytes: the whole body of an
+    /// <c>application/json</c> request, or the first part of a <c>multipart/mixed</c> one. A batch counts as a
+    /// whole. Larger requests get 413 (IEEE 9274.1.1, 4.1.5). Defaults to 16 MiB.
+    /// </summary>
+    /// <remarks>
+    /// The server's request body limit (<c>MaxRequestBodySize</c>) of statement writes is set from this value
+    /// and <see cref="MaxAttachmentBytes"/>, so these options replace Kestrel's default of about 28.6 MiB on
+    /// those requests. Servers without a per-request limit, and requests whose body was already read by other
+    /// middleware, keep the server's own limit; the LRS still enforces these options while reading.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
+    public long MaxStatementBytes
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+            field = value;
+        }
+    } = 16 * 1024 * 1024;
+
+    /// <summary>
     /// The most attachment data accepted in one <c>multipart/mixed</c> statement request, in bytes, counting
-    /// every attachment part; larger requests get 413 (IEEE 9274.1.1, 4.1.5). Defaults to 50 MiB. The server's
-    /// own request body limit (30 MB by default in Kestrel) applies as well.
+    /// every attachment part; larger requests get 413 (IEEE 9274.1.1, 4.1.5). Defaults to 50 MiB. The
+    /// server's request body limit of a <c>multipart/mixed</c> statement request is set to this value plus
+    /// <see cref="MaxStatementBytes"/> and a fixed 1 MiB for part headers and boundaries.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
     public long MaxAttachmentBytes

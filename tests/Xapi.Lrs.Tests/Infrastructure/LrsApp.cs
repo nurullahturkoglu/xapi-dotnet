@@ -1,7 +1,9 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,11 +17,23 @@ public sealed class LrsApp : IAsyncDisposable
     public const string AuthorityHomePage = "https://lrs.example.com/";
 
     private readonly Factory _factory;
+    private readonly bool _kestrel;
 
-    internal LrsApp(TestDatabase database, string connectionString, Action<IServiceCollection>? configure)
+    // kestrel: run on a real Kestrel server on a loopback port instead of the in-memory TestServer, for what
+    // only a real server does (request body limits)
+    internal LrsApp(TestDatabase database, string connectionString, Action<IServiceCollection>? configure, Action<KestrelServerOptions>? kestrel = null)
     {
         Database = database;
         _factory = new Factory(database, connectionString, configure);
+        if (kestrel is not null)
+        {
+            _kestrel = true;
+            _factory.UseKestrel(options =>
+            {
+                options.Listen(IPAddress.Loopback, 0);
+                kestrel(options);
+            });
+        }
     }
 
     public TestDatabase Database { get; }
@@ -27,7 +41,17 @@ public sealed class LrsApp : IAsyncDisposable
     public IServiceProvider Services => _factory.Services;
 
     // Starts the host: migrations and credential seeding run here
-    public void Start() => _ = _factory.Server;
+    public void Start()
+    {
+        if (_kestrel)
+        {
+            _factory.StartServer();
+        }
+        else
+        {
+            _ = _factory.Server;
+        }
+    }
 
     public HttpClient Anonymous(string? version = "2.0.0")
     {

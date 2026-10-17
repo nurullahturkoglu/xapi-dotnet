@@ -37,6 +37,15 @@ internal static class DocumentEndpoints
             }
 
             SetETag(http, document.ETag);
+            if (!IsJson(document.ContentType))
+            {
+                // The content type is whatever the client stored, text/html or image/svg+xml included. A browser
+                // sent here, on the origin of the app that hosts the LRS, must not render it as a page.
+                var headers = http.Response.Headers;
+                headers.ContentDisposition = "attachment";
+                headers.ContentSecurityPolicy = "default-src 'none'; sandbox";
+            }
+
             return XapiResults.Body(document.ContentType, document.Content, document.Updated);
         }
 
@@ -299,6 +308,7 @@ internal static class DocumentEndpoints
 
     private static async Task<byte[]?> ReadBodyAsync(HttpRequest request, long max, CancellationToken cancellationToken)
     {
+        RequestReading.SetBodyLimit(request.HttpContext, max);
         if (request.ContentLength > max)
         {
             return null;

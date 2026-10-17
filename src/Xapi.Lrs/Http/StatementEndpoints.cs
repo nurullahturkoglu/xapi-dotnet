@@ -45,7 +45,7 @@ internal static class StatementEndpoints
             return BadRequest($"statementId '{idValue}' is not a UUID.");
         }
 
-        var (body, bodyError) = await StatementBodyReader.ReadAsync(http.Request, options.Value.MaxAttachmentBytes, http.RequestAborted).ConfigureAwait(false);
+        var (body, bodyError) = await StatementBodyReader.ReadAsync(http.Request, options.Value, http.RequestAborted).ConfigureAwait(false);
         if (body is null)
         {
             return bodyError!;
@@ -86,7 +86,7 @@ internal static class StatementEndpoints
                 : RequestReading.CheckParameters(http.Request.Query, []) ?? "No parameters are allowed.");
         }
 
-        var (body, bodyError) = await StatementBodyReader.ReadAsync(http.Request, options.Value.MaxAttachmentBytes, http.RequestAborted).ConfigureAwait(false);
+        var (body, bodyError) = await StatementBodyReader.ReadAsync(http.Request, options.Value, http.RequestAborted).ConfigureAwait(false);
         if (body is null)
         {
             return bodyError!;

@@ -1,4 +1,6 @@
+using System.Buffers.Text;
 using System.Net;
+using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Xapi.Lrs.Tests.Infrastructure;
@@ -382,6 +384,40 @@ public class StatementQueryTests(LrsHosts hosts)
         Assert.Equal(mine, Ids(await app.Client(Credentials.Mine).QueryAsync(Query(("verb", verb)))));
         Assert.Equal([others[0], mine[0]], Ids(await app.Client(Credentials.Reader).QueryAsync(Query(("verb", verb)))));
     }
+
+    [Theory]
+    [MemberData(nameof(TestDatabases.All), MemberType = typeof(TestDatabases))]
+    public async Task Forged_more_tokens_get_400_or_a_page_the_credential_may_read(TestDatabase database)
+    {
+        var app = await hosts.SharedAsync(database);
+        var verb = NewIri("verbs");
+        var mine = await app.Client(Credentials.Mine).PutAllAsync(Statement(verb: verb), Statement(verb: verb));
+        await app.Client(Credentials.Writer).PutAllAsync(Statement(verb: verb), Statement(verb: verb));
+        var after = Guid.CreateVersion7(DateTimeOffset.UtcNow.AddDays(1));
+
+        // The token is base64url of a query string; it is not signed, so these are what a client could send
+        string[] rejected =
+        [
+            $"after={after}&statementId={mine[0]}", $"after={after}&after={after}", $"after={after}&agent=%7B",
+            $"after={after}&limit=-1", "after=not-a-uuid", "limit=1", $"after={after}&Verb=x",
+        ];
+        foreach (var forged in rejected)
+        {
+            using var response = await app.Client(Credentials.Mine).GetStatementsAsync("more=" + Token(forged));
+            Assert.True(response.StatusCode == HttpStatusCode.BadRequest, $"{forged}: {(int)response.StatusCode}");
+        }
+
+        using (var invalidUtf8 = await app.Client(Credentials.Mine).GetStatementsAsync("more=" + Base64Url.EncodeToString([0xff, 0xfe, 0x00])))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, invalidUtf8.StatusCode);
+        }
+
+        // A huge limit is lowered to the maximum, and statements/read/mine still applies
+        var page = await app.Client(Credentials.Mine).QueryAsync("more=" + Token($"verb={Uri.EscapeDataString(verb)}&limit=99999999999999999999&after={after}"));
+        Assert.Equal(mine.AsEnumerable().Reverse(), Ids(page));
+    }
+
+    private static string Token(string query) => Base64Url.EncodeToString(Encoding.UTF8.GetBytes(query));
 
     [Fact]
     public async Task Attachments_true_answers_with_a_multipart_statement_result()

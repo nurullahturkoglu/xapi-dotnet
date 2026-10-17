@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Net.Http.Headers;
 using Xapi.Json;
 
@@ -67,10 +68,14 @@ internal static class RequestReading
         MediaTypeHeaderValue.TryParse(request.ContentType, out var parsed) &&
         parsed.MediaType.Equals(mediaType, StringComparison.OrdinalIgnoreCase);
 
-    public static async Task<byte[]> ReadBodyAsync(HttpRequest request, CancellationToken cancellationToken)
+    // The server's request body limit (about 28.6 MiB in Kestrel by default) would otherwise decide before the
+    // LRS's own limits, in either direction. It can only change before the body is read, so a request that
+    // other middleware already read (Alternate Request Syntax buffering, for one) keeps the server's limit.
+    public static void SetBodyLimit(HttpContext http, long limit)
     {
-        using var buffer = new MemoryStream();
-        await request.Body.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
-        return buffer.ToArray();
+        if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } feature)
+        {
+            feature.MaxRequestBodySize = limit;
+        }
     }
 }
