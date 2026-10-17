@@ -21,6 +21,13 @@
         "exclude": ["README.md"]
       }
     ],
+    "resource": [
+      {
+        "files": ["icon.svg"],
+        "src": "../eng",
+        "dest": "images"
+      }
+    ],
     "overwrite": [
       {
         "files": ["api-notes/*.md"]
@@ -31,6 +38,8 @@
     "globalMetadata": {
       "_appTitle": "xapi-dotnet",
       "_appName": "xapi-dotnet",
+      "_appLogoPath": "images/icon.svg",
+      "_appFaviconPath": "images/icon.svg",
       "_lang": "en",
       "_enableSearch": true,
       "_gitContribute": {

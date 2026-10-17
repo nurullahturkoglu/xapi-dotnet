@@ -14,11 +14,12 @@ public class PackageContentTests
     [InlineData("Xapi.Lrs")]
     [InlineData("Xapi.Lrs.Sqlite")]
     [InlineData("Xapi.Lrs.PostgreSql")]
-    public void Package_contains_readme_and_notices(string packageId)
+    public void Package_contains_readme_icon_and_notices(string packageId)
     {
         var entries = EntryNames(packageId);
 
         Assert.Contains("README.md", entries);
+        Assert.Contains("icon.png", entries);
         Assert.Contains("NOTICE", entries);
         Assert.Contains("THIRD-PARTY-NOTICES.md", entries);
         Assert.Contains("LICENSE", entries);
@@ -113,6 +114,7 @@ public class PackageContentTests
         Assert.Equal(PackageUnderTest.Version, Value("version"));
         Assert.Equal("Apache-2.0", Value("license"));
         Assert.Equal("README.md", Value("readme"));
+        Assert.Equal("icon.png", Value("icon"));
         Assert.False(string.IsNullOrWhiteSpace(Value("description")));
 
         var repository = metadata.Elements().Single(e => e.Name.LocalName == "repository");
