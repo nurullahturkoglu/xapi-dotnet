@@ -173,6 +173,33 @@ only StatementRef matches stored at write time would make it follow the page siz
 this case still costs about 2.5 μs per StatementRef within the query's time bounds on SQLite. A tenth of all
 statements is a deliberately high share of StatementRefs.
 
+To decide whether StatementRef matches should be stored at write time before 1.0, the same queries also run
+with every hundredth statement a StatementRef (`StatementRefPercent = 1`). At 100,000 statements, run on
+17 October 2026 from 11:52 to 12:27 (UTC+3) with the load average between 7 and 13:
+
+| Request | StatementRefs | SQLite | PostgreSQL |
+| --- | ---: | ---: | ---: |
+| GET `verb=...&limit=100`, first page of 10,000 matches | 0 | 0.97 ms | 2.0 ms |
+| | 1,000 (1%) | 4.4 ms | 4.0 ms |
+| | 10,000 (10%) | 29 ms | 20 ms |
+| GET the `more` link of that page | 0 | 0.99 ms | 1.9 ms |
+| | 1,000 (1%) | 4.2 ms | 4.8 ms |
+| | 10,000 (10%) | 30 ms | 21 ms |
+| GET `verb=...&limit=100` for a verb no statement has | 0 | 0.26 ms | 1.0 ms |
+| | 1,000 (1%) | 0.26 ms | 1.3 ms |
+| | 10,000 (10%) | 0.47 ms | 1.0 ms |
+| GET `agent=...&related_agents=true&limit=100`, first page of 200 matches | 0 | 2.5 ms | 4.7 ms |
+| | 1,000 (1%) | 3.5 ms | 5.6 ms |
+| | 10,000 (10%) | 4.3 ms | 5.8 ms |
+
+A run of the previous version of the store just before it gave the same picture (at 1%, 3.7 ms on SQLite for
+the first verb page). Storing the matches at write time would remove the difference to the 0 rows: about 3 ms
+per page at 1% and 20 to 30 ms at 10%, only for a filter that matches many statements while many StatementRefs
+lie within the query's bounds. It was not done before 1.0; [ADR-0021](adr/0021-storage-api-before-stable.md)
+gives the reasons and the design. The rows in this run also allocate about 210 KB (17%) less per page of 100
+statements than the run before, because the statement JSON no longer passes through strings; the times did not
+change beyond the noise.
+
 ### Concurrent writers
 
 512 single-statement POSTs per operation, made by 1, 4 or 8 writers at once. The statements have distinct
@@ -213,9 +240,9 @@ per class, plus `lrs-retries.md` with the retry counts. Useful variations:
 - `--filter '*StatementJson*'`, `'*Enqueue*'`, `'*Lrs*'` or `'*ConcurrentWriter*'` runs one group, and
   `'*StatementQuery*'` only the query rows.
 - `--list flat` lists the benchmarks.
-- Without `--job`, every benchmark uses the short job above, and the whole suite takes about 30 minutes
-  with PostgreSQL, 22 of them for the query rows, which store 10,000 or 100,000 statements per database,
-  with and without StatementRefs, before each one.
+- Without `--job`, every benchmark uses the short job above, and the whole suite takes about 40 minutes
+  with PostgreSQL, 33 of them for the query rows, which store 10,000 or 100,000 statements per database,
+  with 0, 1 or 10% StatementRefs, before each one.
   `--job Default` gives BenchmarkDotNet's full statistics (more launches and iterations until the results
   are stable) and takes much longer; use it, on an idle machine, before quoting a number.
 - `XAPI_BENCH_POSTGRES=1` adds PostgreSQL to the LRS benchmarks. It starts the same image as the

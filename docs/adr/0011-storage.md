@@ -31,6 +31,6 @@ where benchmarks show a need.
 - Storage interfaces are public but marked `[Experimental("XAPI0001")]`, and stay experimental past 1.0
   until each is reviewed and declared stable. The provider packages depend on the exact `Xapi.Lrs` version
   so that a change to them cannot break an installed provider. (Amended 2026-10-17; the first version
-  declared them stable in 1.0.)
+  declared them stable in 1.0.) ADR-0021 lists what changes before each is declared stable.
 - Changing the payload column type later requires an explicit migration (SQL LRS issue #476 shows the cost
   of doing it at startup on a large table).
