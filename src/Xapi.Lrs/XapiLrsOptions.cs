@@ -150,7 +150,7 @@ public sealed class XapiLrsOptions
 
     /// <summary>
     /// Whether the database migrations are applied when the host starts. Off by default, so production
-    /// deployments can migrate as a separate step.
+    /// deployments can migrate as a separate step with <c>MigrateXapiLrsDatabaseAsync</c>.
     /// </summary>
     public bool MigrateOnStartup { get; set; }
 }

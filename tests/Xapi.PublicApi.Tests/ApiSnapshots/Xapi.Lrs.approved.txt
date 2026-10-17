@@ -15,6 +15,10 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static Microsoft.Extensions.DependencyInjection.IXapiLrsBuilder AddXapiLrs(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Xapi.Lrs.XapiLrsOptions>? configure = null) { }
     }
+    public static class XapiLrsServiceProviderExtensions
+    {
+        public static System.Threading.Tasks.Task MigrateXapiLrsDatabaseAsync(this System.IServiceProvider services, System.Threading.CancellationToken cancellationToken = default) { }
+    }
 }
 namespace Xapi.Lrs.Storage
 {

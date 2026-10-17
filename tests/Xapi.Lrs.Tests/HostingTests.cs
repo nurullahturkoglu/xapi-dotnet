@@ -67,6 +67,47 @@ public class HostingTests(LrsHosts hosts)
     }
 
     [Fact]
+    public async Task MigrateXapiLrsDatabaseAsync_creates_the_database_so_the_host_starts_without_MigrateOnStartup()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var database = Path.Combine(Path.GetTempPath(), $"xapi-migrate-{Guid.NewGuid():N}.db");
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services
+            .AddXapiLrs(o => o.Credentials.Add(new XapiCredential("key", "secret", [XapiScope.All])))
+            .UseSqlite(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
+        await using var app = builder.Build();
+
+        try
+        {
+            await app.Services.MigrateXapiLrsDatabaseAsync(ct);
+
+            await using (var context = await app.Services.GetRequiredService<IDbContextFactory<XapiLrsDbContext>>().CreateDbContextAsync(ct))
+            {
+                Assert.NotEmpty(await context.Database.GetAppliedMigrationsAsync(ct));
+                Assert.Empty(await context.Database.GetPendingMigrationsAsync(ct));
+            }
+
+            await app.StartAsync(ct);
+            await app.StopAsync(ct);
+        }
+        finally
+        {
+            File.Delete(database);
+        }
+    }
+
+    [Fact]
+    public async Task MigrateXapiLrsDatabaseAsync_without_adding_the_lrs_fails()
+    {
+        await using var app = WebApplication.CreateSlimBuilder().Build();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => app.Services.MigrateXapiLrsDatabaseAsync(TestContext.Current.CancellationToken));
+
+        Assert.Contains("AddXapiLrs", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Adding_the_lrs_without_a_database_fails_with_a_clear_message()
     {
         var builder = WebApplication.CreateSlimBuilder();

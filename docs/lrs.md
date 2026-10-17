@@ -103,18 +103,15 @@ A separate step can run the same app with a switch, before `app.Run()`:
 
 <!-- snippet: lrs-migrate -->
 ```csharp
-#pragma warning disable XAPI0001 // XapiLrsDbContext is part of the experimental storage API
 if (args.Contains("--migrate"))
 {
-    var contexts = app.Services.GetRequiredService<IDbContextFactory<XapiLrsDbContext>>();
-    await using var context = await contexts.CreateDbContextAsync();
-    await context.Database.MigrateAsync();
+    await app.Services.MigrateXapiLrsDatabaseAsync();
     return;
 }
-#pragma warning restore XAPI0001
 ```
 
-`XapiLrsDbContext` belongs to the experimental storage API (see below), so the snippet suppresses `XAPI0001`.
+`MigrateXapiLrsDatabaseAsync` applies the same migrations as `MigrateOnStartup`, and works on any service
+provider that `AddXapiLrs` was called on, so a separate migration tool can call it too.
 
 ## Authentication
 

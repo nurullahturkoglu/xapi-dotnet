@@ -26,6 +26,7 @@ listed under a "Breaking" heading.
 - `benchmarks/Xapi.Benchmarks`: BenchmarkDotNet benchmarks for statement parsing, writing, validation and equivalence, outbox enqueueing, and the LRS statement endpoints on SQLite and PostgreSQL, with measured results in [docs/benchmarks.md](docs/benchmarks.md).
 - A documentation site built with docfx from the guides and the XML docs, deployed to GitHub Pages from `main`: https://nurullahturkoglu.github.io/xapi-dotnet/
 - `Xapi.Lrs`: `MaxStatementsPerBatch` (1,000 by default) limits the statements in one POST; larger batches get 413 before they are parsed.
+- `Xapi.Lrs`: `MigrateXapiLrsDatabaseAsync()` on the app's `IServiceProvider` applies the database migrations as a separate deployment step, so migrating no longer needs the experimental `XapiLrsDbContext`.
 
 ### Changed
 
