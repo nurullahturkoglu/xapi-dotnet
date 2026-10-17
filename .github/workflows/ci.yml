@@ -227,3 +227,47 @@ jobs:
           for version in 1.0.3 2.0.0 ''; do
             XAPI_ENDPOINT="$LRS_URL" XAPI_KEY="$LRS_KEY" XAPI_SECRET="$LRS_SECRET" XAPI_VERSION="$version" artifacts/aot/ConsoleClient
           done
+
+  docker-image:
+    # Builds the samples/LrsHost image and checks that it refuses to start without credentials, stores and
+    # returns a statement, and keeps it across a restart. Nothing is pushed.
+    name: LRS Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LRS_URL: http://127.0.0.1:8080/xapi
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
+
+      - name: Refuses to start without credentials
+        run: |
+          if timeout 60 docker run --rm xapi-lrs; then
+            echo "::error::The image started without Lrs__Key and Lrs__Secret"
+            exit 1
+          fi
+
+      - name: Stores statements and keeps them across a restart
+        run: |
+          wait_for_lrs() {
+            for _ in $(seq 60); do
+              if curl -sf "$LRS_URL/about" > /dev/null; then return 0; fi
+              sleep 1
+            done
+            docker logs lrs
+            echo "::error::The LRS did not start"
+            return 1
+          }
+          docker run -d --name lrs -p 8080:8080 -e Lrs__Key=ci_key -e Lrs__Secret=ci_secret -v lrs-data:/data xapi-lrs
+          wait_for_lrs
+          id=$(cat /proc/sys/kernel/random/uuid)
+          statement='{"actor":{"mbox":"mailto:ci@example.com"},"verb":{"id":"http://adlnet.gov/expapi/verbs/completed"},"object":{"id":"http://example.com/ci"}}'
+          curl -sf -u ci_key:ci_secret -X PUT -H 'X-Experience-API-Version: 2.0.0' -H 'Content-Type: application/json' \
+            "$LRS_URL/statements?statementId=$id" -d "$statement"
+          docker restart lrs
+          wait_for_lrs
+          curl -sf -u ci_key:ci_secret -H 'X-Experience-API-Version: 2.0.0' "$LRS_URL/statements?statementId=$id" | grep -q "$id"
