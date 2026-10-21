@@ -169,28 +169,28 @@ public class AuthenticationTests(LrsHosts hosts)
         Assert.Null(await store.ValidateAsync("nobody", "secret", ct));
         Assert.Null(await store.ValidateAsync(Credentials.All, "wrong", ct));
 
-        // The fastest of a few runs: PBKDF2 sets the floor, scheduling noise only adds to it. Without the check
-        // against a placeholder hash, an unknown key is rejected after the database lookup alone, well over ten
-        // times faster.
-        var unknown = await FastestAsync(() => store.ValidateAsync("nobody", "secret", ct));
-        var wrong = await FastestAsync(() => store.ValidateAsync(Credentials.All, "wrong", ct));
+        // The fastest of a few runs: PBKDF2 sets the floor, scheduling noise only adds to it. The runs alternate, so
+        // a slow stretch on a shared CI machine lands on both sides. Without the check against a placeholder hash,
+        // an unknown key is rejected after the database lookup alone, well over ten times faster.
+        var unknown = TimeSpan.MaxValue;
+        var wrong = TimeSpan.MaxValue;
+        for (var i = 0; i < 10; i++)
+        {
+            unknown = Min(unknown, await TimeAsync(() => store.ValidateAsync("nobody", "secret", ct)));
+            wrong = Min(wrong, await TimeAsync(() => store.ValidateAsync(Credentials.All, "wrong", ct)));
+        }
 
         Assert.True(unknown >= wrong / 2, $"Unknown key: {unknown.TotalMilliseconds} ms, wrong secret: {wrong.TotalMilliseconds} ms.");
     }
 
-    private static async Task<TimeSpan> FastestAsync(Func<Task> action)
+    private static async Task<TimeSpan> TimeAsync(Func<Task> action)
     {
-        var fastest = TimeSpan.MaxValue;
-        for (var i = 0; i < 5; i++)
-        {
-            var started = Stopwatch.GetTimestamp();
-            await action();
-            var elapsed = Stopwatch.GetElapsedTime(started);
-            fastest = elapsed < fastest ? elapsed : fastest;
-        }
-
-        return fastest;
+        var started = Stopwatch.GetTimestamp();
+        await action();
+        return Stopwatch.GetElapsedTime(started);
     }
+
+    private static TimeSpan Min(TimeSpan a, TimeSpan b) => a < b ? a : b;
 
     private static HttpClient HeaderClient(LrsApp app, string user, string scopes)
     {
