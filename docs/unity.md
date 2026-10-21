@@ -21,11 +21,11 @@ and outbox tests run with `HttpClientHandler` and with `UnityWebRequestHandler`.
 | WebGL, headless Chromium (local) | IL2CPP | Passed with `UnityWebRequestHandler` |
 | Android, iOS | IL2CPP | Not tested yet |
 
-Tested with Unity 6.3 LTS (6000.3.26f1), API Compatibility Level .NET Standard 2.1 (the default),
-NuGetForUnity 4.5.0 and the packages at 0.1.0-preview.1 from nuget.org. The WebGL row used packages packed from
-the repository, because the `FileOutboxStore` of 0.1.0-preview.1 never finishes opening an existing store in
-WebGL. CI runs the Linux rows on every change
-to the packages, with packages packed from the commit. WebGL runs locally for now
+Tested with Unity 6.3 LTS (6000.3.26f1), API Compatibility Level .NET Standard 2.1 (the default) and
+NuGetForUnity 4.5.0. The macOS editor row ran with 0.2.0 from nuget.org, the macOS player row with
+0.1.0-preview.1 from nuget.org. The WebGL row used packages packed from the repository just before 0.2.0, which
+added the WebGL fixes. CI runs the Linux rows on every change to the packages, with packages packed from the
+commit. WebGL runs locally for now
 ([CONTRIBUTING.md](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/CONTRIBUTING.md#unity-tests)).
 
 The packages do not use reflection, so they need no `link.xml`: the player tests pass with the highest stripping
@@ -45,7 +45,7 @@ Unity does not read NuGet packages by itself.
 }
 ```
 
-Then open **NuGet > Manage NuGet Packages**, turn on **Show Prerelease**, and install `Xapi.Client` (or
+Then open **NuGet > Manage NuGet Packages** and install `Xapi.Client` (or
 `Xapi.Client.Outbox`, which brings `Xapi.Client` and `Xapi.Core`). NuGetForUnity also installs
 System.Text.Json 10.0.0, System.Text.Encodings.Web, System.IO.Pipelines, Microsoft.Bcl.AsyncInterfaces,
 Microsoft.Bcl.TimeProvider, System.Diagnostics.DiagnosticSource and System.Runtime.CompilerServices.Unsafe. It
