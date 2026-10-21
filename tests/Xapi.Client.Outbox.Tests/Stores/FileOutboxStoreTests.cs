@@ -225,4 +225,63 @@ public sealed class FileOutboxStoreTests : IDisposable
         Assert.Equal(0, await third.GetPendingCountAsync(Ct));
         Assert.Equal(ids[1], Assert.Single(await third.GetDeadLettersAsync(Ct)).StatementId);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Statements_stored_before_a_lost_response_are_stored_once_after_a_restart(bool conflictOnEquivalent)
+    {
+        List<Guid> ids;
+        var lrs = new FakeLrs { LoseNextResponse = true, ConflictOnEquivalent = conflictOnEquivalent };
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
+        {
+            await using var first = Harness.Create(store: store, lrs: lrs);
+            ids = await first.EnqueueAsync(3);
+            await first.Outbox.FlushAsync(Ct);
+        }
+
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
+        {
+            Assert.Equal(3, await store.GetPendingCountAsync(Ct));
+            await using var second = Harness.Create(store: store, lrs: lrs);
+            var result = await second.Outbox.FlushAsync(Ct);
+            Assert.Equal((3, 0), (result.Delivered, result.DeadLettered));
+        }
+
+        using var third = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
+        Assert.Equal(ids, lrs.StoredIds);
+        Assert.Equal(0, await third.GetPendingCountAsync(Ct));
+        Assert.Empty(await third.GetDeadLettersAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Different_statement_stored_under_the_same_id_is_dead_lettered_after_a_restart()
+    {
+        var lrs = new FakeLrs();
+        // Another writer took the id, and the response to our write was lost
+        lrs.Next(_ =>
+        {
+            lrs.Store(Statement(2, Id(1)));
+            throw new HttpRequestException("The connection was reset after the request was sent (fake).");
+        });
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
+        {
+            await using var first = Harness.Create(store: store, lrs: lrs);
+            await first.Outbox.EnqueueAsync(Statement(1, Id(1)), Ct);
+            await first.Outbox.FlushAsync(Ct);
+        }
+
+        using (var store = await FileOutboxStore.OpenAsync(_directory.Path, Ct))
+        {
+            await using var second = Harness.Create(store: store, lrs: lrs);
+            var result = await second.Outbox.FlushAsync(Ct);
+            Assert.Equal((0, 1), (result.Delivered, result.DeadLettered));
+        }
+
+        using var third = await FileOutboxStore.OpenAsync(_directory.Path, Ct);
+        var deadLetter = Assert.Single(await third.GetDeadLettersAsync(Ct));
+        Assert.Equal((Id(1), OutboxDeadLetterReason.Conflict), (deadLetter.StatementId, deadLetter.Reason));
+        Assert.Equal(2, Number(Assert.Single(lrs.Stored)));
+        Assert.Equal(0, await third.GetPendingCountAsync(Ct));
+    }
 }
