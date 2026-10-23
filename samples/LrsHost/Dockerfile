@@ -6,7 +6,7 @@
 
 # The SDK stage runs on the build machine's platform for every target platform: the output is portable IL, and
 # SQLite's native libraries for each platform come with it under runtimes/
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2 AS build
 ARG VERSION=0.0.0
 WORKDIR /src
 COPY global.json nuget.config Directory.Build.props Directory.Build.targets Directory.Packages.props .editorconfig ./
