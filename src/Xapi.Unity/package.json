@@ -1,6 +1,6 @@
 {
   "name": "io.github.nurullahturkoglu.xapi.unity",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "displayName": "xAPI UnityWebRequest transport",
   "description": "An HttpMessageHandler that sends HttpClient requests with UnityWebRequest, so Xapi.Client works in WebGL players. Install Xapi.Client itself with NuGetForUnity.",
   "unity": "2021.3",
