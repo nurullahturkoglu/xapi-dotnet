@@ -146,7 +146,7 @@ Unity package in `src/Xapi.Unity` from the checkout. The client and outbox tests
 `HttpClientHandler` and once with `UnityWebRequestHandler`. The `Unity` workflow packs the three NuGet
 packages, points the project at them with `tests/Unity/UseLocalPackages.cs`, and runs the tests in the editor, in a Linux
 IL2CPP player and in a WebGL player in headless Chrome. It needs the `UNITY_LICENSE`, `UNITY_EMAIL` and
-`UNITY_PASSWORD` secrets and is skipped without them. Android runs locally only.
+`UNITY_PASSWORD` secrets and is skipped without them. Android and iOS run locally only.
 
 To run the tests locally, install Unity 6000.3.26f1 with Mac (or Windows or Linux) Build Support (IL2CPP),
 start the LRS image, restore the packages and run the tests in the editor or in a player:
@@ -201,6 +201,20 @@ adb install -r Builds/Android/xapi-tests.apk
 adb logcat -c
 adb shell monkey -p com.UnityTestRunner.UnityTestRunner -c android.intent.category.LAUNCHER 1
 adb logcat -s Unity | grep XAPI-TEST
+```
+
+For iOS, Unity writes an Xcode project and Xcode builds the player. With iOS Build Support and Xcode installed, set
+Target SDK to Simulator SDK and the simulator architecture to arm64 (on Apple silicon) in the iOS player settings,
+then build without signing and run the app in a booted simulator, which reaches the LRS at `localhost:8080`
+directly. Undo the settings changes afterwards.
+
+```bash
+XAPI_UNITY_PLAYER_PATH=$PWD/Builds/iOS Unity -batchmode -projectPath . -runTests -testPlatform iOS
+xcodebuild -project Builds/iOS/Unity-iPhone.xcodeproj -scheme Unity-iPhone -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath Builds/iOS/DerivedData CODE_SIGNING_ALLOWED=NO build
+xcrun simctl boot "iPhone 17 Pro"
+xcrun simctl install booted Builds/iOS/DerivedData/Build/Products/Debug-iphonesimulator/Xapi.Unity.Tests.app
+xcrun simctl launch --console-pty booted com.xapi-dotnet.Xapi.Unity.Tests | grep XAPI-TEST
 ```
 
 ## Dependency floors

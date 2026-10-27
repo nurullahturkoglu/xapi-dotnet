@@ -11,7 +11,7 @@ listed under a "Breaking" heading.
 
 ### Added
 
-- `tests/Unity`: CI also runs the tests in a WebGL player, in headless Chrome, and they pass in an Android IL2CPP player on an arm64 emulator. CONTRIBUTING.md has the steps for Android. See [docs/unity.md](docs/unity.md).
+- `tests/Unity`: CI also runs the tests in a WebGL player, in headless Chrome, and they pass in Android and iOS IL2CPP players on an arm64 Android emulator and the iOS Simulator. CONTRIBUTING.md has the steps for both. See [docs/unity.md](docs/unity.md).
 
 ## [0.2.1] - 2026-10-27
 
