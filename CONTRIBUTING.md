@@ -9,7 +9,7 @@ public issues. Everyone taking part is expected to follow the [Code of Conduct](
 
 ## Prerequisites
 
-- .NET 10 SDK 10.0.4xx (10.0.402 or a later patch). `global.json` pins the feature band so local builds run the same analyzers as CI.
+- .NET 10 SDK 10.0.4xx (10.0.403 or a later patch). `global.json` pins the feature band so local builds run the same analyzers as CI.
 - Docker, for the conformance suite and the PostgreSQL tests.
 - Node.js 22, for the conformance suite.
 - Git with full history. Package versions come from git tags (MinVer), so a shallow clone builds as `0.0.0-preview.0`.
