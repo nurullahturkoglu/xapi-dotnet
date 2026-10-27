@@ -18,14 +18,15 @@ and outbox tests run with `HttpClientHandler` and with `UnityWebRequestHandler`.
 | macOS player, Apple silicon | IL2CPP, Managed Stripping Level High | Passed |
 | Editor (play mode), Linux (CI) | Mono | Passed |
 | Linux player, x86-64 (CI) | IL2CPP | Passed |
-| WebGL, headless Chromium (local) | IL2CPP | Passed with `UnityWebRequestHandler` |
-| Android, iOS | IL2CPP | Not tested yet |
+| WebGL, headless Chromium (local) and Chrome (CI) | IL2CPP | Passed with `UnityWebRequestHandler` |
+| Android 15 emulator, arm64 | IL2CPP | Passed |
+| iOS | IL2CPP | Not tested yet |
 
 Tested with Unity 6.3 LTS (6000.3.26f1), API Compatibility Level .NET Standard 2.1 (the default) and
 NuGetForUnity 4.5.0. The macOS editor row ran with 0.2.0 from nuget.org, the macOS player row with
-0.1.0-preview.1 from nuget.org. The WebGL row used packages packed from the repository just before 0.2.0, which
-added the WebGL fixes. CI runs the Linux rows on every change to the packages, with packages packed from the
-commit. WebGL runs locally for now
+0.1.0-preview.1 from nuget.org, and the Android row with 0.2.0 from nuget.org. The local WebGL run used packages
+packed from the repository just before 0.2.0, which added the WebGL fixes. CI runs the Linux and WebGL rows on
+every change to the packages, with packages packed from the commit; the macOS and Android rows run locally
 ([CONTRIBUTING.md](https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/CONTRIBUTING.md#unity-tests)).
 
 The packages do not use reflection, so they need no `link.xml`: the player tests pass with the highest stripping

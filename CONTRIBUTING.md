@@ -144,9 +144,9 @@ shows on the package page. Keep it short, and mark its C# blocks as snippets lik
 `Xapi.Client.Outbox` as a Unity app would, installed by NuGetForUnity from `Assets/packages.config`, and the
 Unity package in `src/Xapi.Unity` from the checkout. The client and outbox tests run once with
 `HttpClientHandler` and once with `UnityWebRequestHandler`. The `Unity` workflow packs the three NuGet
-packages, points the project at them with `tests/Unity/UseLocalPackages.cs`, and runs the tests in the editor
-and in a Linux IL2CPP player. It needs the `UNITY_LICENSE`, `UNITY_EMAIL` and `UNITY_PASSWORD` secrets and is
-skipped without them. CI does not run the WebGL tests yet.
+packages, points the project at them with `tests/Unity/UseLocalPackages.cs`, and runs the tests in the editor, in a Linux
+IL2CPP player and in a WebGL player in headless Chrome. It needs the `UNITY_LICENSE`, `UNITY_EMAIL` and
+`UNITY_PASSWORD` secrets and is skipped without them. Android runs locally only.
 
 To run the tests locally, install Unity 6000.3.26f1 with Mac (or Windows or Linux) Build Support (IL2CPP),
 start the LRS image, restore the packages and run the tests in the editor or in a player:
@@ -171,10 +171,12 @@ from the NuGet window, or run `Unity -batchmode -quit -projectPath . -executeMet
 
 The WebGL tests need a browser. Unity opens the default one when it runs player tests, so build the player
 only and run it in headless Chromium instead.
-`XAPI_UNITY_PLAYER_PATH` makes a player test run build the player into that directory and quit
-(`Assets/Tests/BuildOnly.cs`); `ConsoleReporter.cs` writes the results to the browser console, and
-`tests/Unity/WebGL/run.mjs` serves the player, runs it and prints them. The LRS needs
-`LrsHost__AllowedOrigins`, as in the command above.
+`XAPI_UNITY_PLAYER_PATH`, or `-xapiPlayerPath <path>` on the command line as CI passes it, makes a player test
+run build the player into that path and quit (`Assets/Tests/BuildOnly.cs`); `ConsoleReporter.cs` writes the
+results to the browser console, and `tests/Unity/WebGL/run.mjs` serves the player, runs it and prints them. The
+LRS needs `LrsHost__AllowedOrigins`, as in the command above. The test runner changes some player settings while
+it builds and restores them at the end, which `BuildOnly.cs` skips, so undo the changes to
+`ProjectSettings/ProjectSettings.asset` afterwards.
 
 ```bash
 XAPI_UNITY_PLAYER_PATH=$PWD/Builds/WebGL Unity -batchmode -projectPath . -runTests -testPlatform WebGL
@@ -186,6 +188,20 @@ node run.mjs ../Builds/WebGL
 
 The build takes about 10 minutes. Tests marked `HttpClientHandler` are skipped in WebGL, because that handler
 cannot open connections in a browser.
+
+Android players report the same way, to logcat. Build one with Android Build Support installed, then run it on a
+device or emulator with Android 7.1 (API level 25) or later. The player is built for arm64, so an emulator needs an
+arm64 system image, which runs on Apple silicon. `adb reverse` makes the LRS on your machine the player's
+`localhost:8080`, and the test runner names the app `com.UnityTestRunner.UnityTestRunner`:
+
+```bash
+XAPI_UNITY_PLAYER_PATH=$PWD/Builds/Android/xapi-tests.apk Unity -batchmode -projectPath . -runTests -testPlatform Android
+adb reverse tcp:8080 tcp:8080
+adb install -r Builds/Android/xapi-tests.apk
+adb logcat -c
+adb shell monkey -p com.UnityTestRunner.UnityTestRunner -c android.intent.category.LAUNCHER 1
+adb logcat -s Unity | grep XAPI-TEST
+```
 
 ## Dependency floors
 
