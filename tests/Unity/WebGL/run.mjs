@@ -1,6 +1,7 @@
 // Serves a WebGL test player built by tests/Unity (see CONTRIBUTING.md) and runs it in headless Chromium. The
 // player reports through ConsoleReporter, so this prints the XAPI-TEST lines of the browser console and exits
-// with 1 when a test failed or the run did not finish.
+// with 1 when a test failed or a run did not finish. The player runs twice in the same page, before and after a
+// reload, which ReloadTests.cs needs to check that a queue survives it.
 //   node run.mjs <player directory> [timeout in minutes, default 15]
 // CHROME points at a Chromium binary; without it, Playwright's own (npx playwright-core install chromium --only-shell).
 import { createServer } from 'node:http';
@@ -39,8 +40,7 @@ await new Promise(started => server.listen(0, '127.0.0.1', started));
 
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 const page = await browser.newPage();
-let finish;
-const finished = new Promise(resolve => (finish = resolve));
+let finish = () => {};
 page.on('console', message => {
   const text = message.text();
   if (text.startsWith('XAPI-TEST')) console.log(text.trimEnd());
@@ -49,11 +49,22 @@ page.on('console', message => {
 });
 page.on('pageerror', error => console.log(`page error: ${error.message}`));
 
-await page.goto(`http://localhost:${server.address().port}/index.html`);
-const code = await Promise.race([
-  finished,
-  new Promise(stop => setTimeout(() => { console.log(`No result after ${timeout / 60_000} minutes`); stop(1); }, timeout)),
-]);
+async function run(phase) {
+  console.log(`Loading the player with xapi-reload=${phase}`);
+  const finished = new Promise(resolve => (finish = resolve));
+  await page.goto(`http://localhost:${server.address().port}/index.html?xapi-reload=${phase}`);
+  return Promise.race([
+    finished,
+    new Promise(stop => setTimeout(() => { console.log(`No result after ${timeout / 60_000} minutes`); stop(1); }, timeout)),
+  ]);
+}
+
+let code = await run('enqueue');
+if (code === 0) {
+  // IndexedDB is written after the frame that asked for it
+  await page.waitForTimeout(2000);
+  code = await run('deliver');
+}
 await browser.close();
 server.close();
 process.exit(code);

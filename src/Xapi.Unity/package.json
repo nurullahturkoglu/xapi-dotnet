@@ -2,7 +2,7 @@
   "name": "io.github.nurullahturkoglu.xapi.unity",
   "version": "0.2.1",
   "displayName": "xAPI UnityWebRequest transport",
-  "description": "An HttpMessageHandler that sends HttpClient requests with UnityWebRequest, so Xapi.Client works in WebGL players. Install Xapi.Client itself with NuGetForUnity.",
+  "description": "An HttpMessageHandler that sends HttpClient requests with UnityWebRequest, so Xapi.Client works in WebGL players, and WebGLFileSystem.Persist, which saves Application.persistentDataPath to IndexedDB so a FileOutboxStore queue survives a page reload. Install Xapi.Client itself with NuGetForUnity.",
   "unity": "2021.3",
   "license": "Apache-2.0",
   "documentationUrl": "https://github.com/nurullahturkoglu/xapi-dotnet/blob/main/docs/unity.md",
