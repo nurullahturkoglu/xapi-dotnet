@@ -28,8 +28,8 @@ The `netstandard2.0` builds are for .NET Framework 4.6.2 and later and for Unity
 hand with `Utf8JsonReader` and `Utf8JsonWriter`, without reflection, so the `net10.0` builds of the Core,
 Client and Outbox packages can be trimmed and published with Native AOT; CI publishes
 `samples/ConsoleClient` that way and fails on any warning. Under Unity they pass their tests in the editor, in
-IL2CPP players and in WebGL, where requests go through `UnityWebRequestHandler` from the Unity package in
-`src/Xapi.Unity` ([docs/unity.md](docs/unity.md)). Android and iOS are not tested yet.
+IL2CPP players on macOS, Linux and Android, and in WebGL, where requests go through `UnityWebRequestHandler` from
+the Unity package in `src/Xapi.Unity` ([docs/unity.md](docs/unity.md)). iOS is not tested yet.
 
 ## Quick start: send a statement
 

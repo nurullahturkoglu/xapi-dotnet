@@ -9,6 +9,10 @@ listed under a "Breaking" heading.
 
 ## [Unreleased]
 
+### Added
+
+- `tests/Unity`: CI also runs the tests in a WebGL player, in headless Chrome, and they pass in an Android IL2CPP player on an arm64 emulator. CONTRIBUTING.md has the steps for Android. See [docs/unity.md](docs/unity.md).
+
 ## [0.2.1] - 2026-10-27
 
 A security update of the `xapi-lrs` image. The NuGet packages and the Unity package have no code changes and are released again so that every version matches the image. The LRS still passes both ADL conformance batteries in full on SQLite and PostgreSQL (xAPI 2.0.0: 1435 of 1435, 1.0.3: 1365 of 1365), the 5,299 tests pass on Linux, and the 11 Unity tests pass in the editor and in a Linux IL2CPP player.
