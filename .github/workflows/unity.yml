@@ -134,6 +134,10 @@ jobs:
           artifactsPath: artifacts/unity-${{ matrix.testMode }}
           # The tests reach the LRS at localhost:8080
           useHostNetwork: true
+          # v4.4.0 runs the game-ci CLI it downloads, "latest" unless pinned, and passes it the Unity secrets
+          cliVersion: v0.1.72
+          # Without a token the job fails on the test exit code instead of creating a check run, which needs checks: write
+          githubToken: ''
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
