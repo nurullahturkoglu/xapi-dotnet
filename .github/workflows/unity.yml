@@ -1,8 +1,9 @@
 name: Unity
 
-# Runs tests/Unity against packages packed from this commit: in the editor (Mono) and in a Linux player built
-# with IL2CPP. Needs a Unity Personal license in the UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD secrets
-# (https://game.ci/docs/github/activation); without them, as on pull requests from forks, the tests are skipped.
+# Runs tests/Unity against packages packed from this commit: in the editor (Mono), in a Linux player built with
+# IL2CPP and in a WebGL player run in headless Chrome. Needs a Unity Personal license in the UNITY_LICENSE,
+# UNITY_EMAIL and UNITY_PASSWORD secrets (https://game.ci/docs/github/activation); without them, as on pull requests
+# from forks and from Dependabot, the tests are skipped.
 
 on:
   push:
@@ -68,7 +69,7 @@ jobs:
           fi
 
   test:
-    name: Unity ${{ matrix.testMode }}
+    name: Unity ${{ matrix.suite }}
     needs: license
     if: needs.license.outputs.available == 'true'
     runs-on: ubuntu-latest
@@ -76,9 +77,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # playmode runs in the editor on Mono; standalone builds a StandaloneLinux64 player with the IL2CPP
-        # backend set in ProjectSettings and runs the same tests in it
-        testMode: [playmode, standalone]
+        include:
+          # In the editor on Mono
+          - suite: playmode
+            testMode: playmode
+          # In a StandaloneLinux64 player with the IL2CPP backend set in ProjectSettings
+          - suite: standalone
+            testMode: standalone
+          # GameCI has no WebGL test mode. The -testPlatform below comes after GameCI's and wins, BuildOnly.cs
+          # builds the player without starting it, and the browser steps run it.
+          - suite: webgl
+            testMode: playmode
+            image: unityci/editor:ubuntu-6000.3.26f1-webgl-3.2.2
+            parameters: -testPlatform WebGL -xapiPlayerPath Builds/WebGL
     env:
       LRS_URL: http://localhost:8080/xapi
     steps:
@@ -95,7 +106,9 @@ jobs:
       - name: Start the LRS
         run: |
           docker build -f samples/LrsHost/Dockerfile -t xapi-lrs .
-          docker run -d --name lrs -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret xapi-lrs
+          # The WebGL player runs on another origin, so the browser checks CORS
+          docker run -d --name lrs -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret \
+            -e "LrsHost__AllowedOrigins=*" xapi-lrs
           for _ in $(seq 60); do
             if curl -sf "$LRS_URL/about" > /dev/null; then exit 0; fi
             sleep 1
@@ -120,8 +133,8 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tests/Unity/Library
-          key: unity-library-${{ matrix.testMode }}-${{ hashFiles('tests/Unity/ProjectSettings/ProjectVersion.txt', 'tests/Unity/Packages/packages-lock.json', 'tests/Unity/Assets/packages.config') }}
-          restore-keys: unity-library-${{ matrix.testMode }}-
+          key: unity-library-${{ matrix.suite }}-${{ hashFiles('tests/Unity/ProjectSettings/ProjectVersion.txt', 'tests/Unity/Packages/packages-lock.json', 'tests/Unity/Assets/packages.config') }}
+          restore-keys: unity-library-${{ matrix.suite }}-
 
       - uses: game-ci/unity-test-runner@32e57712352b500e17974b245a6dce9e11a73213 # v4.4.0
         env:
@@ -131,7 +144,9 @@ jobs:
         with:
           projectPath: tests/Unity
           testMode: ${{ matrix.testMode }}
-          artifactsPath: artifacts/unity-${{ matrix.testMode }}
+          customImage: ${{ matrix.image }}
+          customParameters: ${{ matrix.parameters }}
+          artifactsPath: artifacts/unity-${{ matrix.suite }}
           # The tests reach the LRS at localhost:8080
           useHostNetwork: true
           # v4.4.0 runs the game-ci CLI it downloads, "latest" unless pinned, and passes it the Unity secrets
@@ -139,9 +154,27 @@ jobs:
           # Without a token the job fails on the test exit code instead of creating a check run, which needs checks: write
           githubToken: ''
 
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: matrix.suite == 'webgl'
+        with:
+          node-version: 22.x
+
+      - name: Run the WebGL player in headless Chrome
+        if: matrix.suite == 'webgl'
+        working-directory: tests/Unity/WebGL
+        env:
+          # The runner's Chrome, so Playwright downloads no browser
+          CHROME: /usr/bin/google-chrome
+        run: |
+          npm ci
+          # artifacts/unity-webgl belongs to root, the user GameCI's container runs as
+          node run.mjs ../Builds/WebGL 20 | tee ../../../artifacts/webgl-console.log
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: unity-${{ matrix.testMode }}
-          path: artifacts/unity-${{ matrix.testMode }}
+          name: unity-${{ matrix.suite }}
+          path: |
+            artifacts/unity-${{ matrix.suite }}
+            artifacts/webgl-console.log
           if-no-files-found: ignore
