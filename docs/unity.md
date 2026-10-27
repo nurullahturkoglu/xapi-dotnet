@@ -149,5 +149,17 @@ there. That changes how the outbox is used:
 
 - Do not start `RunAsync`, which waits with timers. Call `FlushAsync` from a coroutine instead, for example
   every few seconds and after enqueueing.
-- The tests reopen a `FileOutboxStore` under `Application.temporaryCachePath` within one page. Whether a queue
-  under `Application.persistentDataPath` survives a page reload has not been tested.
+- Unity keeps `Application.persistentDataPath` in memory in WebGL and writes it to the browser's IndexedDB only
+  when asked, so a queue there is gone after a page reload. Call `WebGLFileSystem.Persist()` from the Unity
+  package after `EnqueueAsync` and after each `FlushAsync`; it does nothing on other platforms. The browser
+  writes the directory after the current frame, so a statement enqueued in the frame the tab closes can still be
+  lost. Setting `config.autoSyncPersistentDataPath = true` in the page's `createUnityInstance` call is not enough
+  on its own: Unity then saves a file when it is closed, and `FileOutboxStore` keeps its journal open.
+
+```csharp
+await outbox.EnqueueAsync(statement);
+WebGLFileSystem.Persist();
+```
+
+The WebGL tests queue statements under `Application.persistentDataPath` while the LRS cannot be reached, call
+`Persist`, reload the page, and deliver the queue.

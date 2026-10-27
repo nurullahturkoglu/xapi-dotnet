@@ -11,6 +11,7 @@ listed under a "Breaking" heading.
 
 ### Added
 
+- `Xapi.Unity`: `WebGLFileSystem.Persist()` saves `Application.persistentDataPath` to IndexedDB in WebGL players, where Unity writes that directory only when asked, so a `FileOutboxStore` queue there survives a page reload. Outside WebGL it does nothing. The WebGL tests check it across a reload.
 - `tests/Unity`: CI also runs the tests in a WebGL player, in headless Chrome, and they pass in Android and iOS IL2CPP players on an arm64 Android emulator and the iOS Simulator. CONTRIBUTING.md has the steps for both. See [docs/unity.md](docs/unity.md).
 
 ## [0.2.1] - 2026-10-27
