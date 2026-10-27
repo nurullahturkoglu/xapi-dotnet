@@ -124,7 +124,7 @@ repository with the Package Manager (**Add package from git URL**), or in `Packa
 ```json
 {
   "dependencies": {
-    "io.github.nurullahturkoglu.xapi.unity": "https://github.com/nurullahturkoglu/xapi-dotnet.git?path=/src/Xapi.Unity#v0.2.0"
+    "io.github.nurullahturkoglu.xapi.unity": "https://github.com/nurullahturkoglu/xapi-dotnet.git?path=/src/Xapi.Unity#v0.2.1"
   }
 }
 ```

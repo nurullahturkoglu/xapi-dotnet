@@ -17,7 +17,7 @@ namespace Xapi.Unity.Tests
 
     // The LRS the tests talk to: the xapi-lrs image, started with
     //   docker run -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret -e "LrsHost__AllowedOrigins=*" \
-    //     ghcr.io/nurullahturkoglu/xapi-lrs:0.2.0
+    //     ghcr.io/nurullahturkoglu/xapi-lrs:0.2.1
     // WebGL players need AllowedOrigins, because the browser checks CORS.
     internal static class TestLrs
     {
