@@ -428,14 +428,14 @@ start until a credential is given:
 
 ```bash
 docker run -p 8080:8080 -e LrsHost__Key=my-key -e LrsHost__Secret=my-secret -v xapi-lrs-data:/data \
-  ghcr.io/nurullahturkoglu/xapi-lrs:0.2.1
+  ghcr.io/nurullahturkoglu/xapi-lrs:0.3.0
 ```
 
 Each image has a signed build provenance attestation that ties it to the release workflow run and the tagged
 commit. The GitHub CLI checks it:
 
 ```bash
-gh attestation verify oci://ghcr.io/nurullahturkoglu/xapi-lrs:0.2.1 --repo nurullahturkoglu/xapi-dotnet
+gh attestation verify oci://ghcr.io/nurullahturkoglu/xapi-lrs:0.3.0 --repo nurullahturkoglu/xapi-dotnet
 ```
 
 To build the image from the repository instead, run `samples/LrsHost/Dockerfile` from the repository root:

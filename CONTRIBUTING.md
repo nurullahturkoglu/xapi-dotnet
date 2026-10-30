@@ -153,7 +153,7 @@ start the LRS image, restore the packages and run the tests in the editor or in 
 
 ```bash
 docker run -d -p 8080:8080 -e LrsHost__Key=unity_key -e LrsHost__Secret=unity_secret -e "LrsHost__AllowedOrigins=*" \
-  ghcr.io/nurullahturkoglu/xapi-lrs:0.2.1
+  ghcr.io/nurullahturkoglu/xapi-lrs:0.3.0
 cd tests/Unity
 dotnet tool restore
 dotnet nugetforunity restore .
