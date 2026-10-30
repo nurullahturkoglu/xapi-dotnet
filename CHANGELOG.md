@@ -9,6 +9,10 @@ listed under a "Breaking" heading.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-30
+
+Adds `WebGLFileSystem.Persist()` to the Unity package, so an outbox queue in a WebGL player survives a page reload, and widens the Unity tests to WebGL in CI, Android and the iOS Simulator. The NuGet packages have no code changes. The LRS still passes both ADL conformance batteries in full on SQLite and PostgreSQL (xAPI 2.0.0: 1435 of 1435, 1.0.3: 1365 of 1365) and the 5,299 tests pass on Linux. Of the 12 Unity tests, 11 pass in the editor and in a Linux IL2CPP player, where the reload test is skipped; in WebGL 8 pass and the 4 that need `HttpClientHandler` are skipped, before and after the reload.
+
 ### Added
 
 - `Xapi.Unity`: `WebGLFileSystem.Persist()` saves `Application.persistentDataPath` to IndexedDB in WebGL players, where Unity writes that directory only when asked, so a `FileOutboxStore` queue there survives a page reload. Outside WebGL it does nothing. The WebGL tests check it across a reload.
@@ -93,7 +97,8 @@ The first preview of all six packages. The LRS passes both ADL conformance batte
 - `Xapi.Lrs`: the form of an Alternate Request Syntax request, which is read before the request is authenticated, is limited to `MaxAlternateRequestBytes` (1 MiB by default) instead of the server's request body limit; larger forms get 413.
 - docs/lrs.md covers rate limiting against secret guessing, CORS for browser clients, and keeping agent email addresses out of request logs.
 
-[Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nurullahturkoglu/xapi-dotnet/compare/v0.1.0-preview.1...v0.2.0
 [0.1.0-preview.1]: https://github.com/nurullahturkoglu/xapi-dotnet/releases/tag/v0.1.0-preview.1

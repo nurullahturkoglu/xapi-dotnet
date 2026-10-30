@@ -126,7 +126,7 @@ repository with the Package Manager (**Add package from git URL**), or in `Packa
 ```json
 {
   "dependencies": {
-    "io.github.nurullahturkoglu.xapi.unity": "https://github.com/nurullahturkoglu/xapi-dotnet.git?path=/src/Xapi.Unity#v0.2.1"
+    "io.github.nurullahturkoglu.xapi.unity": "https://github.com/nurullahturkoglu/xapi-dotnet.git?path=/src/Xapi.Unity#v0.3.0"
   }
 }
 ```
@@ -151,7 +151,7 @@ there. That changes how the outbox is used:
   every few seconds and after enqueueing.
 - Unity keeps `Application.persistentDataPath` in memory in WebGL and writes it to the browser's IndexedDB only
   when asked, so a queue there is gone after a page reload. Call `WebGLFileSystem.Persist()` from the Unity
-  package after `EnqueueAsync` and after each `FlushAsync`; it does nothing on other platforms. The browser
+  package (0.3.0 or later) after `EnqueueAsync` and after each `FlushAsync`; it does nothing on other platforms. The browser
   writes the directory after the current frame, so a statement enqueued in the frame the tab closes can still be
   lost. Setting `config.autoSyncPersistentDataPath = true` in the page's `createUnityInstance` call is not enough
   on its own: Unity then saves a file when it is closed, and `FileOutboxStore` keeps its journal open.
