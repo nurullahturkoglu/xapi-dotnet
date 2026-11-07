@@ -34,7 +34,7 @@
       }
     ],
     "output": "../artifacts/docs-site",
-    "template": ["default", "modern"],
+    "template": ["default", "modern", "template"],
     "globalMetadata": {
       "_appTitle": "xapi-dotnet",
       "_appName": "xapi-dotnet",
