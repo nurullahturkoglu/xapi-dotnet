@@ -17,7 +17,7 @@ COPY samples/LrsHost/ samples/LrsHost/
 # No apphost: it would be native code for the build platform, and the entrypoint runs the dll with dotnet.
 RUN dotnet publish samples/LrsHost -c Release -o /app -p:MinVerSkip=true -p:Version="$VERSION" -p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.14@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c
 WORKDIR /app
 COPY --from=build /app .
 RUN mkdir /data && chown "$APP_UID" /data
